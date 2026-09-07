@@ -32,11 +32,11 @@ export default function Schedule({ initialToday }: { initialToday: string }) {
         <div role="group" aria-label="Вид расписания" className="flex rounded-xl border border-gray-200 bg-white p-1">
           {([['week', 'Неделя'], ['day', 'День']] as const).map(([id, label]) => <Button key={id} variant={view === id ? "secondary" : "ghost"} aria-pressed={view === id} onClick={() => setView(id)} className={cn("rounded-lg", view === id && "bg-blue-50 text-blue-600")}>{label}</Button>)}
         </div>
-        <DatePicker value={selectedDay} today={today} onSelect={date => { setSelectedDay(date); setView("day"); }} />
+        <DatePicker value={selectedDay} today={today} onSelect={setSelectedDay} />
       </div>
       <Card className="overflow-hidden rounded-2xl border-gray-200 bg-white shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-4 border-b border-gray-100 p-4 sm:p-5">
-          <div><h3 aria-live="polite" aria-atomic="true" className="text-base font-semibold sm:text-lg">{view === "week" ? weekLabel(week) : formatDate(selectedDay, { weekday: "long", day: "numeric", month: "long", year: "numeric" })}</h3><p className="mt-1 text-xs text-gray-500">Занятий: {view === "week" ? lessons.length : dayLessons.length}</p></div>
+          <div><h3 aria-live="polite" aria-atomic="true" className="text-base font-semibold first-letter:uppercase sm:text-lg">{view === "week" ? weekLabel(week) : formatDate(selectedDay, { weekday: "long", day: "numeric", month: "long", year: "numeric" })}</h3><p className="mt-1 text-xs text-gray-500">Занятий: {view === "week" ? lessons.length : dayLessons.length}</p></div>
           <div className="flex flex-wrap items-center gap-2">
             {view === "week" && week === mondayOf(today) && <Badge className="border-0 bg-blue-50 text-blue-600">Текущая неделя</Badge>}
             <div className="flex items-center gap-1 rounded-xl border border-gray-200 p-1">
