@@ -8,6 +8,8 @@ const pageTitles: Record<string, string> = {
   "/dashboard": "Dashboard",
   "/tasks": "Задания",
   "/schedule": "Расписание",
+  "/schedule/assessments": "Аттестации и экзамены",
+  "/schedule/global": "Глобальное расписание",
   "/gpa": "Средний балл",
   "/materials": "Материалы",
   "/ai-coach": "AI Exam Coach",
@@ -21,17 +23,17 @@ export default function Header() {
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-gray-200 bg-white px-5 md:px-8">
       {/* Current page */}
-    <div className="flex items-center gap-3">
+    <div className="flex min-w-0 items-center gap-3">
 
      <MobileSidebar />
 
-    <h1 className="text-xl font-semibold tracking-tight text-gray-900">
+    <h1 className="truncate text-base font-semibold tracking-tight text-gray-900 sm:text-xl">
     {title}
     </h1>
     </div>
  
       {/* Right side */}
-      <div className="flex items-center gap-3">
+      <div className="flex min-w-0 items-center gap-3">
         {/* Notifications */}
         <button
           type="button"
@@ -46,7 +48,7 @@ export default function Header() {
         <div className="hidden h-7 w-px bg-gray-200 sm:block" />
 
         {/* User */}
-        <div className="flex items-center gap-3">
+        <div className="flex min-w-0 items-center gap-3">
           <div className="hidden text-right sm:block">
             <p className="text-sm font-semibold leading-4 text-gray-900">
               Student
