@@ -1,59 +1,20 @@
 "use client";
 
 import Image from "next/image";
-import Link from "next/link";
-import { usePathname } from "next/navigation";
+import Navigation from "./Navigation";
 
-import {
-  LayoutDashboard,
-  ListTodo,
-  CalendarDays,
-  ChartNoAxesColumnIncreasing,
-  BookOpen,
-  Sparkles,
-  LogOut,
-} from "lucide-react";
 
-const menuItems = [
-  {
-    name: "Dashboard",
-    href: "/dashboard",
-    icon: LayoutDashboard,
-  },
-  {
-    name: "Задания",
-    href: "/tasks",
-    icon: ListTodo,
-  },
-  {
-    name: "Расписание",
-    href: "/schedule",
-    icon: CalendarDays,
-  },
-  {
-    name: "Средний балл",
-    href: "/gpa",
-    icon: ChartNoAxesColumnIncreasing,
-  },
-  {
-    name: "Материалы",
-    href: "/materials",
-    icon: BookOpen,
-  },
-  {
-    name: "AI Exam Coach",
-    href: "/ai-coach",
-    icon: Sparkles,
-  },
-];
+import { LogOut } from "lucide-react";
+
+
 
 export default function Sidebar() {
-  const pathname = usePathname();
+
 
   return (
     <aside className="fixed left-0 top-0 z-40 hidden h-screen w-64 flex-col border-r border-gray-200 bg-white px-4 py-5 md:flex">
       {/* Logo */}
-      <div className="mb-7 border-b border-gray-100 px-2 pb-5">
+      <div className="mb-5 shrink-0 border-b border-gray-100 px-2 pb-5">
         <Image
           src="/logo.jpg"
           alt="Логотип Политехнического Университета Молдовы"
@@ -69,37 +30,10 @@ export default function Sidebar() {
       </div>
 
       {/* Navigation */}
-      <nav className="flex flex-1 flex-col gap-1">
-        {menuItems.map((item) => {
-          const isActive = pathname === item.href;
-          const Icon = item.icon;
-
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={`flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium transition-colors ${
-                isActive
-                  ? "bg-blue-50 text-blue-600"
-                  : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
-              }`}
-            >
-              <Icon size={19} strokeWidth={2} />
-
-              <span>{item.name}</span>
-
-              {item.href === "/ai-coach" && (
-                <span className="ml-auto rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-bold text-blue-600">
-                  AI
-                </span>
-              )}
-            </Link>
-          );
-        })}
-      </nav>
+      <Navigation />
 
       {/* User */}
-      <div className="border-t border-gray-100 pt-4">
+      <div className="shrink-0 border-t border-gray-100 pt-4">
         <div className="mb-3 flex items-center gap-3 px-2">
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue-600 text-sm font-semibold text-white">
             S
