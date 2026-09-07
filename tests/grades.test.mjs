@@ -61,7 +61,11 @@ test("new subjects have independent empty assessments", () => {
   first.stages[0].parts[0].grade = "9";
   assert.equal(second.stages[0].parts[0].grade, "");
   assert.equal(first.stages[1].parts[0].grade, "");
-  assert.deepEqual(first.stages.map(item => item.name), ["Аттестация 1", "Аттестация 2"]);
+  assert.deepEqual(first.stages.map(item => item.name), ["Аттестация 1", "Аттестация 2", "Экзамен"]);
+  assert.equal(calculateStage(first.stages[2]).value, null);
+  first.stages[2].parts[0].grade = "8";
+  assert.equal(calculateStage(first.stages[2]).value, 8);
+  assert.equal(second.stages[2].parts[0].grade, "");
 });
 
 test("overall average weights subjects equally and excludes missing results", () => {

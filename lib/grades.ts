@@ -14,7 +14,14 @@ export function createStage(id: string, name: string): GradeStage {
 }
 
 export function createSubject(id: string, name: string): GradeSubject {
-  return { id, name, stages: [createStage(`${id}-a1`, "Аттестация 1"), createStage(`${id}-a2`, "Аттестация 2")] };
+  return {
+    id, name,
+    stages: [
+      createStage(`${id}-a1`, "Аттестация 1"),
+      createStage(`${id}-a2`, "Аттестация 2"),
+      { id: `${id}-exam`, name: "Экзамен", formula: "", parts: [{ id: `${id}-exam-1`, variable: "g1", name: "Экзаменационная работа", grade: "" }] },
+    ],
+  };
 }
 
 export const initialSubjects = [createSubject("programming", "Программирование"), createSubject("math", "Высшая математика")];
