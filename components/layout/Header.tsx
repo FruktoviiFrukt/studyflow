@@ -10,7 +10,8 @@ const pageTitles: Record<string, string> = {
   "/schedule": "Расписание",
   "/schedule/assessments": "Аттестации и экзамены",
   "/schedule/global": "Глобальное расписание",
-  "/gpa": "Средний балл",
+  "/gpa": "Оценки от преподавателей",
+  "/gpa/calculator": "Калькулятор оценок",
   "/materials": "Материалы",
   "/ai-coach": "AI Exam Coach",
 };
