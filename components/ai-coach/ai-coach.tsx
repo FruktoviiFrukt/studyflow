@@ -8,8 +8,8 @@ import GenerationSettings from "./generation-settings";
 import GenerateButton from "./generate-button";
 import { QuizScreen } from "./QuizScreen";
 import { ResultsScreen } from "./ResultsScreen";
-import { mockQuestions } from "@/lib/mockQuiz";
-import { QuizResult } from "@/types/quiz";
+import { generateMockQuestions } from "@/lib/mockQuiz";
+import type { Question, QuizResult } from "@/types/quiz";
 import {
   getGenerationReadiness,
   type Difficulty,
@@ -17,6 +17,12 @@ import {
 } from "@/lib/ai-coach";
 
 type Step = "setup" | "quiz" | "results";
+
+function toQuizQuestionType(
+  selected: QuestionType,
+): "multiple-choice" | "true-false" {
+  return selected === "single" ? "multiple-choice" : "true-false";
+}
 
 export default function AiCoach() {
   const [step, setStep] = useState<Step>("setup");
@@ -29,6 +35,8 @@ export default function AiCoach() {
   const [questionCount, setQuestionCount] = useState(10);
   const [difficulty, setDifficulty] = useState<Difficulty>("medium");
   const [questionType, setQuestionType] = useState<QuestionType>("single");
+
+  const [quizQuestions, setQuizQuestions] = useState<Question[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selectedAnswers, setSelectedAnswers] = useState<
     Record<string, string>
@@ -41,13 +49,29 @@ export default function AiCoach() {
     hasSubject,
     hasNotes,
   });
-  const currentQuestion = mockQuestions[currentIndex];
+  const currentQuestion = quizQuestions[currentIndex];
+
+  async function handleGenerate() {
+    await new Promise((resolve) => setTimeout(resolve, 2200));
+
+    const questions = generateMockQuestions({
+      subjectId: selectedSubjectId!,
+      count: questionCount,
+      difficulty,
+      type: toQuizQuestionType(questionType),
+    });
+
+    setQuizQuestions(questions);
+    setCurrentIndex(0);
+    setSelectedAnswers({});
+    setStep("quiz");
+  }
 
   function handleSelectOption(optionId: string) {
     setSelectedAnswers((prev) => ({ ...prev, [currentQuestion.id]: optionId }));
   }
   function handleNext() {
-    if (currentIndex < mockQuestions.length - 1) setCurrentIndex((i) => i + 1);
+    if (currentIndex < quizQuestions.length - 1) setCurrentIndex((i) => i + 1);
   }
   function handlePrev() {
     if (currentIndex > 0) setCurrentIndex((i) => i - 1);
@@ -56,7 +80,7 @@ export default function AiCoach() {
     let correctCount = 0;
     const strongSet = new Set<string>();
     const weakSet = new Set<string>();
-    mockQuestions.forEach((q) => {
+    quizQuestions.forEach((q) => {
       const selected = selectedAnswers[q.id];
       if (selected === q.correctAnswerId) {
         correctCount += 1;
@@ -65,10 +89,10 @@ export default function AiCoach() {
         weakSet.add(q.topic);
       }
     });
-    const incorrectCount = mockQuestions.length - correctCount;
-    const percentage = Math.round((correctCount / mockQuestions.length) * 100);
+    const incorrectCount = quizQuestions.length - correctCount;
+    const percentage = Math.round((correctCount / quizQuestions.length) * 100);
     setQuizResult({
-      totalQuestions: mockQuestions.length,
+      totalQuestions: quizQuestions.length,
       correctCount,
       incorrectCount,
       finalScore: percentage,
@@ -86,12 +110,12 @@ export default function AiCoach() {
     setStep(next);
   }
 
-  if (step === "quiz") {
+  if (step === "quiz" && currentQuestion) {
     return (
       <QuizScreen
         question={currentQuestion}
         currentIndex={currentIndex}
-        totalQuestions={mockQuestions.length}
+        totalQuestions={quizQuestions.length}
         selectedOptionId={selectedAnswers[currentQuestion.id]}
         onSelectOption={handleSelectOption}
         onNext={handleNext}
@@ -112,7 +136,7 @@ export default function AiCoach() {
   }
 
   return (
-    <div className="mx-auto max-w-[1440px] space-y-5">
+    <div className="mx-auto max-w-360 space-y-5">
       <div>
         <p className="mb-2 text-xs font-semibold uppercase tracking-[0.16em] text-blue-600">
           Подготовка к экзамену
@@ -126,8 +150,7 @@ export default function AiCoach() {
         <p className="mt-2 max-w-2xl text-sm leading-6 text-gray-600">
           Загрузите конспекты или вставьте текст лекции — AI Exam Coach
           сгенерирует вопросы для самопроверки по выбранному предмету, с нужным
-          количеством, уровнем сложности и типом вопросов. Так вы быстро
-          увидите, что уже усвоено, а что стоит повторить перед экзаменом.
+          количеством, уровнем сложности и типом вопросов.
         </p>
       </div>
 
@@ -137,12 +160,10 @@ export default function AiCoach() {
         text={noteText}
         onTextChange={setNoteText}
       />
-
       <SubjectSelect
         selectedSubjectId={selectedSubjectId}
         onSelect={setSelectedSubjectId}
       />
-
       <GenerationSettings
         questionCount={questionCount}
         onQuestionCountChange={setQuestionCount}
@@ -151,11 +172,10 @@ export default function AiCoach() {
         questionType={questionType}
         onQuestionTypeChange={setQuestionType}
       />
-
       <GenerateButton
         canGenerate={canGenerate}
         hint={hint}
-        onGenerated={() => setStep("quiz")}
+        onGenerate={handleGenerate}
       />
     </div>
   );

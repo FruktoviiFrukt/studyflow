@@ -1,4 +1,5 @@
 export type QuestionType = "multiple-choice" | "true-false";
+export type Difficulty = "easy" | "medium" | "hard";
 
 export interface AnswerOption {
   id: string;
@@ -10,8 +11,10 @@ export interface Question {
   text: string;
   type: QuestionType;
   options: AnswerOption[];
-  correctAnswerId: string; // Поле для проверки правильного ответа
+  correctAnswerId: string;
   topic: string;
+  subjectId: string;
+  difficulty: Difficulty;
 }
 
 export interface UserAnswer {
@@ -21,7 +24,7 @@ export interface UserAnswer {
 }
 
 export interface QuizResult {
-  totalQuestions: number; // Общее количество вопросов
+  totalQuestions: number;
   correctCount: number;
   incorrectCount: number;
   finalScore: number;
