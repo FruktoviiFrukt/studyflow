@@ -1,3 +1,5 @@
+import GradeCalculator from "@/components/grades/grade-calculator";
+
 export default function GpaPage() {
-  return <h1 className="text-2xl font-bold">Средний балл</h1>;
+  return <GradeCalculator />;
 }
