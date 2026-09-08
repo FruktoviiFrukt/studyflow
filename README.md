@@ -20,14 +20,19 @@ You can start editing the page by modifying `app/page.tsx`. The page auto-update
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
+## Автоматические проверки
+
+Инструкция по запуску CI, тестов и развёртывания: [docs/automation.md](docs/automation.md).
+
 ## Backend setup
 
 The backend uses PostgreSQL (via Docker) and Prisma as the ORM.
+Use Node.js 24.14.0, as specified in `.node-version`. Dependency installation generates the Prisma client through `postinstall`; after changing the schema, run `npx prisma generate` explicitly.
 
 1. Install [Docker Desktop](https://www.docker.com/products/docker-desktop/).
 2. Install dependencies:
    ```bash
-   npm install
+   npm ci
    ```
 3. Copy the environment file and adjust it if needed:
    ```bash

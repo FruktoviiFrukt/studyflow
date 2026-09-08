@@ -1,0 +1,81 @@
+name: Deploy imurd to Vercel
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      ci_run_id:
+        description: "Successful push CI run on the current imurd commit"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: vercel-imurd-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: >-
+      vars.VERCEL_ENABLED == 'true' &&
+      (github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.head_branch == 'imurd'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: imurd
+          path: control
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24.14.0"
+      - name: Verify exact tested commit
+        id: gate
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CI_RUN_ID: ${{ inputs.ci_run_id || github.event.workflow_run.id }}
+        run: node control/scripts/integration/deploy-gate.mjs
+      - uses: actions/checkout@v4
+        if: steps.gate.outputs.deploy == 'true'
+        with:
+          ref: ${{ steps.gate.outputs.sha }}
+          path: app
+          persist-credentials: false
+      - name: Build and deploy tested imurd
+        if: steps.gate.outputs.deploy == 'true'
+        working-directory: app
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+          GH_TOKEN: ${{ github.token }}
+          EXPECTED_SHA: ${{ steps.gate.outputs.sha }}
+        run: |
+          test -n "$VERCEL_TOKEN" && test -n "$VERCEL_ORG_ID" && test -n "$VERCEL_PROJECT_ID" || { echo 'Configure Vercel secrets first'; exit 1; }
+          npm install --global vercel@59.11.7
+          vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
+          vercel build --prod --token="$VERCEL_TOKEN"
+          current=$(gh api "repos/$GITHUB_REPOSITORY/branches/imurd" --jq .commit.sha)
+          if [ "$current" != "$EXPECTED_SHA" ]; then
+            echo 'imurd advanced during build; a newer successful CI will deploy it.'
+            exit 0
+          fi
+          vercel deploy --prebuilt --prod --token="$VERCEL_TOKEN" > deployment-url.txt
+          cat deployment-url.txt
+      - uses: actions/upload-artifact@v4
+        if: success() && steps.gate.outputs.deploy == 'true'
+        with:
+          name: vercel-${{ github.run_id }}
+          path: app/deployment-url.txt
+          if-no-files-found: ignore
+          retention-days: 30
