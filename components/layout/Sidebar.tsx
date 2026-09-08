@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import Image from "next/image";
 import Navigation from "./Navigation";
 
@@ -50,14 +51,14 @@ export default function Sidebar() {
           </div>
         </div>
 
-        <button
-          type="button"
-          className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-gray-500 transition-colors hover:bg-gray-50 hover:text-gray-900"
-        >
-          <LogOut size={18} />
+      <Link
+        href="/auth"
+        className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-gray-500 transition-colors hover:bg-gray-50 hover:text-gray-900"
+      >
+        <LogOut size={18} />
 
-          <span>Выйти</span>
-        </button>
+        <span>Выйти</span>
+      </Link>
       </div>
     </aside>
   );
