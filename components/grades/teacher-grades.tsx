@@ -4,7 +4,9 @@ import { useState } from "react";
 import { AlertTriangle, Calculator, LockKeyhole } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
-import { averageGrade, calculateOverall, calculateStage, defaultFormula, gradeStatus, isLowGrade, type GradeSubject } from "@/lib/grades";
+import { filterSubjects, subjectGrade, type SemesterFilter, calculateOverall, calculateStage, defaultFormula, gradeStatus, isLowGrade, type GradeSubject } from "@/lib/grades";
+
+import SubjectCards, { SemesterFilters } from "./subject-cards";
 
 const formatGrade = (value: number | null) => value === null ? "—" : value.toLocaleString("ru-RU", { maximumFractionDigits: 2 });
 
@@ -28,11 +30,13 @@ function AverageCard({ title, value, children }: { title: string; value: number 
 // This view accepts teacher records separately from the calculator's local edits.
 export default function TeacherGrades({ subjects }: { subjects: GradeSubject[] }) {
   const [selectedId, setSelectedId] = useState(subjects[0]?.id ?? "");
-  const subject = subjects.find(item => item.id === selectedId) ?? subjects[0];
-  const overall = calculateOverall(subjects);
+  const [semester, setSemester] = useState<SemesterFilter>("all");
+  const visibleSubjects = filterSubjects(subjects, semester);
+  const subject = visibleSubjects.find(item => item.id === selectedId) ?? visibleSubjects[0];
+  const overall = calculateOverall(visibleSubjects);
   const results = subject?.stages.map(stage => ({ stage, ...calculateStage(stage) })) ?? [];
   const completed = results.filter(result => result.value !== null);
-  const average = averageGrade(results.map(result => result.value));
+  const average = subject ? subjectGrade(subject) : null;
   const risks = results.flatMap(({ stage, value }) => [
     ...(value !== null && value < 5 ? [stage.name] : []),
     ...stage.parts.filter(part => isLowGrade(part.grade)).map(part => `${stage.name}: ${part.name || part.variable}`),
@@ -45,24 +49,25 @@ export default function TeacherGrades({ subjects }: { subjects: GradeSubject[] }
         <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">Оценки от преподавателей</h2>
         <p className="mt-2 flex items-start gap-2 text-sm leading-6 text-gray-500"><LockKeyhole aria-hidden="true" className="mt-1 size-4 shrink-0" />Только просмотр. Предметы, этапы, оценки и формулы заполняет преподаватель.</p>
       </div>
-      <p className="rounded-xl border border-blue-100 bg-blue-50/50 p-4 text-xs leading-5 text-gray-500">Демонстрационный шаблон. Данные преподавателей пока не подключены; показаны примеры предметов без выставленных оценок.</p>
 
-      <AverageCard title="Средний балл по всем предметам" value={overall.average}>
-        <p className="font-medium text-gray-700">Учтено предметов: {overall.countedSubjects} из {subjects.length}</p>
+      <SemesterFilters value={semester} onChange={setSemester} />
+      <AverageCard title={semester === "all" ? "Средний балл по всем предметам" : `Средний балл · Семестр ${semester}`} value={overall.average}>
+        <p className="font-medium text-gray-700">Учтено предметов: {overall.countedSubjects} из {visibleSubjects.length}</p>
         <p>Каждый предмет имеет одинаковый вес. Предметы без рассчитанных этапов не учитываются. До выставления всех оценок результат предварительный.</p>
       </AverageCard>
 
-      {!subject ? <Card className="rounded-2xl p-6 text-sm text-gray-500">Предметы пока не добавлены.</Card> : <>
+      <SubjectCards subjects={visibleSubjects} selectedId={subject?.id} onSelect={setSelectedId} />
+      {!subject ? <Card className="rounded-2xl p-6 text-sm text-gray-500">Выберите другой семестр, чтобы посмотреть оценки.</Card> : <>
         <Card className="rounded-2xl border-gray-200 p-5 shadow-sm sm:p-6">
           <label className="block"><span className="mb-2 block text-sm font-semibold">Предмет</span>
             <select className="h-10 w-full min-w-0 rounded-lg border border-gray-200 bg-white px-3 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100" value={subject.id} onChange={event => setSelectedId(event.target.value)}>
-              {subjects.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}
+              {visibleSubjects.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}
             </select>
           </label>
         </Card>
         <AverageCard title="Средний балл по предмету" value={average}>
-          <p className="font-medium text-gray-700">Рассчитано этапов: {completed.length} из {results.length}</p>
-          <p>Среднее результатов рассчитанных этапов. До выставления всех оценок результат предварительный.</p>
+          <p className="font-medium text-gray-700">{subject.name} · Семестр {subject.semester}</p><p>Рассчитано этапов: {completed.length} из {results.length}</p>
+          <p>{subject.gradeOverride != null ? "Итоговая оценка выставлена преподавателем." : "Среднее результатов рассчитанных этапов. До выставления всех оценок результат предварительный."}</p>
         </AverageCard>
 
         {risks.length > 0 && <div role="alert" className="flex gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">

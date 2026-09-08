@@ -1,6 +1,8 @@
 export type GradePart = { id: string; variable: string; name: string; grade: string };
 export type GradeStage = { id: string; name: string; parts: GradePart[]; formula: string };
-export type GradeSubject = { id: string; name: string; stages: GradeStage[] };
+export type Semester = 1 | 2;
+export type SemesterFilter = "all" | Semester;
+export type GradeSubject = { id: string; name: string; semester: Semester; gradeOverride?: number | null; stages: GradeStage[] };
 export type GradeResult = { value: number | null; error?: string };
 
 export function createStage(id: string, name: string): GradeStage {
@@ -13,9 +15,9 @@ export function createStage(id: string, name: string): GradeStage {
   };
 }
 
-export function createSubject(id: string, name: string): GradeSubject {
+export function createSubject(id: string, name: string, semester: Semester = 1): GradeSubject {
   return {
-    id, name,
+    id, name, semester,
     stages: [
       createStage(`${id}-a1`, "Аттестация 1"),
       createStage(`${id}-a2`, "Аттестация 2"),
@@ -24,7 +26,7 @@ export function createSubject(id: string, name: string): GradeSubject {
   };
 }
 
-export const initialSubjects = [createSubject("programming", "Программирование"), createSubject("math", "Высшая математика")];
+export const initialSubjects = [createSubject("programming", "Программирование", 1), createSubject("math", "Высшая математика", 2)];
 
 export function defaultFormula(parts: GradePart[]) {
   return parts.length ? `(${parts.map(part => part.variable).join(" + ")}) / ${parts.length}` : "";
@@ -109,8 +111,16 @@ export function averageGrade(values: (number | null)[]) {
 }
 
 export function calculateOverall(subjects: GradeSubject[]) {
-  const averages = subjects.map(subject => averageGrade(subject.stages.map(stage => calculateStage(stage).value)));
+  const averages = subjects.map(subjectGrade);
   return { average: averageGrade(averages), countedSubjects: averages.filter(value => value !== null).length };
+}
+
+export function subjectGrade(subject: GradeSubject) {
+  return subject.gradeOverride ?? averageGrade(subject.stages.map(stage => calculateStage(stage).value));
+}
+
+export function filterSubjects(subjects: GradeSubject[], semester: SemesterFilter) {
+  return semester === "all" ? subjects : subjects.filter(subject => subject.semester === semester);
 }
 
 export function isLowGrade(input: string) {

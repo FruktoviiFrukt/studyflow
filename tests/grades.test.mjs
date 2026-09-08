@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { calculateOverall, calculateStage, createStage, createSubject, gradeStatus, isLowGrade } from "../lib/grades.ts";
+import { calculateOverall, calculateStage, createStage, createSubject, filterSubjects, gradeStatus, isLowGrade, subjectGrade } from "../lib/grades.ts";
 
 function stage(formula = "", grades = ["8", "6"]) {
   const result = createStage("test", "Аттестация 1");
@@ -87,4 +87,29 @@ test("low subgrades trigger risk even with a passing or incomplete stage", () =>
   for (const input of ["5", "10", "", " ", "abc", "0", "-1", "11", "0x4"]) {
     assert.equal(isLowGrade(input), false, input);
   }
+});
+
+test("semester filters restrict subjects and the displayed average", () => {
+  const subjects = [
+    { ...createSubject("a", "A", 1), gradeOverride: 8 },
+    { ...createSubject("b", "B", 2), gradeOverride: 4 },
+  ];
+  assert.equal(filterSubjects(subjects, "all").length, 2);
+  assert.equal(calculateOverall(filterSubjects(subjects, "all")).average, 6);
+  assert.equal(calculateOverall(filterSubjects(subjects, 1)).average, 8);
+  assert.equal(calculateOverall(filterSubjects(subjects, 2)).average, 4);
+  assert.deepEqual(filterSubjects([subjects[0]], 2), []);
+  assert.equal(subjects.length, 2);
+});
+
+test("manual grade changes update averages and returning to automatic preserves stages", () => {
+  const subject = { ...createSubject("a", "A"), stages: [stage("", ["8", "6"])] };
+  assert.equal(subjectGrade(subject), 7);
+  const manual = { ...subject, gradeOverride: 10 };
+  assert.equal(calculateOverall([manual]).average, 10);
+  assert.equal(calculateStage(manual.stages[0]).value, 7);
+  const automatic = { ...manual, gradeOverride: null };
+  assert.equal(subjectGrade(automatic), 7);
+  automatic.stages[0].parts[0].grade = "10";
+  assert.equal(calculateOverall([automatic]).average, 8);
 });
