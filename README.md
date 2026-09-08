@@ -20,6 +20,37 @@ You can start editing the page by modifying `app/page.tsx`. The page auto-update
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
+## Backend setup
+
+The backend uses PostgreSQL (via Docker) and Prisma as the ORM.
+
+1. Install [Docker Desktop](https://www.docker.com/products/docker-desktop/).
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
+3. Copy the environment file and adjust it if needed:
+   ```bash
+   cp .env.example .env
+   ```
+4. Start the PostgreSQL container:
+   ```bash
+   npm run db:up
+   ```
+5. Apply database migrations:
+   ```bash
+   npx prisma migrate dev
+   ```
+6. Start the dev server:
+   ```bash
+   npm run dev
+   ```
+
+Other useful commands:
+
+- `npm run db:down` — stop the database container.
+- `npm run db:studio` — open Prisma Studio to browse the database.
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:
