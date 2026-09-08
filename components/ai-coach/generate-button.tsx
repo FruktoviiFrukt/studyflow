@@ -1,36 +1,30 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { Loader2, TriangleAlert, Wand2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-
-const GENERATION_DELAY_MS = 2200;
 
 type GenerateButtonProps = {
   canGenerate: boolean;
   hint: string | null;
+  onGenerate: () => Promise<void> | void;
 };
 
 export default function GenerateButton({
   canGenerate,
   hint,
+  onGenerate,
 }: GenerateButtonProps) {
   const [isGenerating, setIsGenerating] = useState(false);
-  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  useEffect(() => {
-    return () => {
-      if (timeoutRef.current) clearTimeout(timeoutRef.current);
-    };
-  }, []);
-
-  function handleGenerate() {
+  async function handleGenerate() {
     if (!canGenerate || isGenerating) return;
     setIsGenerating(true);
-    // Демо-имитация запроса к AI — реальный вызов подключится, когда появится бэкенд-интеграция.
-    timeoutRef.current = setTimeout(() => {
+    try {
+      await onGenerate();
+    } finally {
       setIsGenerating(false);
-    }, GENERATION_DELAY_MS);
+    }
   }
 
   return (
