@@ -1,41 +1,24 @@
-export type GradePart = { id: string; variable: string; name: string; grade: string };
-export type GradeStage = { id: string; name: string; parts: GradePart[]; formula: string };
 export type Semester = 1 | 2;
 export type SemesterFilter = "all" | Semester;
-export type GradeSubject = { id: string; name: string; semester: Semester; gradeOverride?: number | null; stages: GradeStage[] };
+export type GradeStage = { variable: string; name: string; grade: string };
+export type GradeSubject = { id: string; name: string; semester: Semester; stages: GradeStage[]; formula: string };
 export type GradeResult = { value: number | null; error?: string };
-
-export function createStage(id: string, name: string): GradeStage {
-  return {
-    id, name, formula: "",
-    parts: [
-      { id: `${id}-1`, variable: "g1", name: "Лабораторные работы", grade: "" },
-      { id: `${id}-2`, variable: "g2", name: "Работа по аттестации", grade: "" },
-    ],
-  };
-}
-
+export const semesterFormula = "g1 * 15% + g2 * 15% + g3 * 15% + g4 * 15% + g5 * 40%";
 export function createSubject(id: string, name: string, semester: Semester = 1): GradeSubject {
-  return {
-    id, name, semester,
-    stages: [
-      createStage(`${id}-a1`, "Аттестация 1"),
-      createStage(`${id}-a2`, "Аттестация 2"),
-      { id: `${id}-exam`, name: "Экзамен", formula: "", parts: [{ id: `${id}-exam-1`, variable: "g1", name: "Экзаменационная работа", grade: "" }] },
-    ],
-  };
+  return { id, name, semester, formula: semesterFormula, stages: [
+    { variable: "g1", name: "Аттестация 1", grade: "" },
+    { variable: "g2", name: "Аттестация 2", grade: "" },
+    { variable: "g3", name: "Лабораторные работы", grade: "" },
+    { variable: "g4", name: "Индивидуальная работа", grade: "" },
+    { variable: "g5", name: "Экзамен", grade: "" },
+  ] };
 }
-
 export const initialSubjects = [createSubject("programming", "Программирование", 1), createSubject("math", "Высшая математика", 2)];
-
-export function defaultFormula(parts: GradePart[]) {
-  return parts.length ? `(${parts.map(part => part.variable).join(" + ")}) / ${parts.length}` : "";
-}
 
 // Parse arithmetic only: user formulas are never executed as JavaScript.
 function evaluateFormula(source: string, variables: Map<string, number | null>): GradeResult {
   if (source.length > 500) return { value: null, error: "Формула слишком длинная (максимум 500 символов)." };
-  const tokens = source.toLowerCase().replaceAll(",", ".").match(/g\d+|\d+(?:\.\d+)?|[()+*/-]|[^\s]/g) ?? [];
+  const tokens = source.toLowerCase().replaceAll(",", ".").replaceAll("−", "-").match(/g\d+|\d+(?:\.\d+)?|[()+*/-]|[^\s]/g) ?? [];
   let position = 0;
   let missing = false;
   function primary(): number {
@@ -48,7 +31,7 @@ function evaluateFormula(source: string, variables: Map<string, number | null>):
       return value;
     }
     if (token && /^g\d+$/.test(token)) {
-      if (!variables.has(token)) throw new Error(`Подпункт ${token} не найден. Исправьте формулу.`);
+      if (!variables.has(token)) throw new Error(`Этап ${token} не найден. Исправьте формулу.`);
       const value = variables.get(token);
       if (value === null) missing = true;
       return value ?? 0;
@@ -56,11 +39,16 @@ function evaluateFormula(source: string, variables: Map<string, number | null>):
     if (token && /^\d+(?:\.\d+)?$/.test(token)) return Number(token);
     throw new Error("Используйте g1, g2, числа, скобки и знаки + − * /.");
   }
-  function term(): number {
+  function percentage(): number {
     let value = primary();
+    if (tokens[position] === "%") { position++; value /= 100; }
+    return value;
+  }
+  function term(): number {
+    let value = percentage();
     while (tokens[position] === "*" || tokens[position] === "/") {
       const operator = tokens[position++];
-      const right = primary();
+      const right = percentage();
       value = operator === "*" ? value * right : value / right;
     }
     return value;
@@ -86,19 +74,18 @@ function evaluateFormula(source: string, variables: Map<string, number | null>):
   }
 }
 
-export function calculateStage(stage: GradeStage): GradeResult {
-  if (!stage.parts.length) return { value: null };
+export function calculateSemester(subject: GradeSubject): GradeResult {
   const variables = new Map<string, number | null>();
-  for (const part of stage.parts) {
-    const text = part.grade.trim().replaceAll(",", ".");
-    if (!text) { variables.set(part.variable, null); continue; }
+  for (const stage of subject.stages) {
+    const text = stage.grade.trim().replaceAll(",", ".");
+    if (!text) { variables.set(stage.variable, null); continue; }
     const grade = Number(text);
     if (!/^\d+(?:\.\d+)?$/.test(text) || !Number.isFinite(grade) || grade < 1 || grade > 10) {
-      return { value: null, error: `Введите оценку от 1 до 10 для ${part.variable}.` };
+      return { value: null, error: `Введите оценку от 1 до 10: ${stage.name}.` };
     }
-    variables.set(part.variable, grade);
+    variables.set(stage.variable, grade);
   }
-  return evaluateFormula(stage.formula.trim() || defaultFormula(stage.parts), variables);
+  return evaluateFormula(subject.formula.trim() || semesterFormula, variables);
 }
 
 export function gradeStatus(value: number | null) {
@@ -116,7 +103,7 @@ export function calculateOverall(subjects: GradeSubject[]) {
 }
 
 export function subjectGrade(subject: GradeSubject) {
-  return subject.gradeOverride ?? averageGrade(subject.stages.map(stage => calculateStage(stage).value));
+  return calculateSemester(subject).value;
 }
 
 export function filterSubjects(subjects: GradeSubject[], semester: SemesterFilter) {

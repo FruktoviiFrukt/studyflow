@@ -23,26 +23,20 @@ const items = [
 export default function Navigation({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
   const [scheduleOpen, setScheduleOpen] = useState(false);
-  const [gradesOpen, setGradesOpen] = useState(pathname.startsWith("/gpa"));
   const scheduleMenuId = useId();
-  const gradesMenuId = useId();
   return (
     <nav aria-label="Основная навигация" className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto">
       {items.map(({ name, href, icon: Icon }) => {
         const isSchedule = href === "/schedule";
-        const isGrades = href === "/gpa";
-        const hasChildren = isSchedule || isGrades;
-        const open = isSchedule ? scheduleOpen : gradesOpen;
-        const menuId = isSchedule ? scheduleMenuId : gradesMenuId;
-        const children = isSchedule ? scheduleLinks : [
-          { href: "/gpa", name: "Оценки от преподавателей" },
-          { href: "/gpa/calculator", name: "Калькулятор оценок" },
-        ];
+        const hasChildren = isSchedule;
+        const open = scheduleOpen;
+        const menuId = scheduleMenuId;
+        const children = scheduleLinks;
         const active = hasChildren ? pathname === href || pathname.startsWith(`${href}/`) : pathname === href;
         return (
           <div key={href}>
             {hasChildren ? (
-              <button type="button" aria-expanded={open} aria-controls={menuId} onClick={() => isSchedule ? setScheduleOpen(value => !value) : setGradesOpen(value => !value)}
+              <button type="button" aria-expanded={open} aria-controls={menuId} onClick={() => setScheduleOpen(value => !value)}
                 className={cn("flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600", active ? "bg-blue-50 text-blue-600" : "text-gray-600 hover:bg-gray-50 hover:text-gray-900")}>
                 <Icon aria-hidden="true" size={19} className="shrink-0" /><span>{name}</span>
                 <ChevronDown aria-hidden="true" size={16} className={cn("ml-auto shrink-0 transition-transform", open && "rotate-180")} />

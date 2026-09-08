@@ -1,5 +1,5 @@
-import GradeCalculator from "@/components/grades/grade-calculator";
+import { redirect } from "next/navigation";
 
 export default function GradeCalculatorPage() {
-  return <GradeCalculator />;
+  redirect("/gpa");
 }
