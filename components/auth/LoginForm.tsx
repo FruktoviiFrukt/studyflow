@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { signIn } from "next-auth/react";
 import { Check, Eye, EyeOff, LockKeyhole, Mail } from "lucide-react";
 
 type LoginFormProps = {
@@ -8,7 +10,10 @@ type LoginFormProps = {
 };
 
 export default function LoginForm({ onSwitch }: LoginFormProps) {
+  const router = useRouter();
+
   const [showPassword, setShowPassword] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [loginData, setLoginData] = useState({
     email: "",
@@ -18,7 +23,7 @@ export default function LoginForm({ onSwitch }: LoginFormProps) {
 
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
 
     const newErrors: Record<string, string> = {};
@@ -33,8 +38,27 @@ export default function LoginForm({ onSwitch }: LoginFormProps) {
 
     setErrors(newErrors);
 
-    if (Object.keys(newErrors).length === 0) {
-      console.log("Login data:", loginData);
+    if (Object.keys(newErrors).length > 0) {
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      const result = await signIn("credentials", {
+        email: loginData.email,
+        password: loginData.password,
+        redirect: false,
+      });
+
+      if (result?.error) {
+        setErrors({ password: "Неверный email или пароль" });
+        return;
+      }
+
+      router.push("/dashboard");
+    } finally {
+      setIsSubmitting(false);
     }
   }
 
@@ -163,9 +187,10 @@ export default function LoginForm({ onSwitch }: LoginFormProps) {
 
       <button
         type="submit"
-        className="w-full rounded-xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-200"
+        disabled={isSubmitting}
+        className="w-full rounded-xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-200 disabled:cursor-not-allowed disabled:opacity-70"
       >
-        Войти
+        {isSubmitting ? "Входим..." : "Войти"}
       </button>
 
       <p className="text-center text-sm text-slate-500">
