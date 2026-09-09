@@ -520,12 +520,23 @@ export default function TasksPage() {
   }, [subjects]);
 
   const counts = useMemo(() => {
-    const done = tasks.filter((t) => t.status === "done").length;
-    const inProgress = tasks.filter((t) => t.status === "in_progress").length;
-    const remaining = tasks.filter((t) => t.status !== "done").length;
-    const percent = tasks.length ? Math.round((done / tasks.length) * 100) : 0;
-    return { done, inProgress, remaining, percent, total: tasks.length };
-  }, [tasks]);
+    const subjectTasks = tasks.filter(
+      (task) => subjectFilter === "all" || task.subject === subjectFilter,
+    );
+    const total = subjectTasks.length;
+    const done = subjectTasks.filter((t) => t.status === "done").length;
+    const inProgress = subjectTasks.filter(
+      (t) => t.status === "in_progress",
+    ).length;
+    const remaining = total - done;
+    const percent = total ? Math.round((done / total) * 100) : 0;
+    return { done, inProgress, remaining, percent, total };
+  }, [tasks, subjectFilter]);
+
+  const progressTitle =
+    subjectFilter === "all"
+      ? "Прогресс за семестр"
+      : `Прогресс по предмету: ${subjectFilter}`;
 
   const filteredTasks = useMemo(() => {
     return tasks
@@ -629,7 +640,7 @@ export default function TasksPage() {
         <Card className="mb-6 rounded-2xl border-blue-100 bg-gradient-to-br from-blue-50 via-white to-white shadow-sm">
           <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-3 space-y-0 p-5 sm:p-6">
             <div>
-              <CardTitle>Прогресс за семестр</CardTitle>
+              <CardTitle>{progressTitle}</CardTitle>
               <CardDescription>
                 {counts.done} из {counts.total} заданий выполнено
               </CardDescription>
@@ -639,10 +650,7 @@ export default function TasksPage() {
             </div>
           </CardHeader>
           <CardContent className="px-5 sm:px-6">
-            <Progress
-              value={counts.percent}
-              aria-label="Выполнение заданий за семестр"
-            />
+            <Progress value={counts.percent} aria-label={progressTitle} />
 
             <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
               <div className="flex min-w-0 items-center gap-3 rounded-xl border border-gray-100 bg-white/80 p-3.5">
