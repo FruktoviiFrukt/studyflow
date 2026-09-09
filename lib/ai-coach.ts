@@ -85,7 +85,6 @@ export type Difficulty = (typeof difficultyOptions)[number]["value"];
 export const questionTypeOptions = [
   { value: "single", label: "Тест (один ответ)" },
   { value: "true-false", label: "Верно / Неверно" },
-  { value: "open", label: "Открытый вопрос" },
 ] as const;
 export type QuestionType = (typeof questionTypeOptions)[number]["value"];
 
