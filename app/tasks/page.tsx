@@ -10,6 +10,7 @@ import {
   Check,
   Settings,
   Trash2,
+  Pencil,
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -27,33 +28,23 @@ import {
   DialogTitle,
   DialogDescription,
   DialogFooter,
-  DialogClose,
 } from "@/components/ui/dialog";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
+import TaskDialog from "@/components/tasks/task-dialog";
+import {
+  TASK_STATUSES,
+  type Task,
+  type TaskInput,
+  type TaskStatus,
+  type TaskPriority,
+} from "@/lib/tasks";
 import { Progress } from "@/components/ui/progress";
 
 /* ------------------------------------------------------------------ */
 /*  Types & Interfaces                                                */
 /* ------------------------------------------------------------------ */
-export type TaskStatus = "todo" | "in_progress" | "done";
-export type TaskPriority = "high" | "medium" | "low";
-
-export interface Task {
-  id: number;
-  title: string;
-  subject: string;
-  type: string;
-  priority: TaskPriority;
-  dueDate: string;
-  status: TaskStatus;
-  notes?: string;
-}
-
-export type CreateTaskInput = Omit<Task, "id" | "status">;
-
 export interface SelectOption {
   value: string;
   label: string;
@@ -236,18 +227,7 @@ const INITIAL_TASKS: Task[] = [
   },
 ];
 
-const STATUS_FILTERS = [
-  { value: "all", label: "Все" },
-  { value: "todo", label: "Нужно сделать" },
-  { value: "in_progress", label: "В работе" },
-  { value: "done", label: "Выполнено" },
-];
-
-const PRIORITY_OPTIONS = [
-  { value: "high", label: "Высокий" },
-  { value: "medium", label: "Средний" },
-  { value: "low", label: "Низкий" },
-];
+const STATUS_FILTERS = [{ value: "all", label: "Все" }, ...TASK_STATUSES];
 
 const STATUS_ORDER: Record<TaskStatus, number> = {
   in_progress: 0,
@@ -333,7 +313,7 @@ function StatusToggle({ status, onToggle }: StatusToggleProps) {
   return (
     <button
       onClick={onToggle}
-      aria-label="Отметить как выполненное"
+      aria-label="Перевести в работу"
       className="shrink-0 w-6 h-6 rounded-full border-2 border-input hover:border-primary transition-colors active:scale-95"
     />
   );
@@ -345,15 +325,21 @@ function StatusToggle({ status, onToggle }: StatusToggleProps) {
 interface TaskCardProps {
   task: Task;
   onCycleStatus: (id: number) => void;
+  onEdit: (task: Task) => void;
 }
 
-function TaskCard({ task, onCycleStatus }: TaskCardProps) {
+function TaskCard({ task, onCycleStatus, onEdit }: TaskCardProps) {
   const priority = PRIORITY_META[task.priority];
   const status = STATUS_META[task.status];
   const overdue = isOverdue(task.dueDate, task.status);
 
   return (
-    <div className="rounded-2xl p-4 sm:p-5 flex items-start gap-4 bg-card border border-border/60 shadow-xs hover:border-primary/30 transition-all">
+    <div
+      className={cn(
+        "relative flex min-w-0 items-start gap-3 rounded-xl border border-gray-200 bg-white p-4 transition-colors hover:border-blue-200 sm:gap-4 sm:p-5",
+        task.status === "done" && "bg-gray-50/70",
+      )}
+    >
       <div className="pt-0.5">
         <StatusToggle
           status={task.status}
@@ -362,8 +348,8 @@ function TaskCard({ task, onCycleStatus }: TaskCardProps) {
       </div>
 
       <div className="flex-1 min-w-0">
-        <div className="flex flex-wrap items-center gap-2 mb-1">
-          <span className="text-xs font-semibold tracking-wide text-primary">
+        <div className="mb-1 flex flex-wrap items-center gap-2 pr-8">
+          <span className="break-words text-xs font-semibold tracking-wide text-blue-600">
             {task.subject.toUpperCase()}
           </span>
           <span className="text-xs text-muted-foreground">· {task.type}</span>
@@ -371,14 +357,21 @@ function TaskCard({ task, onCycleStatus }: TaskCardProps) {
 
         <h3
           className={cn(
-            "font-semibold text-base sm:text-lg leading-snug text-card-foreground",
+            "break-words pr-8 font-semibold text-base leading-snug text-gray-900",
             task.status === "done" && "line-through opacity-60",
           )}
         >
           {task.title}
         </h3>
 
-        <div className="flex flex-wrap items-center gap-3 mt-2.5">
+        {task.notes && (
+          <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-6 text-gray-500">
+            {task.notes}
+          </p>
+        )}
+        <div className="flex flex-wrap items-center gap-2 mt-3">
+          <Badge variant={priority.variant}>{priority.label}</Badge>
+          <Badge variant={status.variant}>{status.label}</Badge>
           <span
             className={cn(
               "flex items-center gap-1.5 text-xs font-medium",
@@ -392,12 +385,16 @@ function TaskCard({ task, onCycleStatus }: TaskCardProps) {
         </div>
       </div>
 
-      <div className="flex flex-col items-end gap-2 shrink-0">
-        <Badge variant={priority.variant}>{priority.label}</Badge>
-        <Badge variant={status.variant} className="hidden sm:inline-flex">
-          {status.label}
-        </Badge>
-      </div>
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
+        className="absolute right-2 top-2 text-gray-400 hover:text-blue-600"
+        aria-label={`Редактировать задание: ${task.title}`}
+        onClick={() => onEdit(task)}
+      >
+        <Pencil aria-hidden="true" size={16} />
+      </Button>
     </div>
   );
 }
@@ -504,187 +501,6 @@ function ManageSubjectsDialog({
 }
 
 /* ------------------------------------------------------------------ */
-/*  New task dialog                                                   */
-/* ------------------------------------------------------------------ */
-interface NewTaskDialogProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  subjects: string[];
-  onCreate: (data: CreateTaskInput) => void;
-  onOpenManageSubjects: () => void;
-}
-
-function NewTaskDialog({
-  open,
-  onOpenChange,
-  subjects,
-  onCreate,
-  onOpenManageSubjects,
-}: NewTaskDialogProps) {
-  const getToday = () => new Date().toISOString().split("T")[0];
-  const getDefaultSubject = () =>
-    subjects.length > 0 ? subjects[0] : "Без предмета";
-
-  const [title, setTitle] = useState("");
-  const [subject, setSubject] = useState(getDefaultSubject);
-  const [type, setType] = useState("Домашнее задание");
-  const [priority, setPriority] = useState<TaskPriority>("medium");
-  const [dueDate, setDueDate] = useState(getToday);
-  const [notes, setNotes] = useState("");
-
-  const resetForm = () => {
-    setTitle("");
-    setSubject(getDefaultSubject());
-    setType("Домашнее задание");
-    setPriority("medium");
-    setDueDate(getToday());
-    setNotes("");
-  };
-
-  const handleOpenChange = (isOpen: boolean) => {
-    if (isOpen) {
-      setSubject(getDefaultSubject());
-      setDueDate(getToday());
-    } else {
-      resetForm();
-    }
-    onOpenChange(isOpen);
-  };
-
-  const canSubmit = title.trim().length > 0 && dueDate.length > 0;
-  const inputClasses =
-    "flex h-9 w-full rounded-xl border border-border/60 bg-card px-3 py-2 text-sm shadow-xs placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 text-card-foreground";
-
-  const subjectOptions: SelectOption[] = (
-    subjects.length > 0 ? subjects : ["Без предмета"]
-  ).map((s) => ({ value: s, label: s }));
-
-  function handleSubmit() {
-    if (!canSubmit) return;
-    onCreate({
-      title: title.trim(),
-      subject: subject || "Без предмета",
-      type,
-      priority,
-      dueDate,
-      notes: notes.trim(),
-    });
-    resetForm();
-  }
-
-  return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="rounded-2xl border-border/60">
-        <DialogHeader>
-          <DialogTitle>Новый дедлайн</DialogTitle>
-          <DialogDescription>
-            Заполни детали задания, чтобы добавить его в трекер.
-          </DialogDescription>
-        </DialogHeader>
-
-        <div className="space-y-4">
-          <div>
-            <label className="text-sm font-medium block mb-1.5 text-card-foreground">
-              Название задания
-            </label>
-            <input
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="Например: Лабораторная работа №5"
-              className={inputClasses}
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <label className="text-sm font-medium text-card-foreground">
-                  Предмет
-                </label>
-                <button
-                  type="button"
-                  onClick={onOpenManageSubjects}
-                  className="text-xs text-primary hover:underline font-medium"
-                >
-                  + Изменить
-                </button>
-              </div>
-              <CustomSelect
-                value={subject}
-                onChange={setSubject}
-                options={subjectOptions}
-                placeholder="Выберите предмет"
-                className="w-full"
-              />
-            </div>
-            <div>
-              <label className="text-sm font-medium block mb-1.5 text-card-foreground">
-                Тип
-              </label>
-              <input
-                value={type}
-                onChange={(e) => setType(e.target.value)}
-                className={inputClasses}
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="text-sm font-medium block mb-1.5 text-card-foreground">
-              Приоритет
-            </label>
-            <SegmentedControl
-              ariaLabel="Приоритет задания"
-              options={PRIORITY_OPTIONS}
-              value={priority}
-              onChange={(val) => setPriority(val as TaskPriority)}
-              fullWidthOnMobile
-            />
-          </div>
-
-          <div>
-            <label className="text-sm font-medium block mb-1.5 text-card-foreground">
-              Дедлайн
-            </label>
-            <input
-              type="date"
-              value={dueDate}
-              onChange={(e) => setDueDate(e.target.value)}
-              className={inputClasses}
-            />
-          </div>
-
-          <div>
-            <label className="text-sm font-medium block mb-1.5 text-card-foreground">
-              Комментарий{" "}
-              <span className="text-muted-foreground font-normal">
-                (необязательно)
-              </span>
-            </label>
-            <Textarea
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="Что нужно сделать, на что обратить внимание..."
-              className="min-h-[70px] rounded-xl border-border/60"
-            />
-          </div>
-        </div>
-
-        <DialogFooter>
-          <DialogClose asChild>
-            <Button type="button" variant="outline">
-              Отмена
-            </Button>
-          </DialogClose>
-          <Button type="button" disabled={!canSubmit} onClick={handleSubmit}>
-            Добавить задание
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
-/* ------------------------------------------------------------------ */
 /*  Page                                                              */
 /* ------------------------------------------------------------------ */
 export default function TasksPage() {
@@ -692,7 +508,7 @@ export default function TasksPage() {
   const [tasks, setTasks] = useState<Task[]>(INITIAL_TASKS);
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [subjectFilter, setSubjectFilter] = useState<string>("all");
-  const [dialogOpen, setDialogOpen] = useState<boolean>(false);
+  const [taskDialog, setTaskDialog] = useState<{ task?: Task } | null>(null);
   const [manageSubjectsOpen, setManageSubjectsOpen] = useState<boolean>(false);
 
   const subjectFilterOptions: SelectOption[] = useMemo(() => {
@@ -737,13 +553,26 @@ export default function TasksPage() {
     );
   }
 
-  function createTask(data: CreateTaskInput) {
-    const uniqueNumericId = Date.now() + Math.floor(Math.random() * 1000);
-    setTasks((prev) => [
-      { id: uniqueNumericId, status: "todo", ...data },
-      ...prev,
-    ]);
-    setDialogOpen(false);
+  function saveTask(data: TaskInput) {
+    setTasks((previous) =>
+      taskDialog?.task
+        ? previous.map((task) =>
+            task.id === taskDialog.task?.id ? { ...task, ...data } : task,
+          )
+        : [
+            {
+              id: Math.max(0, ...previous.map((task) => task.id)) + 1,
+              ...data,
+            },
+            ...previous,
+          ],
+    );
+    setTaskDialog(null);
+  }
+
+  function deleteTask(id: number) {
+    setTasks((previous) => previous.filter((task) => task.id !== id));
+    setTaskDialog(null);
   }
 
   function handleAddSubject(name: string) {
@@ -770,26 +599,26 @@ export default function TasksPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background px-4 sm:px-8 py-6 sm:py-8">
-      <div className="max-w-6xl mx-auto">
+    <div className="mx-auto max-w-[1440px] space-y-6">
+      <div>
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
           <div>
-            <span className="text-xs font-semibold tracking-wide text-primary">
+            <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.16em] text-blue-600">
               ТРЕКЕР ЗАДАНИЙ
             </span>
-            <h1 className="text-3xl sm:text-4xl font-extrabold mt-1 text-foreground">
+            <h1 className="text-2xl font-bold tracking-tight text-gray-900 sm:text-3xl">
               Задания
             </h1>
-            <p className="text-sm mt-1 text-muted-foreground">
+            <p className="mt-2 text-sm leading-6 text-gray-500">
               Все дедлайны и работы по твоим предметам в одном месте.
             </p>
           </div>
 
           <Button
-            onClick={() => setDialogOpen(true)}
-            size="lg"
-            className="shrink-0 rounded-xl shadow-xs"
+            onClick={() => setTaskDialog({})}
+            size="default"
+            className="shrink-0 rounded-lg"
           >
             <Plus size={18} />
             Добавить задание
@@ -797,8 +626,8 @@ export default function TasksPage() {
         </div>
 
         {/* Semester progress */}
-        <Card className="mb-6 rounded-2xl border-border/60 bg-card shadow-sm">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0">
+        <Card className="mb-6 rounded-2xl border-blue-100 bg-gradient-to-br from-blue-50 via-white to-white shadow-sm">
+          <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-3 space-y-0 p-5 sm:p-6">
             <div>
               <CardTitle>Прогресс за семестр</CardTitle>
               <CardDescription>
@@ -809,11 +638,14 @@ export default function TasksPage() {
               {counts.percent}%
             </div>
           </CardHeader>
-          <CardContent>
-            <Progress value={counts.percent} />
+          <CardContent className="px-5 sm:px-6">
+            <Progress
+              value={counts.percent}
+              aria-label="Выполнение заданий за семестр"
+            />
 
-            <div className="grid grid-cols-3 gap-3 mt-5">
-              <div className="rounded-xl p-3.5 flex items-center gap-3 bg-muted/60 border border-border/40">
+            <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
+              <div className="flex min-w-0 items-center gap-3 rounded-xl border border-gray-100 bg-white/80 p-3.5">
                 <CheckCircle2 size={20} className="text-primary" />
                 <div>
                   <div className="text-xl font-bold text-card-foreground">
@@ -822,7 +654,7 @@ export default function TasksPage() {
                   <div className="text-xs text-muted-foreground">Выполнено</div>
                 </div>
               </div>
-              <div className="rounded-xl p-3.5 flex items-center gap-3 bg-muted/60 border border-border/40">
+              <div className="flex min-w-0 items-center gap-3 rounded-xl border border-gray-100 bg-white/80 p-3.5">
                 <Loader2 size={20} className="text-muted-foreground" />
                 <div>
                   <div className="text-xl font-bold text-card-foreground">
@@ -831,7 +663,7 @@ export default function TasksPage() {
                   <div className="text-xs text-muted-foreground">В работе</div>
                 </div>
               </div>
-              <div className="rounded-xl p-3.5 flex items-center gap-3 bg-muted/60 border border-border/40">
+              <div className="flex min-w-0 items-center gap-3 rounded-xl border border-gray-100 bg-white/80 p-3.5">
                 <Clock size={20} className="text-muted-foreground" />
                 <div>
                   <div className="text-xl font-bold text-card-foreground">
@@ -845,7 +677,7 @@ export default function TasksPage() {
         </Card>
 
         {/* Filters */}
-        <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-5">
+        <div className="mb-5 flex flex-col flex-wrap gap-3 xl:flex-row xl:items-center">
           <SegmentedControl
             ariaLabel="Фильтр по статусу"
             options={STATUS_FILTERS}
@@ -876,8 +708,8 @@ export default function TasksPage() {
         </div>
 
         {/* Task list */}
-        <Card className="rounded-2xl border-border/60 bg-card shadow-sm">
-          <CardContent className="pt-6">
+        <Card className="rounded-2xl border-gray-200 bg-white shadow-sm">
+          <CardContent className="p-3 sm:p-5">
             {filteredTasks.length === 0 ? (
               <div className="py-14 text-center">
                 <p className="font-semibold text-card-foreground">
@@ -894,6 +726,7 @@ export default function TasksPage() {
                     key={task.id}
                     task={task}
                     onCycleStatus={cycleStatus}
+                    onEdit={(task) => setTaskDialog({ task })}
                   />
                 ))}
               </div>
@@ -902,13 +735,15 @@ export default function TasksPage() {
         </Card>
       </div>
 
-      <NewTaskDialog
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
-        subjects={subjects}
-        onCreate={createTask}
-        onOpenManageSubjects={() => setManageSubjectsOpen(true)}
-      />
+      {taskDialog && (
+        <TaskDialog
+          task={taskDialog.task}
+          subjects={subjects}
+          onClose={() => setTaskDialog(null)}
+          onSave={saveTask}
+          onDelete={deleteTask}
+        />
+      )}
 
       <ManageSubjectsDialog
         open={manageSubjectsOpen}
