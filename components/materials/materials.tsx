@@ -65,6 +65,10 @@ const INITIAL_MATERIALS: Material[] = [
 const inputClass =
   "h-10 w-full min-w-0 rounded-lg border border-gray-200 bg-white px-3 text-sm text-gray-900 outline-none transition-colors focus:border-blue-500 focus:ring-2 focus:ring-blue-100";
 
+function subjectId(name: string) {
+  return `subject-${name.toLowerCase().replace(/\s+/g, "-")}`;
+}
+
 export default function Materials() {
   const router = useRouter();
   const [materials, setMaterials] = useState<Material[]>(INITIAL_MATERIALS);
@@ -85,6 +89,17 @@ export default function Materials() {
       return matchesQuery && (subject === "all" || item.subject === subject);
     });
   }, [materials, query, subject]);
+
+  const grouped = useMemo(() => {
+    const bySubject = new Map<string, Material[]>();
+    for (const name of SUBJECTS) bySubject.set(name, []);
+    for (const item of filtered) {
+      const list = bySubject.get(item.subject) ?? [];
+      list.push(item);
+      bySubject.set(item.subject, list);
+    }
+    return [...bySubject.entries()].filter(([, files]) => files.length > 0);
+  }, [filtered]);
 
   function showNotice(message: string) {
     setNotice(message);
@@ -145,8 +160,8 @@ export default function Materials() {
             Материалы
           </h2>
           <p className="mt-2 text-sm text-gray-500">
-            Конспекты, презентации и задания по предметам. Можно открыть,
-            скачать или подготовить с ИИ.
+            Файлы сгруппированы по предметам. Можно открыть, скачать или
+            подготовить с ИИ.
           </p>
         </div>
         <Button className="rounded-xl" onClick={() => setUploadOpen(true)}>
@@ -227,27 +242,67 @@ export default function Materials() {
           </div>
         </Card>
       ) : (
-        <>
-          <p className="mb-4 text-sm text-gray-500">
-            Показано {filtered.length} из {materials.length}
-          </p>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            {filtered.map((material) => (
-              <MaterialCard
-                key={material.id}
-                material={material}
-                onOpen={handleOpen}
-                onDownload={handleDownload}
-                onPrepare={() =>
-                  router.push(
-                    `/ai-coach?material=${encodeURIComponent(material.id)}`,
-                  )
-                }
-                onDelete={setPendingDelete}
-              />
-            ))}
-          </div>
-        </>
+        <div className="space-y-8">
+          {grouped.length > 1 && (
+            <nav
+              aria-label="Оглавление"
+              className="rounded-2xl border border-gray-200 bg-white p-5"
+            >
+              <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-blue-600">
+                Оглавление
+              </p>
+              <ul className="flex flex-wrap gap-2">
+                {grouped.map(([name, files]) => (
+                  <li key={name}>
+                    <a
+                      href={`#${subjectId(name)}`}
+                      className="inline-flex items-center gap-2 rounded-xl border border-gray-200 px-3 py-2 text-sm font-medium text-gray-700 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700"
+                    >
+                      {name}
+                      <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-500">
+                        {files.length}
+                      </span>
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </nav>
+          )}
+
+          {grouped.map(([name, files]) => (
+            <section key={name} id={subjectId(name)} className="scroll-mt-24">
+              <div className="mb-4">
+                <h3 className="text-xl font-bold tracking-tight text-gray-900">
+                  {name}
+                </h3>
+                <p className="mt-1 text-sm text-gray-500">
+                  {files.length}{" "}
+                  {files.length === 1
+                    ? "файл"
+                    : files.length < 5
+                      ? "файла"
+                      : "файлов"}
+                </p>
+              </div>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                {files.map((material) => (
+                  <MaterialCard
+                    key={material.id}
+                    material={material}
+                    onOpen={handleOpen}
+                    onDownload={handleDownload}
+                    onPrepare={() =>
+                      router.push(
+                        `/ai-coach?material=${encodeURIComponent(material.id)}`,
+                      )
+                    }
+                    onDelete={setPendingDelete}
+                  />
+                ))}
+              </div>
+            </section>
+          ))}
+        </div>
       )}
 
       <UploadMaterialDialog
