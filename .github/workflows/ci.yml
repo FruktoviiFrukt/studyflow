@@ -2,9 +2,9 @@ name: CI
 
 on:
   pull_request:
-    branches: [imurd]
+    branches: [develop, main]
   push:
-    branches: [imurd]
+    branches: [develop, main, imurd]
   workflow_dispatch:
 
 permissions:
@@ -64,14 +64,14 @@ jobs:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
           POSTGRES_DB: studyflow_test
-        ports: ["5432:5432"]
+        ports: ["5433:5432"]
         options: >-
           --health-cmd pg_isready
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
     env:
-      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/studyflow_test
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5433/studyflow_test
       ALLOW_DB_TESTS: "1"
     steps:
       - uses: actions/checkout@v4
