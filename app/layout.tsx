@@ -1,8 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
-
-import Sidebar from "@/components/layout/Sidebar";
-import Header from "@/components/layout/Header";
+import SessionProvider from "@/components/providers/SessionProvider";
 
 export const metadata: Metadata = {
   title: "StudyHub",
@@ -17,15 +15,7 @@ export default function RootLayout({
   return (
     <html lang="ru">
       <body className="bg-gray-50 text-gray-900">
-        <Sidebar />
-
-        <div className="min-h-screen md:ml-64">
-          <Header />
-
-          <main className="min-h-[calc(100vh-4rem)] p-5 md:p-8">
-            {children}
-          </main>
-        </div>
+        <SessionProvider>{children}</SessionProvider>
       </body>
     </html>
   );
