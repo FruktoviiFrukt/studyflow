@@ -91,6 +91,25 @@ jobs:
     name: Browser
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: studyflow_e2e
+        ports: ["5433:5432"]
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5433/studyflow_e2e
+      # Test-only values for the local e2e server; production secrets live in the hosting platform.
+      AUTH_SECRET: e2e-only-secret-not-for-production
+      AUTH_TRUST_HOST: "true"
+      SEED_ADMIN_PASSWORD: admin123
     steps:
       - uses: actions/checkout@v4
         with:
@@ -101,6 +120,8 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npx prisma generate
+      - run: npx prisma migrate deploy
+      - run: npx prisma db seed
       - run: npx playwright install --with-deps chromium
       - run: npm run build
       - run: npm run test:e2e

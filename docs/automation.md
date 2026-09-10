@@ -8,7 +8,7 @@
 
 - **Quality**: формат изменённых файлов, ESLint, TypeScript, unit-тесты и production-сборка.
 - **Database**: проверка Prisma-схемы, миграции и интеграционный тест на отдельном PostgreSQL 16.
-- **Browser**: production-сборка и четыре сценария Playwright в Chromium.
+- **Browser**: отдельный PostgreSQL 16, миграции и сид (`admin@utm.md`), production-сборка и сценарии Playwright в Chromium. Проект `setup` один раз входит под сид-пользователем и сохраняет сессию для остальных тестов; тесты в `tests/e2e/auth.spec.ts` проверяют защиту страниц без сессии.
 
 Локальный запуск:
 
@@ -20,8 +20,11 @@ npm run typecheck
 npm test
 npm run build
 npx playwright install chromium
+npm run db:up && npx prisma migrate deploy && npx prisma db seed
 npm run test:e2e
 ```
+
+Для e2e нужны переменные `DATABASE_URL` и `AUTH_SECRET` (любое значение для локального запуска). Тесты входят под сид-пользователем `admin@utm.md`; другой аккаунт задаётся через `E2E_EMAIL` и `E2E_PASSWORD`.
 
 В Windows PowerShell можно использовать `npm.cmd`. Для проверки форматирования относительно другого коммита задайте `FORMAT_BASE`. Старые файлы массово не форматируются.
 
