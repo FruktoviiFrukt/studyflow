@@ -38,7 +38,7 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-node@v4
         with:
-          node-version: "24.14.0"
+          node-version-file: .node-version
       - name: Verify exact tested commit
         id: gate
         env:

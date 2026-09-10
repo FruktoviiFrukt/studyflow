@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "engines": {
-    "node": "24.x"
+    "node": ">=22.18.0 <23"
   },
   "scripts": {
     "dev": "next dev",
@@ -12,14 +12,16 @@
     "start": "next start",
     "lint": "eslint",
     "typecheck": "next typegen && tsc --noEmit",
+    "format": "prettier --write .",
     "format:check": "node scripts/check-format.mjs",
     "test": "node --test tests/*.test.mjs",
     "test:db": "node --import tsx --test tests/integration/*.test.mjs",
     "test:e2e": "playwright test",
     "integration:plan": "node scripts/integration/reconcile.mjs",
     "prepare": "husky",
-    "db:up": "docker compose up -d",
+    "db:up": "docker compose up -d --wait",
     "db:down": "docker compose down",
+    "db:reset": "docker compose down -v && docker compose up -d --wait && prisma migrate reset --force",
     "db:studio": "prisma studio",
     "postinstall": "prisma generate"
   },
@@ -45,7 +47,7 @@
     "@playwright/test": "^1.63.0",
     "@tailwindcss/postcss": "^4",
     "@types/bcryptjs": "^2.4.6",
-    "@types/node": "^20",
+    "@types/node": "^22",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "dotenv": "^17.4.2",
