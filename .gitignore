@@ -34,6 +34,9 @@ yarn-error.log*
 .env*
 !.env.example
 
+# local-only secrets shared with teammates outside of git
+SECRETS-TO-SHARE.txt
+
 # vercel
 .vercel
 
