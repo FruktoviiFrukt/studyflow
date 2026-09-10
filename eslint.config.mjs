@@ -17,6 +17,21 @@ const eslintConfig = defineConfig([
     "test-results/**",
     ".review-output/**",
   ]),
+  {
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          paths: [
+            {
+              name: "cn",
+              message: "Use cn from @/lib/utils",
+            },
+          ],
+        },
+      ],
+    },
+  },
 ]);
 
 export default eslintConfig;
