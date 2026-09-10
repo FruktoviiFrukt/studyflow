@@ -1,0 +1,45 @@
+name: Branch integration
+
+on:
+  push:
+    branches: [imurd]
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: read
+
+concurrency:
+  group: collect-into-imurd
+  cancel-in-progress: false
+
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: imurd
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+      - name: Plan incoming pull requests
+        env:
+          AUTO_INTEGRATE_ENABLED: ${{ vars.AUTO_INTEGRATE_ENABLED }}
+          INTEGRATION_TOKEN: ${{ secrets.INTEGRATION_TOKEN }}
+          # A separate token permits PR/push events to trigger CI and Vercel workflows.
+          GH_TOKEN: ${{ vars.AUTO_INTEGRATE_ENABLED == 'true' && secrets.INTEGRATION_TOKEN || github.token }}
+        run: node scripts/integration/reconcile.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: integration-${{ github.run_id }}
+          path: .review-output/integration.json
+          retention-days: 30

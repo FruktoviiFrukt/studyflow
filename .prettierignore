@@ -1,0 +1,8 @@
+node_modules/
+.next/
+lib/generated/
+package-lock.json
+public/
+playwright-report/
+test-results/
+.review-output/

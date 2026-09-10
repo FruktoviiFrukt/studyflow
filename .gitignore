@@ -45,3 +45,6 @@ SECRETS-TO-SHARE.txt
 next-env.d.ts
 
 /lib/generated/prisma
+/.review-output/
+/playwright-report/
+/test-results/
