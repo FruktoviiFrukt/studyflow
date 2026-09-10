@@ -6,7 +6,7 @@
 
 Для PR с целевой веткой `develop` или `main` и для push в эти ветки запускаются три проверки:
 
-- **Quality**: формат изменённых файлов, ESLint, TypeScript, unit-тесты и production-сборка.
+- **Quality**: формат всего репозитория, ESLint, TypeScript, unit-тесты и production-сборка.
 - **Database**: проверка Prisma-схемы, миграции и интеграционный тест на отдельном PostgreSQL 16.
 - **Browser**: отдельный PostgreSQL 16, миграции и сид (`admin@utm.md`), production-сборка и сценарии Playwright в Chromium. Проект `setup` один раз входит под сид-пользователем и сохраняет сессию для остальных тестов; тесты в `tests/e2e/auth.spec.ts` проверяют защиту страниц без сессии.
 
@@ -26,7 +26,7 @@ npm run test:e2e
 
 Для e2e нужны переменные `DATABASE_URL` и `AUTH_SECRET` (любое значение для локального запуска). Тесты входят под сид-пользователем `admin@utm.md`; другой аккаунт задаётся через `E2E_EMAIL` и `E2E_PASSWORD`.
 
-В Windows PowerShell можно использовать `npm.cmd`. Для проверки форматирования относительно другого коммита задайте `FORMAT_BASE`. Старые файлы массово не форматируются.
+В Windows PowerShell можно использовать `npm.cmd`. Проверка формата (`npm run format:check`) охватывает весь репозиторий; исправить всё разом можно командой `npm run format`.
 
 Тест БД запускается командой `npm run test:db` с отдельной тестовой `DATABASE_URL` и `ALLOW_DB_TESTS=1`. В CI PostgreSQL доступен на порту `5433`, как и локальный контейнер из `docker-compose.yml`. Он создаёт и удаляет только собственную тестовую запись. Не используйте production-базу.
 

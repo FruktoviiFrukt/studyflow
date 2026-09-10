@@ -13,7 +13,7 @@
     "lint": "eslint",
     "typecheck": "next typegen && tsc --noEmit",
     "format": "prettier --write .",
-    "format:check": "node scripts/check-format.mjs",
+    "format:check": "prettier --check .",
     "test": "node --test tests/*.test.mjs",
     "test:db": "node --import tsx --test tests/integration/*.test.mjs",
     "test:e2e": "playwright test",
