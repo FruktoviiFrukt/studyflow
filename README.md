@@ -8,11 +8,11 @@
 
 | Модуль                    | Код                                                                  | Владелец           | Состояние                 |
 | ------------------------- | -------------------------------------------------------------------- | ------------------ | ------------------------- |
-| Задания                   | `app/(main)/tasks`, `components/tasks`, `lib/tasks.ts`               | AlinaKernus, vlr404 | UI готов, данные в памяти |
+| Задания                   | `app/(main)/tasks`, `components/tasks`, `lib/tasks.ts`               | AlinaKernus vlr404 | UI готов, данные в памяти |
 | Расписание                | `app/(main)/schedule`, `components/schedule`, `lib/schedule.ts`      | AlinaKernus        | демо-данные               |
 | Средний балл              | `app/(main)/gpa`, `components/grades`, `lib/grades.ts`               | AlinaKernus        | UI готов, данные в памяти |
 | Материалы                 | `app/(main)/materials`, `components/materials`                       | Alshok27           | файлы в памяти            |
-| AI Exam Coach             | `app/(main)/ai-coach`, `components/ai-coach`, `lib/ai-coach.ts`      | hellomumu, vlr404   | генерация из демо-банка   |
+| AI Exam Coach             | `app/(main)/ai-coach`, `components/ai-coach`, `lib/ai-coach.ts`      | hellomumu, vlr404  | генерация из демо-банка   |
 | Аутентификация            | `app/auth`, `app/api/auth`, `auth.ts`, `proxy.ts`                    | tolyati            | Auth.js, в develop        |
 | Каркас и дашборд          | `app/(main)/layout.tsx`, `app/(main)/dashboard`, `components/layout` | FruktoviiFrukt     | статические данные        |
 | Инфраструктура, CI, тесты | `.github`, `docker-compose.yml`, `prisma`, `tests`, `scripts`        | Imurd              |                           |
