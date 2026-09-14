@@ -216,7 +216,6 @@ export default function AdminUsersPage() {
             >
               <option value="Все">Все роли</option>
               <option value="Студент">Студенты</option>
-              <option value="Преподаватель">Преподаватели</option>
               <option value="Администратор">Администраторы</option>
             </select>
           </label>
@@ -436,7 +435,6 @@ export default function AdminUsersPage() {
                   className="w-full rounded-lg border border-gray-300 bg-white px-3.5 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
                 >
                   <option value="Студент">Студент</option>
-                  <option value="Преподаватель">Преподаватель</option>
                   <option value="Администратор">Администратор</option>
                 </select>
               </label>
