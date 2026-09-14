@@ -20,18 +20,12 @@ const statistics = [
     description: "Запланировано на эту неделю",
     color: "orange" as const,
   },
-  {
-    title: "Материалы",
-    value: 89,
-    description: "7 материалов добавлено недавно",
-    color: "purple" as const,
-  },
 ];
 
 const quickActions = [
   {
     title: "Добавить пользователя",
-    description: "Создать новую учётную запись",
+    description: "Создать новый аккаунт",
     href: "/admin/users",
     color: "bg-blue-50 text-blue-700 hover:bg-blue-100",
   },
@@ -46,12 +40,6 @@ const quickActions = [
     description: "Добавить или перенести занятие",
     href: "/admin/schedule",
     color: "bg-orange-50 text-orange-700 hover:bg-orange-100",
-  },
-  {
-    title: "Добавить материал",
-    description: "Загрузить учебный файл",
-    href: "/admin/materials",
-    color: "bg-purple-50 text-purple-700 hover:bg-purple-100",
   },
 ];
 
@@ -74,9 +62,9 @@ const recentUsers = [
   },
   {
     id: 3,
-    name: "Мария Чебан",
-    email: "maria.ceban@utm.md",
-    role: "Преподаватель",
+    name: "Елена Морару",
+    email: "elena.moraru@utm.md",
+    role: "Администратор",
     status: "Активен",
     registeredAt: "Вчера, 17:45",
   },
@@ -107,17 +95,17 @@ const recentActivity = [
   },
   {
     id: 3,
-    title: "Загружен новый материал",
-    description: "Лекция №5 — Базы данных",
+    title: "Добавлен пользователь",
+    description: "Анна Попеску",
     time: "1 час назад",
-    color: "bg-purple-500",
+    color: "bg-blue-500",
   },
   {
     id: 4,
-    title: "Зарегистрирован пользователь",
-    description: "Анна Попеску",
+    title: "Пользователь заблокирован",
+    description: "Ион Платон",
     time: "2 часа назад",
-    color: "bg-blue-500",
+    color: "bg-red-500",
   },
 ];
 
@@ -133,7 +121,7 @@ export default function AdminPage() {
           </p>
         </div>
 
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {statistics.map((item) => (
             <StatCard
               key={item.title}
@@ -157,7 +145,7 @@ export default function AdminPage() {
           </p>
         </div>
 
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {quickActions.map((action) => (
             <Link
               key={action.title}

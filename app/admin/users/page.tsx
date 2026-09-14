@@ -2,7 +2,7 @@
 
 import { FormEvent, useMemo, useState } from "react";
 
-type UserRole = "Студент" | "Преподаватель" | "Администратор";
+type UserRole = "Студент" | "Администратор";
 type UserStatus = "Активен" | "Заблокирован";
 
 type User = {
@@ -38,14 +38,7 @@ const initialUsers: User[] = [
     status: "Активен",
     group: "TI-232",
   },
-  {
-    id: 3,
-    name: "Мария Чебан",
-    email: "maria.ceban@utm.md",
-    role: "Преподаватель",
-    status: "Активен",
-    group: "—",
-  },
+
   {
     id: 4,
     name: "Ион Платон",
