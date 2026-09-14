@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { signIn } from "next-auth/react";
 import { Eye, EyeOff, LockKeyhole, Mail, User } from "lucide-react";
 
 type RegisterFormProps = {
@@ -8,8 +10,11 @@ type RegisterFormProps = {
 };
 
 export default function RegisterForm({ onSwitch }: RegisterFormProps) {
+  const router = useRouter();
+
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [registerData, setRegisterData] = useState({
     name: "",
@@ -20,7 +25,7 @@ export default function RegisterForm({ onSwitch }: RegisterFormProps) {
 
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
 
     const newErrors: Record<string, string> = {};
@@ -45,8 +50,52 @@ export default function RegisterForm({ onSwitch }: RegisterFormProps) {
 
     setErrors(newErrors);
 
-    if (Object.keys(newErrors).length === 0) {
-      console.log("Registration data:", registerData);
+    if (Object.keys(newErrors).length > 0) {
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      const response = await fetch("/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: registerData.name,
+          email: registerData.email,
+          password: registerData.password,
+        }),
+      });
+
+      if (response.status === 409) {
+        setErrors({ email: "Этот email уже зарегистрирован" });
+        return;
+      }
+
+      if (!response.ok) {
+        setErrors({
+          email: "Не удалось зарегистрироваться, попробуйте ещё раз",
+        });
+        return;
+      }
+
+      const result = await signIn("credentials", {
+        email: registerData.email,
+        password: registerData.password,
+        redirect: false,
+      });
+
+      if (result?.error) {
+        setErrors({
+          email:
+            "Аккаунт создан, но не удалось войти. Попробуйте войти вручную",
+        });
+        return;
+      }
+
+      router.push("/dashboard");
+    } finally {
+      setIsSubmitting(false);
     }
   }
 
@@ -239,9 +288,10 @@ export default function RegisterForm({ onSwitch }: RegisterFormProps) {
 
       <button
         type="submit"
-        className="w-full rounded-xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-200"
+        disabled={isSubmitting}
+        className="w-full rounded-xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-200 disabled:cursor-not-allowed disabled:opacity-70"
       >
-        Создать аккаунт
+        {isSubmitting ? "Создаём аккаунт..." : "Создать аккаунт"}
       </button>
 
       <p className="text-center text-sm text-slate-500">
