@@ -21,6 +21,14 @@ import {
   type TaskErrors,
 } from "@/lib/tasks";
 
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
 const inputClass =
   "h-10 w-full min-w-0 rounded-lg border border-gray-200 bg-white px-3 text-sm text-gray-900 outline-none transition-colors focus:border-blue-500 focus:ring-2 focus:ring-blue-100 aria-invalid:border-red-500 aria-invalid:focus:ring-red-100";
 
@@ -166,67 +174,88 @@ export default function TaskDialog({
             </Field>
             <div className="grid gap-4 sm:grid-cols-2">
               <Field name="subject" label="Предмет" error={errors.subject}>
-                <select
-                  {...fieldProps("subject")}
-                  required
+                <Select
                   value={draft.subject}
-                  onChange={(event) => update("subject", event.target.value)}
+                  onValueChange={(value) => update("subject", value)}
                 >
-                  {subjectOptions.map((value) => (
-                    <option key={value} value={value}>
-                      {value}
-                    </option>
-                  ))}
-                </select>
+                  <SelectTrigger
+                    id="task-subject"
+                    aria-invalid={Boolean(errors.subject)}
+                  >
+                    <SelectValue placeholder="Выберите предмет" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {subjectOptions.map((value) => (
+                      <SelectItem key={value} value={value}>
+                        {value}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </Field>
               <Field name="type" label="Тип задания" error={errors.type}>
-                <select
-                  {...fieldProps("type")}
-                  required
+                <Select
                   value={draft.type}
-                  onChange={(event) => update("type", event.target.value)}
+                  onValueChange={(value) => update("type", value)}
                 >
-                  {typeOptions.map((value) => (
-                    <option key={value} value={value}>
-                      {value}
-                    </option>
-                  ))}
-                </select>
+                  <SelectTrigger
+                    id="task-type"
+                    aria-invalid={Boolean(errors.type)}
+                  >
+                    <SelectValue placeholder="Выберите тип" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {typeOptions.map((value) => (
+                      <SelectItem key={value} value={value}>
+                        {value}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </Field>
               <Field name="priority" label="Приоритет" error={errors.priority}>
-                <select
-                  {...fieldProps("priority")}
-                  required
+                <Select
                   value={draft.priority}
-                  onChange={(event) =>
-                    update(
-                      "priority",
-                      event.target.value as TaskInput["priority"],
-                    )
+                  onValueChange={(value) =>
+                    update("priority", value as TaskInput["priority"])
                   }
                 >
-                  {TASK_PRIORITIES.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
+                  <SelectTrigger
+                    id="task-priority"
+                    aria-invalid={Boolean(errors.priority)}
+                  >
+                    <SelectValue placeholder="Выберите приоритет" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {TASK_PRIORITIES.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </Field>
               <Field name="status" label="Статус" error={errors.status}>
-                <select
-                  {...fieldProps("status")}
-                  required
+                <Select
                   value={draft.status}
-                  onChange={(event) =>
-                    update("status", event.target.value as TaskInput["status"])
+                  onValueChange={(value) =>
+                    update("status", value as TaskInput["status"])
                   }
                 >
-                  {TASK_STATUSES.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
+                  <SelectTrigger
+                    id="task-status"
+                    aria-invalid={Boolean(errors.status)}
+                  >
+                    <SelectValue placeholder="Выберите статус" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {TASK_STATUSES.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </Field>
             </div>
             <Field name="dueDate" label="Дедлайн" error={errors.dueDate}>
