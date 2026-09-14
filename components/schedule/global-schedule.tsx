@@ -5,6 +5,13 @@ import { BookOpen, ExternalLink, GraduationCap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   globalRow,
   globalTimeSlots,
   groupsForYear,
@@ -20,6 +27,7 @@ export default function GlobalSchedule() {
   const groups = allGroups.filter(
     (group) => stream === "all" || group.startsWith(`${stream}-`),
   );
+
   return (
     <div className="mx-auto min-w-0 max-w-[1600px] space-y-5">
       <div>
@@ -57,21 +65,22 @@ export default function GlobalSchedule() {
           </div>
         </div>
         {year && (
-          <label className="grid gap-2 text-sm font-medium text-gray-600">
-            Направление
-            <select
-              value={stream}
-              onChange={(event) => setStream(event.target.value)}
-              className="h-10 rounded-xl border border-gray-200 bg-white px-3 text-sm text-gray-900 focus:outline-blue-600"
-            >
-              <option value="all">Все направления</option>
-              {streams.map((value) => (
-                <option key={value} value={value}>
-                  {value}
-                </option>
-              ))}
-            </select>
-          </label>
+          <div className="grid gap-2 text-sm font-medium text-gray-600">
+            <span>Направление</span>
+            <Select value={stream} onValueChange={setStream}>
+              <SelectTrigger className="w-[200px]">
+                <SelectValue placeholder="Выберите направление" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Все направления</SelectItem>
+                {streams.map((value) => (
+                  <SelectItem key={value} value={value}>
+                    {value}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         )}
       </div>
       {!year ? (

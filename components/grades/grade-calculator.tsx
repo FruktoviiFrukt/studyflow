@@ -6,6 +6,13 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   filterSubjects,
   type Semester,
   type SemesterFilter,
@@ -204,22 +211,27 @@ export default function GradeCalculator() {
       <SubjectCards subjects={visibleSubjects} />
       <div className="grid gap-5 lg:grid-cols-2">
         <Card className="min-w-0 rounded-2xl border-gray-200 p-5 shadow-sm sm:p-6">
-          <label className="block min-w-0">
+          <div className="min-w-0">
             <span className="mb-2 block text-sm font-semibold">Предмет</span>
-            <select
-              className={inputClass}
+            <Select
               value={subject?.id ?? ""}
-              disabled={!subject}
-              onChange={(event) => setSelectedId(event.target.value)}
+              disabled={!subject || visibleSubjects.length === 0}
+              onValueChange={(val) => setSelectedId(val)}
             >
-              {!subject && <option value="">Нет предметов</option>}
-              {visibleSubjects.map((item) => (
-                <option key={item.id} value={item.id}>
-                  {item.name}
-                </option>
-              ))}
-            </select>
-          </label>
+              <SelectTrigger className="w-full">
+                <SelectValue
+                  placeholder={!subject ? "Нет предметов" : "Выберите предмет"}
+                />
+              </SelectTrigger>
+              <SelectContent>
+                {visibleSubjects.map((item) => (
+                  <SelectItem key={item.id} value={item.id}>
+                    {item.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </Card>
         <Card className="min-w-0 rounded-2xl border-gray-200 p-5 shadow-sm sm:p-6">
           <form
@@ -250,19 +262,23 @@ export default function GradeCalculator() {
                 onChange={(event) => setNewSubject(event.target.value)}
               />
             </label>
-            <label>
+            <div className="min-w-[140px]">
               <span className="mb-2 block text-sm font-semibold">Семестр</span>
-              <select
-                className={inputClass}
-                value={newSemester}
-                onChange={(event) =>
-                  setNewSemester(Number(event.target.value) as Semester)
+              <Select
+                value={String(newSemester)}
+                onValueChange={(value) =>
+                  setNewSemester(Number(value) as Semester)
                 }
               >
-                <option value={1}>Семестр 1</option>
-                <option value={2}>Семестр 2</option>
-              </select>
-            </label>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Семестр" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="1">Семестр 1</SelectItem>
+                  <SelectItem value="2">Семестр 2</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
             <Button
               type="submit"
               disabled={!newSubject.trim()}
