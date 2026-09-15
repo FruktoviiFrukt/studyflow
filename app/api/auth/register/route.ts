@@ -4,13 +4,15 @@ import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const ALLOWED_GROUPS = ["TI-245", "TI-246"] as const;
 
 export async function POST(request: Request) {
   const body = await request.json();
-  const { name, email, password } = body as {
+  const { name, email, password, group } = body as {
     name?: unknown;
     email?: unknown;
     password?: unknown;
+    group?: unknown;
   };
 
   if (typeof name !== "string" || !name.trim()) {
@@ -34,6 +36,16 @@ export async function POST(request: Request) {
     );
   }
 
+  if (
+    typeof group !== "string" ||
+    !ALLOWED_GROUPS.includes(group as (typeof ALLOWED_GROUPS)[number])
+  ) {
+    return NextResponse.json(
+      { message: "Выберите группу из списка" },
+      { status: 400 },
+    );
+  }
+
   const existingUser = await prisma.user.findUnique({
     where: { email },
   });
@@ -52,6 +64,7 @@ export async function POST(request: Request) {
       name: name.trim(),
       email,
       password: hashedPassword,
+      group,
     },
   });
 

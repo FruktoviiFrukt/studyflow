@@ -3,7 +3,23 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
-import { Eye, EyeOff, LockKeyhole, Mail, User } from "lucide-react";
+import {
+  Eye,
+  EyeOff,
+  GraduationCap,
+  LockKeyhole,
+  Mail,
+  User,
+} from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
+const GROUPS = ["TI-245", "TI-246"] as const;
 
 type RegisterFormProps = {
   onSwitch: () => void;
@@ -21,6 +37,7 @@ export default function RegisterForm({ onSwitch }: RegisterFormProps) {
     email: "",
     password: "",
     confirmPassword: "",
+    group: "",
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -48,6 +65,10 @@ export default function RegisterForm({ onSwitch }: RegisterFormProps) {
       newErrors.confirmPassword = "Пароли не совпадают";
     }
 
+    if (!registerData.group) {
+      newErrors.group = "Выберите группу";
+    }
+
     setErrors(newErrors);
 
     if (Object.keys(newErrors).length > 0) {
@@ -64,6 +85,7 @@ export default function RegisterForm({ onSwitch }: RegisterFormProps) {
           name: registerData.name,
           email: registerData.email,
           password: registerData.password,
+          group: registerData.group,
         }),
       });
 
@@ -282,6 +304,50 @@ export default function RegisterForm({ onSwitch }: RegisterFormProps) {
             className="mt-2 text-sm text-red-500"
           >
             {errors.confirmPassword}
+          </p>
+        )}
+      </div>
+
+      {/* Group */}
+      <div>
+        <label
+          htmlFor="register-group"
+          className="mb-2 block text-sm font-medium text-slate-700"
+        >
+          Группа
+        </label>
+
+        <Select
+          value={registerData.group}
+          onValueChange={(value) =>
+            setRegisterData({
+              ...registerData,
+              group: value,
+            })
+          }
+        >
+          <SelectTrigger
+            id="register-group"
+            aria-invalid={Boolean(errors.group)}
+            aria-describedby={errors.group ? "register-group-error" : undefined}
+            className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm data-[size=default]:h-auto"
+          >
+            <GraduationCap className="h-5 w-5 text-slate-400" />
+            <SelectValue placeholder="Выберите группу" />
+          </SelectTrigger>
+
+          <SelectContent position="popper" sideOffset={4}>
+            {GROUPS.map((group) => (
+              <SelectItem key={group} value={group}>
+                {group}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        {errors.group && (
+          <p id="register-group-error" className="mt-2 text-sm text-red-500">
+            {errors.group}
           </p>
         )}
       </div>
