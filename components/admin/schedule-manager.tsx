@@ -30,6 +30,37 @@ type RecordData = ScheduleDraft & {
   validTo: string;
   warnings: string[];
 };
+
+function PdfFileField() {
+  const [filename, setFilename] = useState("");
+  return (
+    <Field label="PDF расписания">
+      <span
+        className={`${fieldClass} relative block min-w-0 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-100`}
+      >
+        <span
+          className="block truncate"
+          title={filename || undefined}
+          aria-hidden="true"
+        >
+          {filename || "Выберите файл"}
+        </span>
+        <input
+          name="file"
+          type="file"
+          accept="application/pdf"
+          required
+          aria-label="PDF расписания"
+          onChange={(event) =>
+            setFilename(event.currentTarget.files?.[0]?.name || "")
+          }
+          className="absolute inset-0 h-full w-full cursor-pointer opacity-0 disabled:cursor-default"
+        />
+      </span>
+    </Field>
+  );
+}
+
 export default function ScheduleManager() {
   const [records, setRecords] = useState<RecordData[]>([]);
   const [draft, setDraft] = useState<RecordData | null>(null);
@@ -518,15 +549,7 @@ export default function ScheduleManager() {
             }}
           >
             <fieldset disabled={busy} className="space-y-4">
-              <Field label="PDF расписания">
-                <input
-                  name="file"
-                  type="file"
-                  accept="application/pdf"
-                  required
-                  className={fieldClass}
-                />
-              </Field>
+              <PdfFileField />
               <div className="grid grid-cols-3 gap-3">
                 <Field label="Учебный год">
                   <input
@@ -565,8 +588,17 @@ export default function ScheduleManager() {
                     value={value as string}
                     today={universityToday()}
                     showValue
+                    mondaysOnly={change === setFirst}
                     onSelect={change as (value: string) => void}
                   />
+                  {change === setFirst && (
+                    <p className="mt-1 text-xs text-gray-500">
+                      Понедельник первой учебной недели года — от него считаются
+                      чётные и нечётные недели. Начало периода задаёт только
+                      срок действия этого расписания и не сбрасывает отсчёт
+                      недель.
+                    </p>
+                  )}
                 </div>
               ))}
               {error && (
