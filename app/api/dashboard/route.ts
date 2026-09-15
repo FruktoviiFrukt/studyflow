@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { auth } from "@/auth";
-import { prisma } from "@/lib/prisma";
+import { getDashboardUser } from "@/lib/dashboard";
 
 export async function GET() {
   const session = await auth();
@@ -14,18 +14,7 @@ export async function GET() {
     );
   }
 
-  const user = await prisma.user.findUnique({
-    where: {
-      id: userId,
-    },
-    select: {
-      id: true,
-      name: true,
-      email: true,
-      role: true,
-      group: true,
-    },
-  });
+  const user = await getDashboardUser(userId);
 
   if (!user) {
     return NextResponse.json(
