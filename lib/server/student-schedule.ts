@@ -40,6 +40,19 @@ export type ScheduleDay = {
 const DAY_MS = 86_400_000;
 export const MAX_SCHEDULE_DAYS = 366;
 
+export class ScheduleConflictError extends Error {}
+
+export function validateScheduleRange(from: string, to: string) {
+  const start = dayNumber(from);
+  const end = dayNumber(to);
+  if (end < start || end - start + 1 > MAX_SCHEDULE_DAYS) {
+    throw new RangeError(
+      `Период должен составлять от 1 до ${MAX_SCHEDULE_DAYS} дней.`,
+    );
+  }
+  return { start, end };
+}
+
 function dayNumber(value: string): number {
   const time = Date.parse(`${value}T00:00:00Z`);
   if (
@@ -92,13 +105,7 @@ export function calculateStudentSchedule({
   student: StudentMembership;
   schedules: ScheduleForCalculation[];
 }): { status: "PROFILE_REQUIRED" | "READY"; days: ScheduleDay[] } {
-  const start = dayNumber(from);
-  const end = dayNumber(to);
-  if (end < start || end - start + 1 > MAX_SCHEDULE_DAYS) {
-    throw new RangeError(
-      `Период должен составлять от 1 до ${MAX_SCHEDULE_DAYS} дней.`,
-    );
-  }
+  const { start, end } = validateScheduleRange(from, to);
   if (!student.groupId || !student.subgroup)
     return { status: "PROFILE_REQUIRED", days: [] };
   if (student.subgroup.groupId !== student.groupId)
@@ -152,7 +159,9 @@ export function calculateStudentSchedule({
     );
     // Do not silently mix two published timetables or pick an arbitrary winner.
     if (active.length > 1)
-      throw new Error(`Несколько опубликованных расписаний группы на ${date}.`);
+      throw new ScheduleConflictError(
+        `Несколько опубликованных расписаний группы на ${date}.`,
+      );
     const current = active[0];
     if (!current) {
       days.push({
