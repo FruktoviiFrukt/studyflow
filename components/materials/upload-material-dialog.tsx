@@ -17,6 +17,13 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   SUBJECTS,
   formatFileSize,
   type MaterialType,
@@ -174,23 +181,23 @@ export default function UploadMaterialDialog({
             />
           </label>
 
-          <label className="block">
+          <div className="block">
             <span className="mb-1.5 block text-sm font-medium text-gray-700">
               Предмет
             </span>
-            <select
-              value={subject}
-              onChange={(event) => setSubject(event.target.value)}
-              className={inputClass}
-            >
-              <option value="">Выберите предмет</option>
-              {SUBJECTS.map((item) => (
-                <option key={item} value={item}>
-                  {item}
-                </option>
-              ))}
-            </select>
-          </label>
+            <Select value={subject} onValueChange={(val) => setSubject(val)}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Выберите предмет" />
+              </SelectTrigger>
+              <SelectContent>
+                {SUBJECTS.map((item) => (
+                  <SelectItem key={item} value={item}>
+                    {item}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
 
           {error && <p className="text-sm text-red-600">{error}</p>}
 
