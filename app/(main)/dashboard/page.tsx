@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { auth } from "@/auth";
 
 import {
   CalendarDays,
@@ -97,7 +98,12 @@ const quickActions = [
   },
 ];
 
-export default function DashboardPage() {
+export default async function DashboardPage() {
+  const session = await auth();
+
+  const userName = session?.user?.name ?? "Студент";
+  const userGroup = session?.user?.group;
+
   return (
     <div className="mx-auto max-w-7xl">
       {/* Greeting */}
@@ -107,11 +113,13 @@ export default function DashboardPage() {
         </p>
 
         <h2 className="mt-2 text-3xl font-bold tracking-tight text-gray-900">
-          Добро пожаловать, Student
+          Добро пожаловать, {userName}
         </h2>
 
         <p className="mt-2 text-sm text-gray-500">
-          Здесь собрана основная информация о твоей учёбе.
+          {userGroup
+            ? `Группа ${userGroup} · Здесь собрана основная информация о твоей учёбе.`
+            : "Здесь собрана основная информация о твоей учёбе."}
         </p>
       </section>
 
