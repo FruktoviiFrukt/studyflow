@@ -1,18 +1,42 @@
 "use client";
 
 import LessonCard from "./lesson-card";
-import { formatDate, timeSlots, weekdays, type Lesson } from "@/lib/schedule";
+import { formatDate, timeSlots } from "@/lib/schedule";
+import {
+  displayLesson,
+  dayMessage,
+  type DisplayLesson,
+} from "@/lib/student-schedule-view";
+import type { ScheduleDay } from "@/lib/server/student-schedule";
 import { cn } from "@/lib/utils";
 
 export default function WeekGrid({
   days,
   lessons,
   today,
+  states,
 }: {
   days: string[];
-  lessons: Lesson[];
+  lessons: DisplayLesson[];
   today: string;
+  states?: ScheduleDay[];
 }) {
+  const baseSlots = states
+    ? [
+        ...timeSlots,
+        { start: "17:00", end: "18:30" },
+        { start: "18:45", end: "20:15" },
+      ]
+    : [...timeSlots];
+  const slots = [
+    ...new Map(
+      [...baseSlots, ...lessons.map((l) => displayLesson(l).slot)].map(
+        (slot) => [`${slot.start}-${slot.end}`, slot],
+      ),
+    ).values(),
+  ].sort(
+    (a, b) => a.start.localeCompare(b.start) || a.end.localeCompare(b.end),
+  );
   return (
     <div
       className="relative max-w-full overflow-x-auto focus-visible:outline-blue-600"
@@ -22,7 +46,8 @@ export default function WeekGrid({
     >
       <table
         className="w-full min-w-[880px] table-fixed border-collapse text-left"
-        aria-label="Недельное расписание с понедельника по пятницу"
+        style={{ minWidth: Math.max(880, 82 + days.length * 170) }}
+        aria-label="Недельное расписание"
       >
         <thead>
           <tr className="border-b border-gray-200">
@@ -32,7 +57,7 @@ export default function WeekGrid({
             >
               Время
             </th>
-            {days.map((date, day) => (
+            {days.map((date) => (
               <th
                 key={date}
                 scope="col"
@@ -44,11 +69,11 @@ export default function WeekGrid({
               >
                 <div
                   className={cn(
-                    "text-xs font-medium",
+                    "text-xs font-medium first-letter:uppercase",
                     date === today ? "text-blue-600" : "text-gray-500",
                   )}
                 >
-                  {weekdays[day]}
+                  {formatDate(date, { weekday: "long" })}
                 </div>
                 <div className="mt-2 flex items-center gap-2">
                   <span
@@ -67,14 +92,20 @@ export default function WeekGrid({
                     </span>
                   )}
                 </div>
+                {states?.find((d) => d.date === date)?.status !== "LESSONS" &&
+                  states && (
+                    <p className="mt-2 text-xs font-normal text-gray-500">
+                      {dayMessage(states.find((d) => d.date === date))}
+                    </p>
+                  )}
               </th>
             ))}
           </tr>
         </thead>
         <tbody>
-          {timeSlots.map((slot, index) => (
+          {slots.map((slot) => (
             <tr
-              key={slot.start}
+              key={`${slot.start}-${slot.end}`}
               className="border-b border-gray-100 last:border-0"
             >
               <th scope="row" className="px-3 py-5 align-top">
@@ -85,12 +116,19 @@ export default function WeekGrid({
                   {slot.end}
                 </span>
                 <span className="mt-3 block text-[10px] font-normal text-gray-400">
-                  {index + 1} пара
+                  {baseSlots.findIndex(
+                    (s) => s.start === slot.start && s.end === slot.end,
+                  ) >= 0
+                    ? `${baseSlots.findIndex((s) => s.start === slot.start && s.end === slot.end) + 1} пара`
+                    : "Другое время"}
                 </span>
               </th>
               {days.map((date) => {
                 const matches = lessons.filter(
-                  (lesson) => lesson.date === date && lesson.slot === index,
+                  (lesson) =>
+                    lesson.date === date &&
+                    displayLesson(lesson).slot.start === slot.start &&
+                    displayLesson(lesson).slot.end === slot.end,
                 );
                 return (
                   <td
