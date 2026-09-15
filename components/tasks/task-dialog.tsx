@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, type FormEvent, type ReactNode } from "react";
-import { Trash2 } from "lucide-react";
+import { Trash2, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -25,12 +25,15 @@ import {
   Select,
   SelectContent,
   SelectItem,
+  SelectSeparator,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
 
 const inputClass =
   "h-10 w-full min-w-0 rounded-lg border border-gray-200 bg-white px-3 text-sm text-gray-900 outline-none transition-colors focus:border-blue-500 focus:ring-2 focus:ring-blue-100 aria-invalid:border-red-500 aria-invalid:focus:ring-red-100";
+
+const ADD_NEW_SUBJECT_VALUE = "__ADD_NEW_SUBJECT__";
 
 function Field({
   name,
@@ -71,19 +74,25 @@ export default function TaskDialog({
   onClose,
   onSave,
   onDelete,
+  onAddSubject,
 }: {
   task?: Task;
   subjects: string[];
   onClose: () => void;
   onSave: (data: TaskInput) => void;
   onDelete: (id: number) => void;
+  onAddSubject?: (name: string) => void;
 }) {
+  const [isCustomSubject, setIsCustomSubject] = useState(false);
+  const [customSubject, setCustomSubject] = useState("");
+
   const subjectOptions = [
     ...new Set([...subjects, ...(task ? [task.subject] : []), "Без предмета"]),
   ];
   const typeOptions = [
     ...new Set([...TASK_TYPES, ...(task ? [task.type] : [])]),
   ];
+
   const [draft, setDraft] = useState<TaskInput>(() =>
     task
       ? {
@@ -105,6 +114,7 @@ export default function TaskDialog({
           notes: "",
         },
   );
+
   const [errors, setErrors] = useState<TaskErrors>({});
   const [confirmDelete, setConfirmDelete] = useState(false);
 
@@ -125,19 +135,32 @@ export default function TaskDialog({
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const nextErrors = validateTask(draft, subjectOptions, typeOptions);
+
+    const finalSubject = isCustomSubject ? customSubject.trim() : draft.subject;
+
+    const nextDraft = { ...draft, subject: finalSubject };
+    const allowedSubjects = [...subjectOptions, finalSubject];
+
+    const nextErrors = validateTask(nextDraft, allowedSubjects, typeOptions);
     setErrors(nextErrors);
-    const firstError = Object.keys(nextErrors)[0];
-    if (firstError) {
+
+    if (Object.keys(nextErrors).length > 0) {
+      const firstError = Object.keys(nextErrors)[0];
       event.currentTarget
         .querySelector<HTMLElement>(`#task-${firstError}`)
         ?.focus();
       return;
     }
+
+    // Если создан новый предмет — вызываем пропс сохранения предмета в базу
+    if (isCustomSubject && finalSubject && onAddSubject) {
+      onAddSubject(finalSubject);
+    }
+
     onSave({
-      ...draft,
-      title: draft.title.trim(),
-      notes: draft.notes?.trim() ?? "",
+      ...nextDraft,
+      title: nextDraft.title.trim(),
+      notes: nextDraft.notes?.trim() ?? "",
     });
   }
 
@@ -173,26 +196,88 @@ export default function TaskDialog({
               />
             </Field>
             <div className="grid gap-4 sm:grid-cols-2">
-              <Field name="subject" label="Предмет" error={errors.subject}>
-                <Select
-                  value={draft.subject}
-                  onValueChange={(value) => update("subject", value)}
-                >
-                  <SelectTrigger
-                    id="task-subject"
-                    aria-invalid={Boolean(errors.subject)}
+              <div className="min-w-0">
+                <div className="mb-2 flex items-center justify-between">
+                  <label
+                    htmlFor="task-subject"
+                    className="text-sm font-medium text-gray-700"
                   >
-                    <SelectValue placeholder="Выберите предмет" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {subjectOptions.map((value) => (
-                      <SelectItem key={value} value={value}>
-                        {value}
+                    Предмет
+                  </label>
+                  {isCustomSubject && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsCustomSubject(false);
+                        setCustomSubject("");
+                        update("subject", subjectOptions[0] ?? "Без предмета");
+                      }}
+                      className="inline-flex items-center gap-1 text-xs font-medium text-blue-600 hover:underline"
+                    >
+                      <ArrowLeft className="size-3" /> К списку
+                    </button>
+                  )}
+                </div>
+
+                {isCustomSubject ? (
+                  <input
+                    id="task-subject"
+                    className={inputClass}
+                    autoFocus
+                    placeholder="Введите название предмета"
+                    value={customSubject}
+                    onChange={(event) => {
+                      setCustomSubject(event.target.value);
+                      update("subject", event.target.value);
+                    }}
+                  />
+                ) : (
+                  <Select
+                    value={draft.subject}
+                    onValueChange={(value) => {
+                      if (value === ADD_NEW_SUBJECT_VALUE) {
+                        setIsCustomSubject(true);
+                        setCustomSubject("");
+                        update("subject", "");
+                      } else {
+                        update("subject", value);
+                      }
+                    }}
+                  >
+                    <SelectTrigger
+                      id="task-subject"
+                      aria-invalid={Boolean(errors.subject)}
+                    >
+                      <SelectValue placeholder="Выберите предмет" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem
+                        value={ADD_NEW_SUBJECT_VALUE}
+                        className="font-medium text-blue-600 focus:bg-blue-50 focus:text-blue-700"
+                      >
+                        + Добавить новый предмет
                       </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </Field>
+                      <SelectSeparator />
+                      {subjectOptions.map((value) => (
+                        <SelectItem key={value} value={value}>
+                          {value}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+
+                {errors.subject && (
+                  <p
+                    id="task-subject-error"
+                    className="mt-1.5 text-xs text-red-600"
+                    role="alert"
+                  >
+                    {errors.subject}
+                  </p>
+                )}
+              </div>
+
               <Field name="type" label="Тип задания" error={errors.type}>
                 <Select
                   value={draft.type}
