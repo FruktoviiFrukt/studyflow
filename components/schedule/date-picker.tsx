@@ -16,13 +16,21 @@ export default function DatePicker({
   value,
   today,
   onSelect,
+  label = "Выбрать дату",
+  min,
+  showValue = false,
 }: {
   value: string;
   today: string;
   onSelect: (date: string) => void;
+  label?: string;
+  min?: string;
+  showValue?: boolean;
 }) {
   const [open, setOpen] = useState(false);
-  const [month, setMonth] = useState(value.slice(0, 7) + "-01");
+  const [month, setMonth] = useState(
+    (value || min || today).slice(0, 7) + "-01",
+  );
   const start = mondayOf(month);
   const days = Array.from({ length: 42 }, (_, index) => addDays(start, index));
   function moveMonth(offset: number) {
@@ -38,14 +46,29 @@ export default function DatePicker({
     <Dialog
       open={open}
       onOpenChange={(next) => {
-        if (next) setMonth(value.slice(0, 7) + "-01");
+        if (next) setMonth((value || min || today).slice(0, 7) + "-01");
         setOpen(next);
       }}
     >
       <DialogTrigger asChild>
-        <Button variant="outline" className="rounded-xl">
+        <Button
+          type="button"
+          variant="outline"
+          aria-label={label}
+          className={cn(
+            "rounded-xl",
+            showValue &&
+              "h-auto w-full justify-start px-4 py-2.5 text-left font-normal",
+          )}
+        >
           <CalendarDays aria-hidden="true" />
-          Выбрать дату
+          {showValue && value
+            ? formatDate(value, {
+                day: "numeric",
+                month: "long",
+                year: "numeric",
+              })
+            : label}
         </Button>
       </DialogTrigger>
       <DialogContent
@@ -56,6 +79,7 @@ export default function DatePicker({
         <div className="flex items-center justify-between">
           <Button
             variant="ghost"
+            type="button"
             size="icon"
             aria-label="Предыдущий месяц"
             onClick={() => moveMonth(-1)}
@@ -67,6 +91,7 @@ export default function DatePicker({
           </p>
           <Button
             variant="ghost"
+            type="button"
             size="icon"
             aria-label="Следующий месяц"
             onClick={() => moveMonth(1)}
@@ -88,6 +113,7 @@ export default function DatePicker({
             <button
               key={date}
               type="button"
+              disabled={Boolean(min && date < min)}
               aria-label={formatDate(date, {
                 day: "numeric",
                 month: "long",
@@ -97,7 +123,7 @@ export default function DatePicker({
               aria-current={date === today ? "date" : undefined}
               onClick={() => select(date)}
               className={cn(
-                "aspect-square rounded-lg text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600",
+                "aspect-square rounded-lg text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 disabled:pointer-events-none disabled:opacity-30",
                 date === value
                   ? "bg-blue-600 font-semibold text-white"
                   : "hover:bg-blue-50",
@@ -115,6 +141,8 @@ export default function DatePicker({
           ))}
         </div>
         <Button
+          type="button"
+          disabled={Boolean(min && today < min)}
           variant="secondary"
           onClick={() => select(today)}
           className="rounded-xl"

@@ -110,6 +110,7 @@ model ScheduleImport {
   title          String
   sourceFilename String?
   sourceFileKey  String?
+  importWarnings String[]          @default([])
   status         ScheduleStatus    @default(DRAFT)
   validFrom      DateTime          @db.Date
   validTo        DateTime          @db.Date
@@ -136,6 +137,7 @@ model Lesson {
   teacher      String?
   classroom    String?
   topic        String?
+  sourceText   String?
   reviewed     Boolean          @default(false)
   schedule     ScheduleImport   @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
   subject      Subject          @relation(fields: [subjectId], references: [id], onDelete: Restrict)

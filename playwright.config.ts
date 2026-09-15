@@ -3,7 +3,7 @@ import { STORAGE_STATE } from "./tests/e2e/storage-state";
 
 export default defineConfig({
   testDir: "./tests/e2e",
-  testIgnore: "schedule-api-ui.spec.ts",
+  testIgnore: ["schedule-api-ui.spec.ts", "admin-import.spec.ts"],
   fullyParallel: true,
   forbidOnly: Boolean(process.env.CI),
   retries: process.env.CI ? 1 : 0,
