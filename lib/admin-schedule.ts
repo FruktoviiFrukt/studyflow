@@ -24,7 +24,20 @@ export type ScheduleDraft = {
   filename: string;
   sourceUrl?: string;
   lessons: AdminLesson[];
+  holidays?: ScheduleHoliday[];
 };
+export type ScheduleHoliday = {
+  id: string;
+  name: string;
+  start: string;
+  end: string;
+};
+
+export function holidayOn(date: string, holidays: ScheduleHoliday[]) {
+  return holidays.find(
+    (holiday) => holiday.start <= date && date <= holiday.end,
+  );
+}
 export const DAYS = [
   "Понедельник",
   "Вторник",

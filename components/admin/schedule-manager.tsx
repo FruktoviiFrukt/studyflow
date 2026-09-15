@@ -36,6 +36,7 @@ import {
 import { SelectField, fieldClass } from "./schedule-fields";
 import ScheduleLessonEditor from "./schedule-lesson-editor";
 import ScheduleStudentPreview from "./schedule-student-preview";
+import ScheduleHolidays from "./schedule-holidays";
 import ScheduleUpload, { type UploadDetails } from "./schedule-upload";
 
 const statusLabels = {
@@ -379,6 +380,18 @@ export default function ScheduleManager() {
               )}
             </div>
           </div>
+          <ScheduleHolidays
+            key={selected.id}
+            holidays={selected.holidays ?? []}
+            editable={editable}
+            onChange={(holidays) =>
+              setRecords((current) =>
+                current.map((r) =>
+                  r.id === selected.id ? { ...r, holidays } : r,
+                ),
+              )
+            }
+          />
           {issues.length > 0 && (
             <details className="border-b border-orange-100 bg-orange-50 px-5 py-3">
               <summary className="cursor-pointer text-sm font-medium text-orange-800">
@@ -692,6 +705,7 @@ export default function ScheduleManager() {
               </div>
             ) : (
               <ScheduleStudentPreview
+                holidays={selected.holidays ?? []}
                 lessons={shown}
                 day={day}
                 editable={editable}
@@ -701,7 +715,9 @@ export default function ScheduleManager() {
             )}
             <div className="flex flex-wrap items-center justify-between gap-3 border-t border-gray-100 bg-gray-50/50 px-5 py-3">
               <span className="text-xs text-gray-500" aria-live="polite">
-                Показано {shown.length} из {selected.lessons.length} занятий
+                {view === "student" ? "По фильтрам" : "Показано"} {shown.length}{" "}
+                из {selected.lessons.length} занятий
+                {view === "student" && " · занятия в каникулы скрыты в сетке"}
               </span>
               <span className="text-xs text-gray-500">
                 Общие занятия включены при выборе подгруппы

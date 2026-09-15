@@ -1,5 +1,79 @@
 import { test, expect } from "@playwright/test";
 
+test("holidays hide dated lessons, support editing and stay within their schedule", async ({
+  page,
+}) => {
+  await page.clock.setFixedTime(new Date("2026-09-15T09:00:00Z"));
+  await page.goto("/admin/schedule");
+  await page
+    .getByRole("button", { name: "Добавить каникулы", exact: true })
+    .click();
+  await page.getByLabel("Название", { exact: true }).fill("Осенние каникулы");
+  await page.getByRole("combobox", { name: "Продолжительность" }).click();
+  await page.getByRole("option", { name: "Промежуток дат" }).click();
+  await page
+    .getByRole("button", { name: "Начало каникул", exact: true })
+    .click();
+  await page.getByRole("button", { name: /14 сентября 2026/ }).click();
+  await page
+    .getByRole("button", { name: "Окончание каникул", exact: true })
+    .click();
+  await expect(
+    page.getByRole("button", { name: /13 сентября 2026/ }),
+  ).toBeDisabled();
+  await page.getByRole("button", { name: /15 сентября 2026/ }).click();
+  await page.getByRole("button", { name: "Сохранить каникулы" }).click();
+  await page.getByRole("button", { name: "Как у студента" }).click();
+  await page.getByLabel("Дата предпросмотра").fill("2026-09-14");
+  const preview = page.getByRole("region", {
+    name: "Предпросмотр расписания студента",
+  });
+  await expect(preview.getByText("Осенние каникулы · занятий нет")).toHaveCount(
+    2,
+  );
+  await expect(
+    preview.getByText("Математический анализ", { exact: true }),
+  ).toHaveCount(0);
+  await expect(
+    preview.getByText("Программирование", { exact: true }),
+  ).toHaveCount(0);
+  await expect(
+    preview.getByText("Английский язык", { exact: true }),
+  ).toBeVisible();
+  await page
+    .getByRole("button", { name: "Изменить каникулы Осенние каникулы" })
+    .click();
+  await page.getByRole("combobox", { name: "Продолжительность" }).click();
+  await page.getByRole("option", { name: "Один день", exact: true }).click();
+  await page.getByRole("button", { name: "Сохранить каникулы" }).click();
+  await expect(
+    preview.getByText("Программирование", { exact: true }),
+  ).toBeVisible();
+  await page.getByLabel("Дата предпросмотра").fill("2026-09-21");
+  await expect(
+    preview.getByText("Математический анализ", { exact: true }),
+  ).toHaveCount(2);
+  await page.getByRole("button", { name: /Список расписаний/ }).click();
+  await page
+    .getByRole("button", { name: "Открыть", exact: true })
+    .nth(1)
+    .click();
+  await expect(page.getByText("Осенние каникулы", { exact: true })).toHaveCount(
+    0,
+  );
+  await page.getByRole("button", { name: /Список расписаний/ }).click();
+  await page
+    .getByRole("button", { name: "Открыть", exact: true })
+    .first()
+    .click();
+  await page
+    .getByRole("button", { name: "Удалить каникулы Осенние каникулы" })
+    .click();
+  await expect(
+    page.getByText("Каникулы и дополнительные выходные пока не добавлены."),
+  ).toHaveCount(0);
+});
+
 test("draft deletion can be cancelled and preserves the published schedule", async ({
   page,
 }) => {
