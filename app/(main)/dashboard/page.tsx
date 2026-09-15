@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { auth } from "@/auth";
+import { getDashboardUser } from "@/lib/dashboard";
 
 import {
   CalendarDays,
@@ -101,8 +102,12 @@ const quickActions = [
 export default async function DashboardPage() {
   const session = await auth();
 
-  const userName = session?.user?.name ?? "Студент";
-  const userGroup = session?.user?.group;
+  const user = session?.user?.id
+    ? await getDashboardUser(session.user.id)
+    : null;
+
+  const userName = user?.name ?? "Студент";
+  const userGroup = user?.group;
 
   return (
     <div className="mx-auto max-w-7xl">
