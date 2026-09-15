@@ -330,13 +330,13 @@ export default function RegisterForm({ onSwitch }: RegisterFormProps) {
             id="register-group"
             aria-invalid={Boolean(errors.group)}
             aria-describedby={errors.group ? "register-group-error" : undefined}
-            className="w-full rounded-xl border border-slate-200 py-3 pl-11 pr-4 text-sm"
+            className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm data-[size=default]:h-auto"
           >
             <GraduationCap className="h-5 w-5 text-slate-400" />
             <SelectValue placeholder="Выберите группу" />
           </SelectTrigger>
 
-          <SelectContent>
+          <SelectContent position="popper" sideOffset={4}>
             {GROUPS.map((group) => (
               <SelectItem key={group} value={group}>
                 {group}
