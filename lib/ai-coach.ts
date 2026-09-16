@@ -7,6 +7,10 @@ export const ACCEPTED_NOTE_TYPES = [
     mime: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
     extension: ".docx",
   },
+  { label: "TXT", mime: "text/plain", extension: ".txt" },
+  { label: "PNG", mime: "image/png", extension: ".png" },
+  { label: "JPG", mime: "image/jpeg", extension: ".jpg" },
+  { label: "WEBP", mime: "image/webp", extension: ".webp" },
 ] as const;
 
 export const ACCEPTED_NOTE_INPUT_ATTR = ACCEPTED_NOTE_TYPES.map(
@@ -44,6 +48,9 @@ export type ApiSubject = {
   code: string;
   faculty: string;
   availableQuestions: number;
+  easyCount: number;
+  mediumCount: number;
+  hardCount: number;
   topics: ApiSubjectTopic[];
 };
 
@@ -63,21 +70,15 @@ export function subjectDotColor(id: string): string {
   return DOT_PALETTE[hash % DOT_PALETTE.length];
 }
 
-export const questionCountOptions = [10, 15, 20, 30] as const;
+export const questionCountOptions = [5, 10, 15, 20] as const;
 
 export const difficultyOptions = [
   { value: "easy", label: "Легко" },
   { value: "medium", label: "Средне" },
   { value: "hard", label: "Сложно" },
+  { value: "any", label: "Микс" },
 ] as const;
 export type Difficulty = (typeof difficultyOptions)[number]["value"];
-
-export const questionTypeOptions = [
-  { value: "single", label: "Тест (один ответ)" },
-  { value: "true-false", label: "Верно / Неверно" },
-  { value: "combined", label: "Комбинированный" },
-] as const;
-export type QuestionType = (typeof questionTypeOptions)[number]["value"];
 
 export type GenerationReadiness = {
   canGenerate: boolean;
@@ -88,18 +89,18 @@ export function getGenerationReadiness(params: {
   hasNotes: boolean;
   questionCount?: number;
 }): GenerationReadiness {
-  const { hasNotes, questionCount = 10 } = params;
+  const { hasNotes, questionCount = 5 } = params;
 
-  if (questionCount < 10) {
+  if (questionCount < 5) {
     return {
       canGenerate: false,
-      hint: "Минимальное количество вопросов — 10.",
+      hint: "Минимальное количество вопросов — 5.",
     };
   }
   if (!hasNotes) {
     return {
       canGenerate: false,
-      hint: "Вставьте текст материала для генерации вопросов.",
+      hint: "Добавьте текст или прикрепите файл.",
     };
   }
   return { canGenerate: true, hint: null };

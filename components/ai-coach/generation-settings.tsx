@@ -6,9 +6,7 @@ import { cn } from "@/lib/utils";
 import {
   difficultyOptions,
   questionCountOptions,
-  questionTypeOptions,
   type Difficulty,
-  type QuestionType,
 } from "@/lib/ai-coach";
 
 type GenerationSettingsProps = {
@@ -16,8 +14,6 @@ type GenerationSettingsProps = {
   onQuestionCountChange: (count: number) => void;
   difficulty: Difficulty;
   onDifficultyChange: (difficulty: Difficulty) => void;
-  questionType: QuestionType;
-  onQuestionTypeChange: (type: QuestionType) => void;
 };
 
 export default function GenerationSettings({
@@ -25,23 +21,19 @@ export default function GenerationSettings({
   onQuestionCountChange,
   difficulty,
   onDifficultyChange,
-  questionType,
-  onQuestionTypeChange,
 }: GenerationSettingsProps) {
   function handleCountInput(e: React.ChangeEvent<HTMLInputElement>) {
     const val = parseInt(e.target.value, 10);
-    if (!isNaN(val) && val >= 10) {
+    if (!isNaN(val) && val >= 5) {
       onQuestionCountChange(Math.min(val, 100));
     }
   }
 
   return (
     <Card className="rounded-2xl border-gray-200 bg-white p-4 shadow-sm sm:p-5">
-      <h3 className="text-base font-semibold sm:text-lg">
-        Настройки генерации
-      </h3>
+      <h3 className="text-base font-semibold sm:text-lg">Настройки теста</h3>
       <p className="mt-1 text-xs text-gray-500">
-        Выберите количество вопросов, уровень сложности и формат ответа.
+        Выберите количество вопросов и уровень сложности.
       </p>
 
       <div className="mt-4 space-y-4">
@@ -52,7 +44,7 @@ export default function GenerationSettings({
           <div className="flex flex-wrap items-center gap-3">
             <input
               type="number"
-              min="10"
+              min="5"
               max="100"
               value={questionCount}
               onChange={handleCountInput}
@@ -86,16 +78,6 @@ export default function GenerationSettings({
             value={difficulty}
             onChange={onDifficultyChange}
             ariaLabel="Уровень сложности"
-          />
-        </div>
-
-        <div>
-          <p className="mb-2 text-xs font-medium text-gray-700">Тип вопросов</p>
-          <SegmentedControl
-            options={questionTypeOptions}
-            value={questionType}
-            onChange={onQuestionTypeChange}
-            ariaLabel="Тип вопросов"
           />
         </div>
       </div>

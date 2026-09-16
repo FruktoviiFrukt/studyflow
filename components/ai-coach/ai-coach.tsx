@@ -1,12 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { AlertCircle, Sparkles } from "lucide-react";
+import { AlertCircle, Loader2, Play, Sparkles } from "lucide-react";
+import { Card } from "@/components/ui/card";
 import NotesInput from "./notes-input";
 import SubjectSelect from "./subject-select";
-import SubjectTopicsPanel from "./subject-topics-panel";
 import GenerationSettings from "./generation-settings";
-import GenerateButton from "./generate-button";
 import GeminiKeyCard from "./GeminiKeyCard";
 import { QuizScreen } from "./QuizScreen";
 import { ResultsScreen } from "./ResultsScreen";
@@ -15,9 +14,10 @@ import {
   getGenerationReadiness,
   type ApiSubject,
   type Difficulty,
-  type QuestionType,
 } from "@/lib/ai-coach";
+import { cn } from "@/lib/utils";
 
+type Tab = "generate" | "database";
 type Step = "setup" | "quiz" | "results";
 
 type ApiOption = { id: string; text: string; isCorrect: boolean };
@@ -25,39 +25,47 @@ type ApiQuestion = {
   id: string;
   text: string;
   type: "MULTIPLE_CHOICE" | "TRUE_FALSE";
+  difficulty: "EASY" | "MEDIUM" | "HARD";
   options: ApiOption[];
 };
 type GenerateResponse = {
   topicName: string;
   subjectId: string;
-  questions: {
-    easy: ApiQuestion[];
-    medium: ApiQuestion[];
-    hard: ApiQuestion[];
-  };
+  questions: ApiQuestion[];
+  totalSaved: number;
   skippedAsDuplicates: number;
 };
+type QuizApiQuestion = ApiQuestion & { topicName: string };
+type QuizApiResponse = { questions: QuizApiQuestion[] };
 
 function mapQuestions(response: GenerateResponse): Question[] {
-  const { questions, topicName, subjectId } = response;
-  const map = (qs: ApiQuestion[], diff: Difficulty) =>
-    qs.map((q) => ({
-      id: q.id,
-      text: q.text,
-      type: (q.type === "MULTIPLE_CHOICE"
-        ? "multiple-choice"
-        : "true-false") as Question["type"],
-      options: q.options.map((o) => ({ id: o.id, text: o.text })),
-      correctAnswerId: q.options.find((o) => o.isCorrect)?.id ?? "",
-      topic: topicName,
-      subjectId,
-      difficulty: diff,
-    }));
-  return [
-    ...map(questions.easy, "easy"),
-    ...map(questions.medium, "medium"),
-    ...map(questions.hard, "hard"),
-  ];
+  return response.questions.map((q) => ({
+    id: q.id,
+    text: q.text,
+    type: (q.type === "MULTIPLE_CHOICE"
+      ? "multiple-choice"
+      : "true-false") as Question["type"],
+    options: q.options.map((o) => ({ id: o.id, text: o.text })),
+    correctAnswerId: q.options.find((o) => o.isCorrect)?.id ?? "",
+    topic: response.topicName,
+    subjectId: response.subjectId,
+    difficulty: q.difficulty.toLowerCase() as Difficulty,
+  }));
+}
+
+function mapExistingQuestions(apiQuestions: QuizApiQuestion[]): Question[] {
+  return apiQuestions.map((q) => ({
+    id: q.id,
+    text: q.text,
+    type: (q.type === "MULTIPLE_CHOICE"
+      ? "multiple-choice"
+      : "true-false") as Question["type"],
+    options: q.options.map((o) => ({ id: o.id, text: o.text })),
+    correctAnswerId: q.options.find((o) => o.isCorrect)?.id ?? "",
+    topic: q.topicName,
+    subjectId: "",
+    difficulty: q.difficulty.toLowerCase() as Difficulty,
+  }));
 }
 
 export default function AiCoach() {
@@ -65,17 +73,35 @@ export default function AiCoach() {
   const [subjects, setSubjects] = useState<ApiSubject[]>([]);
   const [subjectsLoading, setSubjectsLoading] = useState(true);
   const [step, setStep] = useState<Step>("setup");
+  const [activeTab, setActiveTab] = useState<Tab>("generate");
 
+  // Inputs
   const [attachedFiles, setAttachedFiles] = useState<File[]>([]);
   const [noteText, setNoteText] = useState("");
-  const [selectedSubjectIds, setSelectedSubjectIds] = useState<string[]>([]);
-  const [questionCount, setQuestionCount] = useState(10);
+
+  // Subject/topic selection
+  const [selectedSubjectIds, setSelectedSubjectIds] = useState<Set<string>>(
+    new Set(),
+  );
+  const [selectedTopicIds, setSelectedTopicIds] = useState<Set<string>>(
+    new Set(),
+  );
+  const [openAccordionSubjectId, setOpenAccordionSubjectId] = useState<
+    string | null
+  >(null);
+
+  // Settings
+  const [questionCount, setQuestionCount] = useState(5);
   const [difficulty, setDifficulty] = useState<Difficulty>("medium");
-  const [questionType, setQuestionType] = useState<QuestionType>("single");
+
+  // UI state
   const [isGenerating, setIsGenerating] = useState(false);
   const [generationError, setGenerationError] = useState<string | null>(null);
+  const [keyError, setKeyError] = useState<string | null>(null);
 
+  // Quiz state
   const [quizQuestions, setQuizQuestions] = useState<Question[]>([]);
+  const [weakQuestions, setWeakQuestions] = useState<Question[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selectedAnswers, setSelectedAnswers] = useState<
     Record<string, string>
@@ -99,38 +125,89 @@ export default function AiCoach() {
       .catch(() => setSubjectsLoading(false));
   }, []);
 
-  const hasNotes = noteText.trim().length > 0;
-  const { canGenerate, hint } = getGenerationReadiness({
-    hasNotes,
-    questionCount,
-  });
+  const hasNotes = noteText.trim().length > 0 || attachedFiles.length > 0;
+  const { canGenerate } = getGenerationReadiness({ hasNotes, questionCount });
+  const canAssemble = selectedTopicIds.size > 0;
   const currentQuestion = quizQuestions[currentIndex];
+  const canStart = activeTab === "generate" ? canGenerate : canAssemble;
+
+  // ---------------------------------------------------------------------------
+  // File handlers
+  // ---------------------------------------------------------------------------
 
   function handleAddFile(file: File) {
     setAttachedFiles((prev) =>
       prev.some((f) => f.name === file.name) ? prev : [...prev, file],
     );
   }
-
   function handleRemoveFile(name: string) {
     setAttachedFiles((prev) => prev.filter((f) => f.name !== name));
   }
 
-  function handleToggleSubject(id: string) {
-    setSelectedSubjectIds((prev) =>
-      prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id],
+  // ---------------------------------------------------------------------------
+  // Subject/topic handlers
+  // ---------------------------------------------------------------------------
+
+  function handleToggleSubject(subject: ApiSubject) {
+    const wasSelected = selectedSubjectIds.has(subject.id);
+
+    setSelectedSubjectIds((prev) => {
+      const next = new Set(prev);
+      if (wasSelected) next.delete(subject.id);
+      else next.add(subject.id);
+      return next;
+    });
+
+    // Auto-select / deselect all topics with questions
+    const topicIds = subject.topics
+      .filter((t) => t.questionCount > 0)
+      .map((t) => t.id);
+
+    setSelectedTopicIds((prev) => {
+      const next = new Set(prev);
+      topicIds.forEach((id) => (wasSelected ? next.delete(id) : next.add(id)));
+      return next;
+    });
+
+    // Close accordion when subject is removed
+    if (wasSelected) {
+      setOpenAccordionSubjectId((prev) => (prev === subject.id ? null : prev));
+    }
+  }
+
+  function handleToggleTopic(topicId: string) {
+    setSelectedTopicIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(topicId)) next.delete(topicId);
+      else next.add(topicId);
+      return next;
+    });
+  }
+
+  function handleOpenAccordion(subjectId: string | null) {
+    setOpenAccordionSubjectId((prev) =>
+      prev === subjectId ? null : subjectId,
     );
   }
+
+  // ---------------------------------------------------------------------------
+  // Generation / assembly
+  // ---------------------------------------------------------------------------
 
   async function handleGenerate() {
     if (!canGenerate || isGenerating) return;
     setIsGenerating(true);
     setGenerationError(null);
     try {
+      const fd = new FormData();
+      fd.append("text", noteText);
+      fd.append("questionCount", String(questionCount));
+      fd.append("difficulty", difficulty);
+      for (const file of attachedFiles) fd.append("file", file);
+
       const res = await fetch("/api/ai-coach/generate", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ textContent: noteText, questionCount }),
+        body: fd,
       });
 
       if (res.status === 402) {
@@ -145,6 +222,13 @@ export default function AiCoach() {
             message?: string;
             reason?: string;
           };
+          if (data.message === "INVALID_API_KEY") {
+            setKeyError(
+              "Ключ Gemini отклонён — удалите его и добавьте действующий",
+            );
+            setKeyLinked(false);
+            return;
+          }
           msg = data.reason ?? data.message ?? msg;
         } catch {}
         setGenerationError(msg);
@@ -153,15 +237,14 @@ export default function AiCoach() {
 
       const data = (await res.json()) as GenerateResponse;
       const questions = mapQuestions(data);
-
       if (questions.length === 0) {
         setGenerationError(
           "Все вопросы оказались дублями. Попробуйте другой материал.",
         );
         return;
       }
-
       setQuizQuestions(questions);
+      setWeakQuestions([]);
       setCurrentIndex(0);
       setSelectedAnswers({});
       setStep("quiz");
@@ -172,6 +255,59 @@ export default function AiCoach() {
     }
   }
 
+  async function handleAssemble() {
+    if (!canAssemble || isGenerating) return;
+    setIsGenerating(true);
+    setGenerationError(null);
+    try {
+      const res = await fetch("/api/ai-coach/quiz", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          topicIds: [...selectedTopicIds],
+          difficulty,
+          count: questionCount,
+        }),
+      });
+
+      if (!res.ok) {
+        let msg = "Не удалось загрузить вопросы";
+        try {
+          msg = ((await res.json()) as { message?: string }).message ?? msg;
+        } catch {}
+        setGenerationError(msg);
+        return;
+      }
+
+      const data = (await res.json()) as QuizApiResponse;
+      const questions = mapExistingQuestions(data.questions);
+      if (questions.length === 0) {
+        setGenerationError(
+          "Нет вопросов для выбранной сложности — попробуйте изменить настройки",
+        );
+        return;
+      }
+      setQuizQuestions(questions);
+      setWeakQuestions([]);
+      setCurrentIndex(0);
+      setSelectedAnswers({});
+      setStep("quiz");
+    } catch {
+      setGenerationError("Не удалось подключиться к серверу");
+    } finally {
+      setIsGenerating(false);
+    }
+  }
+
+  function handleStart() {
+    if (activeTab === "generate") handleGenerate();
+    else handleAssemble();
+  }
+
+  // ---------------------------------------------------------------------------
+  // Quiz handlers
+  // ---------------------------------------------------------------------------
+
   function handleSelectOption(optionId: string) {
     setSelectedAnswers((prev) => ({ ...prev, [currentQuestion.id]: optionId }));
   }
@@ -181,10 +317,13 @@ export default function AiCoach() {
   function handlePrev() {
     if (currentIndex > 0) setCurrentIndex((i) => i - 1);
   }
+
   function handleFinish() {
     let correctCount = 0;
     const strongSet = new Set<string>();
     const weakSet = new Set<string>();
+    const wrongQs: Question[] = [];
+
     quizQuestions.forEach((q) => {
       const selected = selectedAnswers[q.id];
       if (selected === q.correctAnswerId) {
@@ -192,8 +331,12 @@ export default function AiCoach() {
         strongSet.add(q.topic);
       } else {
         weakSet.add(q.topic);
+        wrongQs.push(q);
       }
     });
+
+    setWeakQuestions(wrongQs);
+
     const incorrectCount = quizQuestions.length - correctCount;
     const percentage = Math.round((correctCount / quizQuestions.length) * 100);
     setQuizResult({
@@ -203,18 +346,43 @@ export default function AiCoach() {
       finalScore: percentage,
       percentage,
       xpEarned: correctCount * 50,
-      strongTopics: Array.from(strongSet),
-      weakTopics: Array.from(weakSet).filter((t) => !strongSet.has(t)),
+      strongTopics: Array.from(strongSet).filter((t) => !weakSet.has(t)),
+      weakTopics: Array.from(weakSet),
     });
     setStep("results");
   }
-  function resetQuiz(next: Step) {
+
+  function handleRetry() {
     setSelectedAnswers({});
     setCurrentIndex(0);
     setQuizResult(null);
     setGenerationError(null);
-    setStep(next);
+    setStep("quiz");
   }
+
+  function handlePracticeWeak() {
+    if (weakQuestions.length === 0) return;
+    setQuizQuestions(weakQuestions);
+    setWeakQuestions([]);
+    setCurrentIndex(0);
+    setSelectedAnswers({});
+    setQuizResult(null);
+    setGenerationError(null);
+    setStep("quiz");
+  }
+
+  function resetToSetup() {
+    setSelectedAnswers({});
+    setCurrentIndex(0);
+    setQuizResult(null);
+    setWeakQuestions([]);
+    setGenerationError(null);
+    setStep("setup");
+  }
+
+  // ---------------------------------------------------------------------------
+  // Render: quiz / results
+  // ---------------------------------------------------------------------------
 
   if (step === "quiz" && currentQuestion) {
     return (
@@ -228,7 +396,7 @@ export default function AiCoach() {
           onNext={handleNext}
           onPrev={handlePrev}
           onFinish={handleFinish}
-          onExit={() => resetQuiz("setup")}
+          onExit={resetToSetup}
         />
       </div>
     );
@@ -238,17 +406,17 @@ export default function AiCoach() {
       <div className="flex min-h-[70vh] items-center justify-center px-2 py-8">
         <ResultsScreen
           result={quizResult}
-          onRetry={() => resetQuiz("quiz")}
-          onPracticeWeak={() => resetQuiz("quiz")}
-          onBackToCoach={() => resetQuiz("setup")}
+          onRetry={handleRetry}
+          onPracticeWeak={handlePracticeWeak}
+          onBackToCoach={resetToSetup}
         />
       </div>
     );
   }
 
-  const selectedSubjects = subjects.filter((s) =>
-    selectedSubjectIds.includes(s.id),
-  );
+  // ---------------------------------------------------------------------------
+  // Render: setup
+  // ---------------------------------------------------------------------------
 
   const header = (
     <div>
@@ -262,8 +430,7 @@ export default function AiCoach() {
         </h2>
       </div>
       <p className="mt-2 max-w-2xl text-sm leading-6 text-gray-600">
-        Вставьте текст конспекта или лекции — AI Exam Coach определит предмет
-        автоматически и сгенерирует вопросы трёх уровней сложности.
+        Сгенерируйте тест из материала или выберите темы из готовой базы.
       </p>
     </div>
   );
@@ -272,25 +439,111 @@ export default function AiCoach() {
     return (
       <div className="mx-auto max-w-360 space-y-5">
         {header}
-        <GeminiKeyCard onLinked={() => setKeyLinked(true)} />
+        <GeminiKeyCard
+          onLinked={() => {
+            setKeyLinked(true);
+            setKeyError(null);
+          }}
+          errorMessage={keyError ?? undefined}
+        />
       </div>
     );
   }
 
+  const tabs = (
+    <div className="flex rounded-xl border border-gray-200 bg-gray-50 p-0.5">
+      {(
+        [
+          { id: "generate", label: "ИИ-Генерация" },
+          { id: "database", label: "База тестов" },
+        ] as const
+      ).map((tab) => (
+        <button
+          key={tab.id}
+          type="button"
+          onClick={() => {
+            setActiveTab(tab.id);
+            setGenerationError(null);
+          }}
+          className={cn(
+            "flex-1 rounded-[10px] px-4 py-2 text-sm font-medium transition-colors",
+            activeTab === tab.id
+              ? "bg-white text-gray-900 shadow-sm"
+              : "text-gray-500 hover:text-gray-700",
+          )}
+        >
+          {tab.label}
+        </button>
+      ))}
+    </div>
+  );
+
+  const statusLine =
+    activeTab === "database" ? (
+      <p className="text-xs text-gray-500">
+        {canAssemble
+          ? `${selectedTopicIds.size} ${selectedTopicIds.size === 1 ? "тема" : selectedTopicIds.size < 5 ? "темы" : "тем"} выбрано`
+          : "Выберите хотя бы одну тему"}
+      </p>
+    ) : (
+      <p className="text-xs text-gray-500">
+        {attachedFiles.length > 0 && noteText.trim().length > 0
+          ? `${attachedFiles.length} файл(а) + ${noteText.trim().length} симв.`
+          : attachedFiles.length > 0
+            ? `${attachedFiles.length} файл(а) прикреплено`
+            : noteText.trim().length > 0
+              ? `${noteText.trim().length} символов`
+              : "Введите текст или прикрепите файл"}
+      </p>
+    );
+
   return (
     <div className="mx-auto max-w-360 space-y-5">
       {header}
+      {tabs}
 
-      <NotesInput
-        attachedFiles={attachedFiles}
-        onAddFile={handleAddFile}
-        onRemoveFile={handleRemoveFile}
-        text={noteText}
-        onTextChange={setNoteText}
-        canGenerate={canGenerate}
-        isGenerating={isGenerating}
-        onGenerate={handleGenerate}
-        hint={hint}
+      <Card className="rounded-2xl border-gray-200 bg-white p-4 shadow-sm sm:p-5">
+        {activeTab === "generate" ? (
+          <>
+            <h3 className="mb-3 text-base font-semibold sm:text-lg">
+              ИИ-Генерация квиза по материалу
+            </h3>
+            <NotesInput
+              attachedFiles={attachedFiles}
+              onAddFile={handleAddFile}
+              onRemoveFile={handleRemoveFile}
+              text={noteText}
+              onTextChange={setNoteText}
+            />
+          </>
+        ) : (
+          <>
+            <h3 className="mb-1 text-base font-semibold sm:text-lg">
+              Готовая база вопросов
+            </h3>
+            <p className="mb-4 text-xs text-gray-500">
+              Выберите предметы — темы добавятся автоматически. Кликните на чип
+              для уточнения.
+            </p>
+            <SubjectSelect
+              subjects={subjects}
+              loading={subjectsLoading}
+              selectedSubjectIds={selectedSubjectIds}
+              selectedTopicIds={selectedTopicIds}
+              openAccordionSubjectId={openAccordionSubjectId}
+              onToggleSubject={handleToggleSubject}
+              onToggleTopic={handleToggleTopic}
+              onOpenAccordion={handleOpenAccordion}
+            />
+          </>
+        )}
+      </Card>
+
+      <GenerationSettings
+        questionCount={questionCount}
+        onQuestionCountChange={setQuestionCount}
+        difficulty={difficulty}
+        onDifficultyChange={setDifficulty}
       />
 
       {generationError && (
@@ -300,35 +553,27 @@ export default function AiCoach() {
         </div>
       )}
 
-      <GenerationSettings
-        questionCount={questionCount}
-        onQuestionCountChange={setQuestionCount}
-        difficulty={difficulty}
-        onDifficultyChange={setDifficulty}
-        questionType={questionType}
-        onQuestionTypeChange={setQuestionType}
-      />
-
-      <SubjectSelect
-        subjects={subjects}
-        loading={subjectsLoading}
-        selectedSubjectIds={selectedSubjectIds}
-        onToggle={handleToggleSubject}
-      />
-
-      {selectedSubjects.length > 0 && (
-        <div className="space-y-3">
-          {selectedSubjects.map((subject) => (
-            <SubjectTopicsPanel key={subject.id} subject={subject} />
-          ))}
-        </div>
-      )}
-
-      <GenerateButton
-        canGenerate={canGenerate}
-        hint={hint}
-        onGenerate={handleGenerate}
-      />
+      <div className="flex items-center justify-between">
+        {statusLine}
+        <button
+          type="button"
+          disabled={!canStart || isGenerating}
+          onClick={handleStart}
+          className="flex items-center gap-2 rounded-xl bg-blue-600 px-6 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {isGenerating ? (
+            <>
+              <Loader2 aria-hidden="true" className="size-4 animate-spin" />
+              {activeTab === "generate" ? "Генерация…" : "Загрузка…"}
+            </>
+          ) : (
+            <>
+              <Play aria-hidden="true" className="size-4" />
+              Сформировать тест
+            </>
+          )}
+        </button>
+      </div>
     </div>
   );
 }
