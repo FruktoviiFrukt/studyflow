@@ -10,7 +10,7 @@ test("generation requires text notes to be present", () => {
 });
 
 test("generation is blocked when question count is below minimum", () => {
-  for (const questionCount of [0, 1, 5, 9]) {
+  for (const questionCount of [0, 1, 2, 4]) {
     const result = getGenerationReadiness({ hasNotes: true, questionCount });
     assert.equal(
       result.canGenerate,
@@ -22,7 +22,7 @@ test("generation is blocked when question count is below minimum", () => {
 });
 
 test("generation is allowed at minimum question count and above", () => {
-  for (const questionCount of [10, 15, 20, 30]) {
+  for (const questionCount of [5, 10, 15, 20]) {
     const result = getGenerationReadiness({ hasNotes: true, questionCount });
     assert.equal(
       result.canGenerate,

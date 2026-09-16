@@ -65,15 +65,12 @@ model UserSubject {
 
 model Topic {
   id        String   @id @default(cuid())
-  name      String
-  subjectId String
+  name      String   @unique // globally unique — shared across subjects via M2M join
   createdAt DateTime @default(now())
 
-  subject   FacultySubject @relation(fields: [subjectId], references: [id])
+  subjects  FacultySubject[] // M2M: one topic can appear under many subjects
   questions Question[]
   documents Document[]
-
-  @@unique([subjectId, name]) // deduplication: same topic name per subject is one record
 }
 
 enum QuestionType {
