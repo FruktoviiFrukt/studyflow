@@ -49,12 +49,13 @@ export default function GeminiKeyCard({ onLinked, onUnlinked }: Props) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ apiKey: keyValue.trim() }),
       });
-      const data = (await res.json()) as { message?: string };
       if (!res.ok) {
-        setStatus({
-          type: "error",
-          message: data.message ?? "Не удалось привязать ключ",
-        });
+        let message = "Не удалось привязать ключ";
+        try {
+          const data = (await res.json()) as { message?: string };
+          if (data.message) message = data.message;
+        } catch {}
+        setStatus({ type: "error", message });
         return;
       }
       setLinked(true);
@@ -62,7 +63,10 @@ export default function GeminiKeyCard({ onLinked, onUnlinked }: Props) {
       setStatus({ type: "success", message: "Ключ успешно привязан" });
       onLinked?.();
     } catch {
-      setStatus({ type: "error", message: "Ошибка сети" });
+      setStatus({
+        type: "error",
+        message: "Не удалось подключиться к серверу",
+      });
     } finally {
       setSaving(false);
     }
@@ -164,7 +168,7 @@ export default function GeminiKeyCard({ onLinked, onUnlinked }: Props) {
                 type={showKey ? "text" : "password"}
                 value={keyValue}
                 onChange={(e) => setKeyValue(e.target.value)}
-                placeholder="AIza…"
+                placeholder="Вставьте ключ из Google AI Studio…"
                 autoComplete="off"
                 spellCheck={false}
                 className={inputCls}
