@@ -2,15 +2,12 @@
 
 import Image from "next/image";
 import Navigation from "./Navigation";
-import { signOut, useSession } from "next-auth/react";
+import UserMenu from "./UserMenu";
+import { signOut } from "next-auth/react";
 
 import { LogOut } from "lucide-react";
 
 export default function Sidebar() {
-  const { data: session } = useSession();
-  const userName = session?.user?.name ?? "Student";
-  const userEmail = session?.user?.email ?? "";
-
   return (
     <aside className="fixed left-0 top-0 z-40 hidden h-screen w-64 flex-col border-r border-gray-200 bg-white px-4 py-5 md:flex">
       {/* Logo */}
@@ -34,17 +31,7 @@ export default function Sidebar() {
 
       {/* User */}
       <div className="shrink-0 border-t border-gray-100 pt-4">
-        <div className="mb-3 flex items-center gap-3 px-2">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue-600 text-sm font-semibold text-white">
-            {userName.charAt(0).toUpperCase()}
-          </div>
-
-          <div className="min-w-0">
-            <p className="text-sm font-semibold text-gray-900">{userName}</p>
-
-            <p className="truncate text-xs text-gray-500">{userEmail}</p>
-          </div>
-        </div>
+        <UserMenu variant="sidebar" />
 
         <button
           type="button"
