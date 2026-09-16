@@ -1,8 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
-
 generator client {
   provider = "prisma-client"
   output   = "../lib/generated/prisma"
@@ -12,17 +7,177 @@ datasource db {
   provider = "postgresql"
 }
 
+// ---------------------------------------------------------------------------
+// Auth
+// ---------------------------------------------------------------------------
+
 enum Role {
   STUDENT
   ADMIN
 }
 
 model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  password     String
+  name         String
+  role         Role     @default(STUDENT)
+  group        String?
+  geminiApiKey String? // AES-256-GCM encrypted, never stored plain
+  createdAt    DateTime @default(now())
+
+  enrolledSubjects UserSubject[]
+  documents        Document[]
+  quizSessions     QuizSession[]
+}
+
+// ---------------------------------------------------------------------------
+// Faculty subject registry  (admin-seeded, read-only for students)
+// ---------------------------------------------------------------------------
+
+model FacultySubject {
   id        String   @id @default(cuid())
-  email     String   @unique
-  password  String
-  name      String
-  role      Role     @default(STUDENT)
-  group     String?
+  name      String   @unique // "Объектно-ориентированное программирование"
+  code      String   @unique // "OOP101"
+  faculty   String // "FCIM"
+  active    Boolean  @default(true)
   createdAt DateTime @default(now())
+
+  topics      Topic[]
+  enrollments UserSubject[]
+  documents   Document[]
+}
+
+// Student's enrolled subjects for the current semester
+model UserSubject {
+  userId    String
+  subjectId String
+
+  user    User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subject FacultySubject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+
+  @@id([userId, subjectId])
+}
+
+// ---------------------------------------------------------------------------
+// Knowledge base: Topic → Question → Option
+// ---------------------------------------------------------------------------
+
+model Topic {
+  id        String   @id @default(cuid())
+  name      String
+  subjectId String
+  createdAt DateTime @default(now())
+
+  subject   FacultySubject @relation(fields: [subjectId], references: [id])
+  questions Question[]
+  documents Document[]
+
+  @@unique([subjectId, name]) // deduplication: same topic name per subject is one record
+}
+
+enum QuestionType {
+  MULTIPLE_CHOICE
+  TRUE_FALSE
+}
+
+enum Difficulty {
+  EASY
+  MEDIUM
+  HARD
+}
+
+model Question {
+  id         String       @id @default(cuid())
+  text       String
+  textHash   String       @unique // SHA-256 of normalised text — prevents exact duplicates
+  type       QuestionType
+  difficulty Difficulty
+  topicId    String
+  approvedAt DateTime? // null = visible only to original requester; set = public in community pool
+  createdAt  DateTime     @default(now())
+
+  topic       Topic                @relation(fields: [topicId], references: [id])
+  options     Option[]
+  sessionRefs QuizSessionQuestion[]
+  answers     QuizAnswer[]
+}
+
+model Option {
+  id         String   @id @default(cuid())
+  text       String
+  isCorrect  Boolean
+  questionId String
+
+  question Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+}
+
+// ---------------------------------------------------------------------------
+// Document upload + generation pipeline
+// ---------------------------------------------------------------------------
+
+enum DocumentStatus {
+  PENDING
+  PROCESSING
+  DONE
+  REJECTED
+}
+
+model Document {
+  id           String         @id @default(cuid())
+  userId       String
+  fileName     String?
+  textContent  String? // extracted text — no binary blobs in DB
+  subjectId    String? // resolved after AI classification
+  topicId      String? // resolved after AI classification
+  status       DocumentStatus @default(PENDING)
+  errorMessage String?
+  createdAt    DateTime       @default(now())
+
+  user    User            @relation(fields: [userId], references: [id])
+  subject FacultySubject? @relation(fields: [subjectId], references: [id])
+  topic   Topic?          @relation(fields: [topicId], references: [id])
+}
+
+// ---------------------------------------------------------------------------
+// Quiz sessions (history + "practice weak topics")
+// ---------------------------------------------------------------------------
+
+model QuizSession {
+  id          String    @id @default(cuid())
+  userId      String
+  score       Int? // 0-100 percentage, null while in progress
+  completedAt DateTime?
+  createdAt   DateTime  @default(now())
+
+  user      User                  @relation(fields: [userId], references: [id])
+  questions QuizSessionQuestion[]
+  answers   QuizAnswer[]
+}
+
+// Ordered list of questions assigned to a session
+model QuizSessionQuestion {
+  sessionId  String
+  questionId String
+  order      Int
+
+  session  QuizSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  question Question    @relation(fields: [questionId], references: [id])
+
+  @@id([sessionId, questionId])
+}
+
+// One answer per question per session
+model QuizAnswer {
+  id               String   @id @default(cuid())
+  sessionId        String
+  questionId       String
+  selectedOptionId String
+  isCorrect        Boolean
+  createdAt        DateTime @default(now())
+
+  session  QuizSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  question Question    @relation(fields: [questionId], references: [id])
+
+  @@unique([sessionId, questionId]) // one answer per question per session
 }
