@@ -8,6 +8,7 @@ import { prisma } from "@/lib/prisma";
 import type { Prisma } from "@/lib/generated/prisma/client";
 import {
   lessonErrors,
+  SCHEDULE_KIND_LABELS,
   type AdminLesson,
   type ScheduleHoliday,
 } from "@/lib/admin-schedule";
@@ -62,6 +63,7 @@ function fail(message: string): never {
 export function serializeSchedule(r: RecordWithRelations) {
   return {
     id: r.id,
+    kind: r.kind,
     version: r.updatedAt.toISOString(),
     year: r.semester.academicYear.name,
     course: String(r.course),
@@ -262,6 +264,9 @@ export async function importSchedule(request: Request) {
   )
     fail("Выберите PDF до 20 МБ.");
   const year = String(form.get("year") || "");
+  const kind = form.get("kind") ?? "STUDENT";
+  if (typeof kind !== "string" || !Object.hasOwn(SCHEDULE_KIND_LABELS, kind))
+    fail("Выберите тип расписания.");
   const from = String(form.get("from") || ""),
     to = String(form.get("to") || ""),
     first = String(form.get("first") || "");
@@ -347,6 +352,7 @@ export async function importSchedule(request: Request) {
           data: {
             semesterId: semester.id,
             course,
+            kind: kind as keyof typeof SCHEDULE_KIND_LABELS,
             title: file.name,
             sourceFilename: file.name,
             sourceFileKey: key,
@@ -452,6 +458,7 @@ export async function changeSchedule(request: Request, id: string) {
             where: {
               id: { not: id },
               status: "PUBLISHED",
+              kind: record.kind,
               validFrom: { lte: record.validTo },
               validTo: { gte: record.validFrom },
               lessons: {

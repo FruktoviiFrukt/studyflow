@@ -99,6 +99,7 @@ export function createScheduleGet({ authenticate, db }: Dependencies) {
       const schedules = await db.scheduleImport.findMany({
         where: {
           status: "PUBLISHED",
+          kind: "STUDENT",
           validFrom: { lte: right },
           validTo: { gte: left },
           semester: {

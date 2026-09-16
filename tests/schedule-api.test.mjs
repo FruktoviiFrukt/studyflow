@@ -167,6 +167,7 @@ test("API uses current database membership, limits query and returns calculated 
   assert.equal(ctx.calls[0][1].select.password, undefined);
   const query = ctx.calls[1][1];
   assert.equal(query.where.status, "PUBLISHED");
+  assert.equal(query.where.kind, "STUDENT");
   assert.equal(query.where.lessons.some.audiences.some.groupId, "current");
   assert.equal(
     query.where.validFrom.lte.toISOString(),

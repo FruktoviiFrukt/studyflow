@@ -1,6 +1,12 @@
 // Frontend-only contracts. These records are never written to a server.
 export type Parity = "every" | "odd" | "even";
 export type Audience = { group: string; subgroup: "all" | "1" | "2" };
+export type ScheduleKind = "STUDENT" | "GLOBAL" | "ASSESSMENT";
+export const SCHEDULE_KIND_LABELS: Record<ScheduleKind, string> = {
+  STUDENT: "Расписание студентов",
+  GLOBAL: "Глобальное расписание",
+  ASSESSMENT: "Расписание аттестаций",
+};
 export type AdminLesson = {
   id: string;
   subject: string;
@@ -18,6 +24,7 @@ export type AdminLesson = {
 };
 export type ScheduleDraft = {
   id: string;
+  kind: ScheduleKind;
   year: string;
   course: string;
   semester: string;
@@ -258,6 +265,7 @@ export function initialSchedules(): ScheduleDraft[] {
   return [
     {
       id: "example-draft",
+      kind: "STUDENT",
       year: "2026/2027",
       course: "1",
       semester: "1",
@@ -267,6 +275,7 @@ export function initialSchedules(): ScheduleDraft[] {
     },
     {
       id: "example-published",
+      kind: "STUDENT",
       year: "2026/2027",
       course: "2",
       semester: "1",

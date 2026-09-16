@@ -45,6 +45,12 @@ enum ScheduleStatus {
   PUBLISHED
 }
 
+enum ScheduleKind {
+  STUDENT
+  GLOBAL
+  ASSESSMENT
+}
+
 enum LessonType {
   LECTURE
   LABORATORY
@@ -107,6 +113,7 @@ model ScheduleImport {
   id             String            @id @default(cuid())
   semesterId     String
   course         Int
+  kind           ScheduleKind      @default(STUDENT)
   title          String
   sourceFilename String?
   sourceFileKey  String?
@@ -122,6 +129,7 @@ model ScheduleImport {
 
   @@index([semesterId, course, status])
   @@index([status, validFrom, validTo])
+  @@index([kind, status, validFrom, validTo])
 }
 
 model Lesson {

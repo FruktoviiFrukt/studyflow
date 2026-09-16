@@ -11,11 +11,13 @@ import {
 import {
   DAYS,
   PARITIES,
+  SCHEDULE_KIND_LABELS,
   emptyLesson,
   matchesStudent,
   scheduleIssues,
   type AdminLesson,
   type ScheduleDraft,
+  type ScheduleKind,
 } from "@/lib/admin-schedule";
 import { Field, fieldClass, SelectField } from "./schedule-fields";
 import LessonEditor from "./schedule-lesson-editor";
@@ -63,6 +65,10 @@ function PdfFileField() {
 
 export default function ScheduleManager() {
   const [records, setRecords] = useState<RecordData[]>([]);
+  const [kindFilter, setKindFilter] = useState<ScheduleKind | "ALL">("ALL");
+  const [statusFilter, setStatusFilter] = useState<
+    "draft" | "published" | "all"
+  >("all");
   const [draft, setDraft] = useState<RecordData | null>(null);
   const [dirty, setDirty] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -156,7 +162,9 @@ export default function ScheduleManager() {
       } else accept(body);
       setNotice(
         name === "publish"
-          ? "Расписание опубликовано и доступно студентам."
+          ? draft.kind === "STUDENT"
+            ? "Расписание опубликовано и доступно студентам."
+            : "Расписание опубликовано. Страница для выбранного типа ещё не подключена."
           : name === "delete"
             ? "Черновик удалён."
             : "Изменения сохранены в БД.",
@@ -176,11 +184,16 @@ export default function ScheduleManager() {
   const selectedGroup = groups.includes(group) ? group : groups[0] || "";
   const issues = draft ? scheduleIssues(draft.lessons) : [];
   const editable = draft?.status === "draft";
+  const filteredRecords = records.filter(
+    (record) =>
+      (kindFilter === "ALL" || record.kind === kindFilter) &&
+      (statusFilter === "all" || record.status === statusFilter),
+  );
   return (
     <section className="rounded-xl border border-gray-200 bg-white text-gray-900 shadow-sm">
       <header className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-200 p-5">
         <div>
-          <h2 className="text-xl font-semibold">Расписание студентов</h2>
+          <h2 className="text-xl font-semibold">Расписания</h2>
           <p className="mt-1 text-sm text-gray-500">
             Загрузка PDF, проверка и публикация
           </p>
@@ -213,14 +226,47 @@ export default function ScheduleManager() {
               Обновить
             </Button>
           </div>
+          <div className="grid gap-3 sm:max-w-xl sm:grid-cols-2">
+            <SelectField
+              label="Тип расписания"
+              value={kindFilter}
+              onChange={(event) =>
+                setKindFilter(event.target.value as ScheduleKind | "ALL")
+              }
+            >
+              <option value="ALL">Все типы</option>
+              {Object.entries(SCHEDULE_KIND_LABELS).map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </SelectField>
+            <SelectField
+              label="Статус"
+              value={statusFilter}
+              onChange={(event) =>
+                setStatusFilter(
+                  event.target.value as "draft" | "published" | "all",
+                )
+              }
+            >
+              <option value="all">Все статусы</option>
+              <option value="draft">Черновики</option>
+              <option value="published">Опубликованные</option>
+            </SelectField>
+          </div>
           {loading ? (
             <p role="status">Загрузка…</p>
           ) : !records.length ? (
             <p className="text-sm text-gray-500">
               Расписаний пока нет. Загрузите PDF.
             </p>
+          ) : !filteredRecords.length ? (
+            <p className="text-sm text-gray-500">
+              По выбранным фильтрам расписаний нет.
+            </p>
           ) : (
-            records.map((r) => (
+            filteredRecords.map((r) => (
               <div
                 key={r.id}
                 className="flex flex-wrap items-center justify-between gap-3 rounded-lg border p-4"
@@ -228,7 +274,8 @@ export default function ScheduleManager() {
                 <div>
                   <p className="font-medium">{r.filename}</p>
                   <p className="text-sm text-gray-500">
-                    {r.year} · {r.course} курс · {r.semester} семестр ·{" "}
+                    {SCHEDULE_KIND_LABELS[r.kind]} · {r.year} · {r.course} курс
+                    · {r.semester} семестр ·{" "}
                     {r.status === "draft" ? "Черновик" : "Опубликовано"}
                   </p>
                 </div>
@@ -251,8 +298,8 @@ export default function ScheduleManager() {
             <div>
               <h3 className="font-semibold">{draft.filename}</h3>
               <p className="text-sm text-gray-500">
-                {draft.year} · {draft.course} курс · {draft.validFrom} —{" "}
-                {draft.validTo}
+                {SCHEDULE_KIND_LABELS[draft.kind]} · {draft.year} ·{" "}
+                {draft.course} курс · {draft.validFrom} — {draft.validTo}
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -534,6 +581,17 @@ export default function ScheduleManager() {
           >
             <fieldset disabled={busy} className="space-y-4">
               <PdfFileField />
+              <SelectField
+                label="Тип расписания"
+                name="kind"
+                defaultValue="STUDENT"
+              >
+                {Object.entries(SCHEDULE_KIND_LABELS).map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </SelectField>
               <div className="grid grid-cols-3 gap-3">
                 <Field label="Учебный год">
                   <input
@@ -608,7 +666,9 @@ export default function ScheduleManager() {
             <DialogTitle>Подтвердите действие</DialogTitle>
             <DialogDescription>
               {confirmation === "publish"
-                ? "Расписание станет доступно студентам."
+                ? draft?.kind === "STUDENT"
+                  ? "Расписание станет доступно студентам."
+                  : "Расписание получит статус опубликованного. Страница для выбранного типа ещё не подключена."
                 : confirmation === "unpublish"
                   ? "Расписание будет скрыто от студентов до повторной публикации."
                   : "Черновик и его занятия будут удалены из БД."}

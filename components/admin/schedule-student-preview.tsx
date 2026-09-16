@@ -13,7 +13,7 @@ import {
   formatDate,
   weekLabel,
 } from "@/lib/schedule";
-import { Field, fieldClass } from "./schedule-fields";
+import DatePicker from "@/components/schedule/date-picker";
 
 function slotLabel(slot: string) {
   const exact = SLOTS.indexOf(slot);
@@ -65,16 +65,18 @@ export default function ScheduleStudentPreview({
   return (
     <>
       <div className="flex flex-wrap items-end gap-4 border-b border-gray-100 p-5">
-        <Field label="Дата предпросмотра">
-          <input
-            type="date"
-            className={fieldClass}
+        <div className="grid gap-1.5">
+          <span className="text-sm font-medium text-gray-700">
+            Дата предпросмотра
+          </span>
+          <DatePicker
+            label="Дата предпросмотра"
+            showValue
             value={date}
-            onChange={(e) => {
-              if (e.target.value) setDate(e.target.value);
-            }}
+            today={universityToday()}
+            onSelect={setDate}
           />
-        </Field>
+        </div>
         <p className="pb-2 text-sm text-gray-500">
           {weekLabel(week)} · чётность задаётся фильтром «Неделя»
         </p>

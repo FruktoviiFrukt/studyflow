@@ -47,6 +47,7 @@ test("real PDF draft, access control, edit, holiday, publication and student API
     expect((await student.get("/api/admin/schedule")).status()).toBe(403);
     const upload = await admin.post("/api/admin/schedule", {
       multipart: {
+        kind: "STUDENT",
         year: "2026/2027",
         course: "1",
         semester: "1",
@@ -63,6 +64,7 @@ test("real PDF draft, access control, edit, holiday, publication and student API
     });
     expect(upload.ok(), await upload.text()).toBe(true);
     let record = await upload.json();
+    expect(record.kind).toBe("STUDENT");
     id = record.id;
     expect(record.lessons.length).toBeGreaterThan(100);
     expect(
