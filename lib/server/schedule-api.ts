@@ -7,7 +7,7 @@ import {
 
 type Dependencies = {
   authenticate: () => Promise<{ user?: { id?: string } } | null>;
-  db: Pick<PrismaClient, "user" | "scheduleImport">;
+  db: Pick<PrismaClient, "user" | "studyGroup" | "scheduleImport">;
 };
 
 function json(body: unknown, status = 200) {
@@ -58,8 +58,8 @@ export function createScheduleGet({ authenticate, db }: Dependencies) {
         where: { id: userId },
         select: {
           groupId: true,
+          group: true,
           studyGroup: { select: { id: true, name: true } },
-          subgroup: { select: { id: true, groupId: true, number: true } },
         },
       });
       if (!user)
@@ -70,28 +70,32 @@ export function createScheduleGet({ authenticate, db }: Dependencies) {
           },
           401,
         );
+      const studyGroup =
+        user.studyGroup ||
+        (user.group
+          ? await db.studyGroup.findUnique({
+              where: { name: user.group },
+              select: { id: true, name: true },
+            })
+          : null);
+      const groupId = studyGroup?.id ?? null;
       const metadata = {
         from,
         to,
         timeZone: "Europe/Chisinau",
-        group: user.studyGroup,
-        subgroup: user.subgroup
-          ? { id: user.subgroup.id, number: user.subgroup.number }
-          : null,
+        group: studyGroup,
       };
-      if (!user.groupId || !user.studyGroup || !user.subgroup) {
+      if (!groupId) {
         return json({
           ...metadata,
           status: "PROFILE_REQUIRED",
-          message: "Выберите группу и подгруппу в профиле.",
+          message: "Выберите группу в профиле.",
           days: [],
         });
       }
-      if (user.subgroup.groupId !== user.groupId)
-        throw new Error("Invalid membership");
       const left = new Date(`${from}T00:00:00Z`);
       const right = new Date(`${to}T00:00:00Z`);
-      const audience = { groupId: user.groupId };
+      const audience = { groupId };
       const schedules = await db.scheduleImport.findMany({
         where: {
           status: "PUBLISHED",
@@ -109,7 +113,7 @@ export function createScheduleGet({ authenticate, db }: Dependencies) {
           holidays: {
             where: { startsOn: { lte: right }, endsOn: { gte: left } },
           },
-          // Keep all weekdays and subgroups of this group to distinguish an empty
+          // Keep all weekdays of this group to distinguish an empty
           // student day from absence of a published group timetable.
           lessons: {
             where: { audiences: { some: audience } },
@@ -121,7 +125,7 @@ export function createScheduleGet({ authenticate, db }: Dependencies) {
       const result = calculateStudentSchedule({
         from,
         to,
-        student: { groupId: user.groupId, subgroup: user.subgroup },
+        student: { groupId },
         schedules,
       });
       return json({ ...metadata, ...result });

@@ -11,7 +11,6 @@ export type ScheduleForCalculation = Prisma.ScheduleImportGetPayload<{
 
 export type StudentMembership = {
   groupId: string | null;
-  subgroup: { id: string; groupId: string } | null;
 };
 
 export type DatedLesson = {
@@ -106,11 +105,7 @@ export function calculateStudentSchedule({
   schedules: ScheduleForCalculation[];
 }): { status: "PROFILE_REQUIRED" | "READY"; days: ScheduleDay[] } {
   const { start, end } = validateScheduleRange(from, to);
-  if (!student.groupId || !student.subgroup)
-    return { status: "PROFILE_REQUIRED", days: [] };
-  if (student.subgroup.groupId !== student.groupId)
-    throw new Error("Подгруппа не принадлежит группе студента.");
-  const subgroupId = student.subgroup.id;
+  if (!student.groupId) return { status: "PROFILE_REQUIRED", days: [] };
   const published = schedules.filter(
     (schedule) =>
       schedule.status === "PUBLISHED" &&
@@ -192,10 +187,7 @@ export function calculateStudentSchedule({
               (lesson.weekPattern === "EVERY" ||
                 lesson.weekPattern === week.parity) &&
               lesson.audiences.some(
-                (audience) =>
-                  audience.groupId === student.groupId &&
-                  (audience.subgroupId === null ||
-                    audience.subgroupId === subgroupId),
+                (audience) => audience.groupId === student.groupId,
               ),
           )
           .map((lesson) => ({

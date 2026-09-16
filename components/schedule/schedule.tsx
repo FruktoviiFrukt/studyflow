@@ -120,7 +120,6 @@ export default function Schedule({ initialToday }: { initialToday: string }) {
         {data?.group && (
           <p className="mt-2 text-sm text-gray-500">
             Группа {data.group.name}
-            {data.subgroup && ` · Подгруппа ${data.subgroup.number}`}
             {weeks
               .map(
                 (w) =>
@@ -247,8 +246,8 @@ export default function Schedule({ initialToday }: { initialToday: string }) {
           <div className="space-y-3 p-10 text-center">
             <h3 className="font-semibold">Заполните профиль</h3>
             <p className="text-sm text-gray-500">
-              Для личного расписания необходимо указать группу и подгруппу. Если
-              выбор пока недоступен, обратитесь к администратору.
+              Для личного расписания необходимо указать группу. Если выбор пока
+              недоступен, обратитесь к администратору.
             </p>
             <Button variant="outline" onClick={retry}>
               Проверить снова
@@ -308,10 +307,8 @@ export default function Schedule({ initialToday }: { initialToday: string }) {
           >
             <span
               aria-hidden="true"
-              className={cn(
-                "size-2 rounded-full",
-                subjectStyle(subject.colorKey).dot,
-              )}
+              className="size-2 rounded-full"
+              style={subjectStyle(subject.name).dotStyle}
             />
             {subject.name}
           </span>

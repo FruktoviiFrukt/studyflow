@@ -6,7 +6,7 @@ import {
 } from "../lib/server/student-schedule.ts";
 
 const date = (s) => new Date(`${s}T00:00:00Z`);
-const student = { groupId: "g1", subgroup: { id: "s1", groupId: "g1" } };
+const student = { groupId: "g1" };
 function fixture() {
   const make = (id, weekPattern, subgroupId = null) => ({
     id,
@@ -71,7 +71,7 @@ test("academic weeks continue across semesters, year boundary and DST", () => {
   assert.throws(() => academicWeek("2026-09-14", "2026-09-01"), RangeError);
 });
 
-test("filters subgroup and parity; shared lecture appears once; evening time and null topic survive", () => {
+test("shows both parallel options to the group and filters parity", () => {
   const s = fixture();
   s.lessons[2].audiences.push(
     { groupId: "g2", subgroupId: null },
@@ -80,14 +80,14 @@ test("filters subgroup and parity; shared lecture appears once; evening time and
   const day = run(s).days[0];
   assert.deepEqual(
     day.lessons.map((l) => l.lessonId),
-    ["all", "odd", "sub1"],
+    ["all", "odd", "sub1", "sub2"],
   );
   assert.equal(day.lessons[0].startMinutes, 1125);
   assert.equal(day.lessons[0].endMinutes, 1215);
   assert.equal(day.lessons[0].topic, null);
   assert.deepEqual(
     run(s, "2026-09-21").days[0].lessons.map((l) => l.lessonId),
-    ["all", "even", "sub1"],
+    ["all", "even", "sub1", "sub2"],
   );
   assert.notEqual(
     day.lessons[0].id,
@@ -139,19 +139,14 @@ test("intersects year, semester and publication bounds and keeps empty days dist
   assert.equal(run(s).days[0].status, "NOT_PUBLISHED");
 });
 
-test("missing profile and mismatched subgroup are handled explicitly", () => {
+test("only a group is required in the profile", () => {
   assert.equal(
-    run(fixture(), undefined, undefined, { groupId: "g1", subgroup: null })
-      .status,
+    run(fixture(), undefined, undefined, { groupId: null }).status,
     "PROFILE_REQUIRED",
   );
-  assert.throws(
-    () =>
-      run(fixture(), undefined, undefined, {
-        groupId: "g1",
-        subgroup: { id: "s2", groupId: "g2" },
-      }),
-    /Подгруппа/,
+  assert.equal(
+    run(fixture(), undefined, undefined, { groupId: "g1" }).status,
+    "READY",
   );
 });
 

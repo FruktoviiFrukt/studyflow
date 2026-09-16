@@ -62,19 +62,13 @@ export const SLOTS = [
   "17:00–18:30",
   "18:45–20:15",
 ];
-export const TYPES = [
-  "Лекция",
-  "Лабораторная",
-  "Практика",
-  "Семинар",
-  "Не указан",
-];
+export const TYPES = ["Лекция", "Лабораторная", "Семинар"];
 
 export function emptyLesson(): AdminLesson {
   return {
     id: "",
     subject: "",
-    type: "Не указан",
+    type: "Семинар",
     day: 0,
     start: "08:00",
     end: "09:30",
@@ -101,39 +95,30 @@ export function lessonErrors(lesson: AdminLesson): string[] {
     errors.push("Окончание должно быть позже начала в пределах одного дня.");
   if (!lesson.audiences.length || lesson.audiences.some((a) => !a.group.trim()))
     errors.push("Укажите группу для каждого получателя.");
-  const seen = new Map<string, string[]>();
+  const seen = new Set<string>();
   for (const a of lesson.audiences) {
     const group = a.group.trim().toUpperCase();
-    const previous = seen.get(group) ?? [];
-    if (
-      previous.includes(a.subgroup) ||
-      (previous.length && (previous.includes("all") || a.subgroup === "all"))
-    )
+    if (seen.has(group))
       errors.push(`Группа ${group}: получатели дублируются.`);
-    seen.set(group, [...previous, a.subgroup]);
+    seen.add(group);
   }
   return [...new Set(errors)];
 }
 
 export function audienceLabel(a: Audience) {
-  return `${a.group} · ${a.subgroup === "all" ? "вся группа" : `подгр. ${a.subgroup}`}`;
+  return `${a.group} · вся группа`;
 }
 
 export function matchesStudent(
   lesson: AdminLesson,
   group: string,
-  subgroup: string,
   parity: string,
 ) {
   return (
     (parity === "all" ||
       lesson.parity === "every" ||
       lesson.parity === parity) &&
-    lesson.audiences.some(
-      (a) =>
-        (!group || a.group === group) &&
-        (subgroup === "all" || a.subgroup === "all" || a.subgroup === subgroup),
-    )
+    lesson.audiences.some((a) => !group || a.group === group)
   );
 }
 
@@ -146,7 +131,7 @@ export function scheduleIssues(lessons: AdminLesson[]) {
     if (!lesson.reviewed)
       issues.push({
         id: lesson.id,
-        message: "Нужно проверить данные и распределение по подгруппам.",
+        message: "Нужно сверить данные занятия с PDF.",
       });
   }
   for (let i = 0; i < lessons.length; i++) {
@@ -162,17 +147,13 @@ export function scheduleIssues(lessons: AdminLesson[]) {
         continue;
       const shared = a.audiences.some((x) =>
         b.audiences.some(
-          (y) =>
-            x.group.trim().toUpperCase() === y.group.trim().toUpperCase() &&
-            (x.subgroup === "all" ||
-              y.subgroup === "all" ||
-              x.subgroup === y.subgroup),
+          (y) => x.group.trim().toUpperCase() === y.group.trim().toUpperCase(),
         ),
       );
       if (shared)
         issues.push({
           id: b.id,
-          message: `Пересечение с «${a.subject}»: одна группа или подгруппа в одно время.`,
+          message: `Одновременное занятие с «${a.subject}»: проверьте варианты в PDF.`,
         });
     }
   }
@@ -184,12 +165,7 @@ export function publishDemo(
   id: string,
 ): ScheduleDraft[] {
   const selected = records.find((r) => r.id === id);
-  if (
-    !selected ||
-    selected.status !== "draft" ||
-    !selected.lessons.length ||
-    scheduleIssues(selected.lessons).length
-  )
+  if (!selected || selected.status !== "draft" || !selected.lessons.length)
     return records;
   return records.map((r) => (r.id === id ? { ...r, status: "published" } : r));
 }
@@ -216,7 +192,7 @@ export function exampleLessons(): AdminLesson[] {
       parity: "odd",
       teacher: "Stanciu L.",
       room: "611",
-      type: "Практика",
+      type: "Семинар",
     }),
     make("demo-2", "Линейная алгебра", {
       start: "09:45",
@@ -224,7 +200,7 @@ export function exampleLessons(): AdminLesson[] {
       parity: "even",
       teacher: "Stanciu L.",
       room: "611",
-      type: "Практика",
+      type: "Семинар",
     }),
     make("demo-3", "Математический анализ", {
       start: "11:30",
@@ -240,14 +216,14 @@ export function exampleLessons(): AdminLesson[] {
     make("demo-4", "Программирование", {
       day: 1,
       type: "Лабораторная",
-      audiences: [{ group: "SI-261", subgroup: "1" }],
+      audiences: [{ group: "SI-261", subgroup: "all" }],
       room: "D01",
       teacher: "Danilov I.",
     }),
     make("demo-5", "Программирование", {
       day: 1,
       type: "Лабораторная",
-      audiences: [{ group: "SI-261", subgroup: "2" }],
+      audiences: [{ group: "SI-261", subgroup: "all" }],
       room: "D03",
       teacher: "Chistol M.",
       reviewed: false,
@@ -256,7 +232,7 @@ export function exampleLessons(): AdminLesson[] {
       day: 2,
       start: "13:30",
       end: "15:00",
-      type: "Практика",
+      type: "Семинар",
       teacher: "Veleșcu L.",
       room: "203",
     }),

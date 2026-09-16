@@ -77,7 +77,6 @@ export default function ScheduleManager() {
   const [preview, setPreview] = useState(false);
   const [group, setGroup] = useState("");
   const [search, setSearch] = useState("");
-  const [subgroup, setSubgroup] = useState("1");
   const [parity, setParity] = useState("odd");
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
@@ -336,7 +335,7 @@ export default function ScheduleManager() {
             )}
             {preview ? (
               <>
-                <div className="grid gap-3 px-5 pb-5 sm:grid-cols-3">
+                <div className="grid gap-3 px-5 pb-5 sm:grid-cols-2">
                   <SelectField
                     label="Группа"
                     value={selectedGroup}
@@ -345,14 +344,6 @@ export default function ScheduleManager() {
                     {groups.map((g) => (
                       <option key={g}>{g}</option>
                     ))}
-                  </SelectField>
-                  <SelectField
-                    label="Подгруппа"
-                    value={subgroup}
-                    onChange={(e) => setSubgroup(e.target.value)}
-                  >
-                    <option value="1">1</option>
-                    <option value="2">2</option>
                   </SelectField>
                   <SelectField
                     label="Чётность"
@@ -365,7 +356,7 @@ export default function ScheduleManager() {
                 </div>
                 <Preview
                   lessons={draft.lessons.filter((l) =>
-                    matchesStudent(l, selectedGroup, subgroup, parity),
+                    matchesStudent(l, selectedGroup, parity),
                   )}
                   holidays={draft.holidays || []}
                   day=""
@@ -415,12 +406,7 @@ export default function ScheduleManager() {
                             </p>
                           </td>
                           <td className="max-w-xs p-3">
-                            {l.audiences
-                              .map(
-                                (a) =>
-                                  `${a.group}${a.subgroup === "all" ? "" : ` (${a.subgroup})`}`,
-                              )
-                              .join(", ")}
+                            {l.audiences.map((a) => a.group).join(", ")}
                           </td>
                           <td className="max-w-xs p-3 text-xs text-amber-800">
                             {issues
@@ -467,7 +453,7 @@ export default function ScheduleManager() {
                     Сохранить черновик
                   </Button>
                   <Button
-                    disabled={dirty || !draft.lessons.length || !!issues.length}
+                    disabled={dirty || !draft.lessons.length}
                     onClick={() => setConfirmation("publish")}
                   >
                     Опубликовать
@@ -538,9 +524,7 @@ export default function ScheduleManager() {
                 if (!r.ok) throw new Error(body.message);
                 accept(body);
                 setUpload(false);
-                setNotice(
-                  "PDF обработан. Проверьте занятия и распределение по подгруппам.",
-                );
+                setNotice("PDF обработан. Замечания к занятиям сохранены.");
               } catch (e) {
                 setError(e instanceof Error ? e.message : "Ошибка импорта");
               } finally {

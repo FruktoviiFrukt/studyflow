@@ -15,6 +15,17 @@ import {
 } from "@/lib/schedule";
 import { Field, fieldClass } from "./schedule-fields";
 
+function slotLabel(slot: string) {
+  const exact = SLOTS.indexOf(slot);
+  if (exact >= 0) return `${exact + 1} пара`;
+  const [start, end] = slot.split("–");
+  const first = SLOTS.findIndex((item) => item.startsWith(`${start}–`));
+  const last = SLOTS.findIndex((item) => item.endsWith(`–${end}`));
+  return first >= 0 && last > first
+    ? `${first + 1}–${last + 1} пары`
+    : "Другое время";
+}
+
 export default function ScheduleStudentPreview({
   lessons,
   day,
@@ -121,9 +132,7 @@ export default function ScheduleStudentPreview({
                   </span>
                   <span className="mt-1 block">{slot.split("–")[1]}</span>
                   <span className="mt-2 block text-[10px]">
-                    {SLOTS.includes(slot)
-                      ? `${SLOTS.indexOf(slot) + 1} пара`
-                      : "Другое время"}
+                    {slotLabel(slot)}
                   </span>
                 </th>
                 {days.map((d) => {

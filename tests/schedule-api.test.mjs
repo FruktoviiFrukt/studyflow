@@ -9,8 +9,9 @@ const { createScheduleGet } = await tsImport(
 const date = (s) => new Date(`${s}T00:00:00Z`);
 const profile = {
   groupId: "current",
+  group: "TI-245",
   studyGroup: { id: "current", name: "TI-245" },
-  subgroup: { id: "sub1", groupId: "current", number: 1 },
+  subgroup: null,
 };
 function setup({
   session = { user: { id: "student", group: "STALE-GROUP" } },
@@ -27,6 +28,14 @@ function setup({
           calls.push(["user", query]);
           if (failure) throw new Error("SECRET_DATABASE_URL");
           return user;
+        },
+      },
+      studyGroup: {
+        findUnique: async (query) => {
+          calls.push(["studyGroup", query]);
+          return query.where.name === "TI-245"
+            ? { id: "current", name: "TI-245" }
+            : null;
         },
       },
       scheduleImport: {
@@ -113,18 +122,29 @@ test("schedule API rejects invalid, duplicate and forged parameters before query
   }
 });
 
-test("deleted users return 401 and missing group/subgroup returns profile state without timetable query", async () => {
+test("deleted users return 401 and only a missing group requires profile completion", async () => {
   assert.equal((await setup({ user: null }).request()).status, 401);
-  for (const user of [
-    { ...profile, subgroup: null },
-    { groupId: null, studyGroup: null, subgroup: null },
-  ]) {
+  for (const user of [{ groupId: null, studyGroup: null }]) {
     const ctx = setup({ user });
     const response = await ctx.request();
     assert.equal(response.status, 200);
     assert.equal((await response.json()).status, "PROFILE_REQUIRED");
     assert.equal(ctx.calls.length, 1);
   }
+  assert.equal(
+    (
+      await setup({ user: profile })
+        .request()
+        .then((r) => r.json())
+    ).status,
+    "READY",
+  );
+  const legacy = setup({
+    user: { groupId: null, group: "TI-245", studyGroup: null },
+    schedules: [schedule()],
+  });
+  assert.equal((await legacy.request().then((r) => r.json())).status, "READY");
+  assert.equal(legacy.calls[1][0], "studyGroup");
 });
 
 test("API uses current database membership, limits query and returns calculated days without private fields", async () => {
@@ -140,6 +160,9 @@ test("API uses current database membership, limits query and returns calculated 
   assert.equal(body.days[0].lessons[0].endMinutes, 1215);
   assert.equal(body.days[0].week.parity, "ODD");
   assert.equal(JSON.stringify(body).includes("private-file"), false);
+  assert.equal(JSON.stringify(body).includes("reviewed"), false);
+  assert.equal(JSON.stringify(body).includes("sourceText"), false);
+  assert.equal(JSON.stringify(body).includes("warnings"), false);
   assert.deepEqual(ctx.calls[0][1].where, { id: "student" });
   assert.equal(ctx.calls[0][1].select.password, undefined);
   const query = ctx.calls[1][1];

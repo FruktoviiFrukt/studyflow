@@ -10,6 +10,21 @@ import {
 import type { ScheduleDay } from "@/lib/server/student-schedule";
 import { cn } from "@/lib/utils";
 
+function slotLabel(
+  slots: { start: string; end: string }[],
+  slot: { start: string; end: string },
+) {
+  const exact = slots.findIndex(
+    (item) => item.start === slot.start && item.end === slot.end,
+  );
+  if (exact >= 0) return `${exact + 1} пара`;
+  const first = slots.findIndex((item) => item.start === slot.start);
+  const last = slots.findIndex((item) => item.end === slot.end);
+  return first >= 0 && last > first
+    ? `${first + 1}–${last + 1} пары`
+    : "Другое время";
+}
+
 export default function WeekGrid({
   days,
   lessons,
@@ -116,11 +131,7 @@ export default function WeekGrid({
                   {slot.end}
                 </span>
                 <span className="mt-3 block text-[10px] font-normal text-gray-400">
-                  {baseSlots.findIndex(
-                    (s) => s.start === slot.start && s.end === slot.end,
-                  ) >= 0
-                    ? `${baseSlots.findIndex((s) => s.start === slot.start && s.end === slot.end) + 1} пара`
-                    : "Другое время"}
+                  {slotLabel(baseSlots, slot)}
                 </span>
               </th>
               {days.map((date) => {

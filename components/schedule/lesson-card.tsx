@@ -50,6 +50,7 @@ export default function LessonCard({ lesson }: { lesson: DisplayLesson }) {
       <DialogTrigger asChild>
         <button
           type="button"
+          style={subject.cardStyle}
           aria-label={`${subject.name}, ${type}, ${formatDate(lesson.date, { day: "numeric", month: "long" })}, ${slot.start}–${slot.end}, аудитория ${lesson.classroom}. Подробнее`}
           className={cn(
             "flex min-h-32 w-full flex-col items-start rounded-xl border-l-[3px] p-3 text-left transition-shadow hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2",
@@ -63,6 +64,9 @@ export default function LessonCard({ lesson }: { lesson: DisplayLesson }) {
             {subject.name}
           </span>
           <span className="mt-1 text-xs opacity-80">{type}</span>
+          {lesson.teacher && (
+            <span className="mt-1 text-xs opacity-80">{lesson.teacher}</span>
+          )}
           <span className="mt-auto flex items-center gap-1.5 pt-3 text-xs opacity-80">
             <MapPin aria-hidden="true" className="size-3.5 shrink-0" />
             {lesson.classroom || "Аудитория не указана"}
@@ -72,6 +76,7 @@ export default function LessonCard({ lesson }: { lesson: DisplayLesson }) {
       <DialogContent className="max-h-[90dvh] w-[calc(100%-2rem)] overflow-y-auto rounded-2xl border-gray-200 bg-white p-6 text-gray-900 sm:max-w-md">
         <DialogHeader className="text-left">
           <div
+            style={subject.cardStyle}
             className={cn(
               "mb-3 flex size-12 items-center justify-center rounded-xl border-l-[3px]",
               subject.color,

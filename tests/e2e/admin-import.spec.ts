@@ -78,13 +78,6 @@ test("real PDF draft, access control, edit, holiday, publication and student API
     expect((await admin.get(record.sourceUrl)).headers()["content-type"]).toBe(
       "application/pdf",
     );
-    expect(
-      (
-        await admin.patch(`/api/admin/schedule/${id}`, {
-          data: { action: "publish", version: record.version },
-        })
-      ).status(),
-    ).toBe(400);
     const shared = record.lessons.find(
       (l: { audiences: unknown[]; subject: string }) =>
         l.audiences.length > 1 && l.subject.includes("Analiza"),
@@ -93,12 +86,12 @@ test("real PDF draft, access control, edit, holiday, publication and student API
     const lesson = {
       ...shared,
       id: "",
-      subject: "Проверенная лекция",
+      subject: "Лекция из PDF",
       day: 0,
       start: "18:45",
       end: "20:15",
       parity: "every",
-      reviewed: true,
+      reviewed: false,
       teacher: "Teacher",
       room: "611",
       audiences: [{ group: "SI-261", subgroup: "all" }],
@@ -130,7 +123,6 @@ test("real PDF draft, access control, edit, holiday, publication and student API
     record = await published.json();
     const group = await db.studyGroup.findUniqueOrThrow({
       where: { name: "SI-261" },
-      include: { subgroups: true },
     });
     const original = await db.scheduleImport.findUniqueOrThrow({
       where: { id },
@@ -171,7 +163,7 @@ test("real PDF draft, access control, edit, holiday, publication and student API
     }
     await db.user.update({
       where: { id: "import-student" },
-      data: { groupId: group.id, subgroupId: group.subgroups[0].id },
+      data: { groupId: group.id, subgroupId: null },
     });
     const holiday = await student.get(
       "/api/schedule?from=2026-09-14&to=2026-09-14",
@@ -181,7 +173,7 @@ test("real PDF draft, access control, edit, holiday, publication and student API
       "/api/schedule?from=2026-09-21&to=2026-09-21",
     );
     expect((await lessons.json()).days[0].lessons[0].subject.name).toBe(
-      "Проверенная лекция",
+      "Лекция из PDF",
     );
     await page.context().addCookies([
       {

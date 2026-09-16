@@ -204,19 +204,6 @@ export default function ScheduleLessonEditor({
                         placeholder="SI-261"
                       />
                     </Field>
-                    <SelectField
-                      label={`Получатели ${index + 1}`}
-                      value={a.subgroup}
-                      onChange={(e) =>
-                        recipient(index, {
-                          subgroup: e.target.value as Audience["subgroup"],
-                        })
-                      }
-                    >
-                      <option value="all">Вся группа</option>
-                      <option value="1">Подгруппа 1</option>
-                      <option value="2">Подгруппа 2</option>
-                    </SelectField>
                   </div>
                   <Button
                     type="button"
@@ -252,8 +239,9 @@ export default function ScheduleLessonEditor({
             </Button>
           </fieldset>
           <p className="rounded-xl bg-blue-50 px-4 py-3 text-xs leading-5 text-blue-800">
-            В PDF сверху — нечётная неделя, снизу — чётная. Если у подгрупп
-            разные преподаватели или аудитории, создайте отдельные занятия.
+            В PDF сверху — нечётная неделя, снизу — чётная. Если в одной ячейке
+            указаны варианты 1) и 2), создайте отдельные занятия для всей группы
+            на одно время.
           </p>
           <Field label="Тема занятия · необязательно">
             <textarea
@@ -272,10 +260,9 @@ export default function ScheduleLessonEditor({
               onChange={(e) => change("reviewed", e.target.checked)}
             />
             <span>
-              Данные, группы и подгруппы проверены
+              Данные и группы проверены
               <span className="mt-1 block text-xs text-gray-500">
-                Непроверенные занятия можно сохранить в черновик, но нельзя
-                опубликовать.
+                Непроверенные занятия останутся в замечаниях после публикации.
               </span>
             </span>
           </label>

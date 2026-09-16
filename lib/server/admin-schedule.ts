@@ -8,7 +8,6 @@ import { prisma } from "@/lib/prisma";
 import type { Prisma } from "@/lib/generated/prisma/client";
 import {
   lessonErrors,
-  scheduleIssues,
   type AdminLesson,
   type ScheduleHoliday,
 } from "@/lib/admin-schedule";
@@ -34,9 +33,14 @@ type RecordWithRelations = Prisma.ScheduleImportGetPayload<{
 const types = {
   Лекция: "LECTURE",
   Лабораторная: "LABORATORY",
-  Практика: "PRACTICE",
   Семинар: "SEMINAR",
-  "Не указан": "UNSPECIFIED",
+} as const;
+const typeLabels = {
+  LECTURE: "Лекция",
+  LABORATORY: "Лабораторная",
+  SEMINAR: "Семинар",
+  PRACTICE: "Семинар",
+  UNSPECIFIED: "Семинар",
 } as const;
 const parities = { every: "EVERY", odd: "ODD", even: "EVEN" } as const;
 const date = (d: string) => new Date(`${d}T00:00:00Z`);
@@ -76,7 +80,7 @@ export function serializeSchedule(r: RecordWithRelations) {
       day: l.weekday,
       start: time(l.startMinutes),
       end: time(l.endMinutes),
-      type: Object.entries(types).find(([, value]) => value === l.type)![0],
+      type: typeLabels[l.type],
       parity: Object.entries(parities).find(
         ([, value]) => value === l.weekPattern,
       )![0],
@@ -85,10 +89,9 @@ export function serializeSchedule(r: RecordWithRelations) {
       topic: l.topic || "",
       sourceText: l.sourceText || "",
       reviewed: l.reviewed,
-      audiences: l.audiences.map((a) => ({
-        group: a.group.name,
-        subgroup: a.subgroup ? String(a.subgroup.number) : "all",
-      })),
+      audiences: [...new Set(l.audiences.map((a) => a.group.name))].map(
+        (group) => ({ group, subgroup: "all" as const }),
+      ),
     })),
     holidays: r.holidays.map((h) => ({
       id: h.id,
@@ -186,6 +189,9 @@ function validateLessons(value: unknown): AdminLesson[] {
       (typeof l.sourceText !== "string" || l.sourceText.length > 10000)
     )
       fail("Слишком длинный исходный текст.");
+    l.audiences = [
+      ...new Set(l.audiences.map((a: { group: string }) => a.group)),
+    ].map((group) => ({ group, subgroup: "all" }));
     const errors = lessonErrors(l);
     if (errors.length) fail(errors.join(" "));
   }
@@ -197,10 +203,7 @@ async function saveLessons(
   scheduleId: string,
   lessons: AdminLesson[],
 ) {
-  const groups = new Map<
-    string,
-    { id: string; subgroups: { id: string; number: number }[] }
-  >();
+  const groups = new Map<string, { id: string }>();
   for (const name of new Set(
     lessons.flatMap((l) => l.audiences.map((a) => a.group)),
   )) {
@@ -209,16 +212,7 @@ async function saveLessons(
       update: {},
       create: { name },
     });
-    for (const number of [1, 2])
-      await tx.subgroup.upsert({
-        where: { groupId_number: { groupId: group.id, number } },
-        update: {},
-        create: { groupId: group.id, number },
-      });
-    groups.set(name, {
-      ...group,
-      subgroups: await tx.subgroup.findMany({ where: { groupId: group.id } }),
-    });
+    groups.set(name, group);
   }
   await tx.lesson.deleteMany({ where: { scheduleId } });
   for (const l of lessons) {
@@ -246,12 +240,7 @@ async function saveLessons(
             const group = groups.get(a.group)!;
             return {
               groupId: group.id,
-              subgroupId:
-                a.subgroup === "all"
-                  ? null
-                  : group.subgroups.find(
-                      (s) => s.number === Number(a.subgroup),
-                    )!.id,
+              subgroupId: null,
             };
           }),
         },
@@ -452,13 +441,8 @@ export async function changeSchedule(request: Request, id: string) {
           });
         } else if (body.action === "publish") {
           const draft = serializeSchedule(record);
-          if (
-            !draft.lessons.length ||
-            scheduleIssues(draft.lessons as AdminLesson[]).length
-          )
-            fail(
-              "Проверьте все занятия, получателей и пересечения перед публикацией.",
-            );
+          if (!draft.lessons.length)
+            fail("Добавьте хотя бы одно занятие перед публикацией.");
           const groupIds = [
             ...new Set(
               record.lessons.flatMap((l) => l.audiences.map((a) => a.groupId)),
