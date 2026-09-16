@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 
 import { auth } from "@/auth";
 import ProfileForm from "@/components/profile/ProfileForm";
+import GeminiKeyCard from "@/components/ai-coach/GeminiKeyCard";
 import { getNextLesson } from "@/lib/schedule";
 import { calculateOverall, gradeStatus, initialSubjects } from "@/lib/grades";
 import { INITIAL_TASKS } from "@/lib/tasks";
@@ -113,6 +114,10 @@ export default async function ProfilePage() {
         email={session.user.email ?? ""}
         group={session.user.group}
       />
+
+      <div className="mt-6">
+        <GeminiKeyCard />
+      </div>
     </div>
   );
 }
