@@ -25,6 +25,7 @@ export const config = {
     "/materials/:path*",
     "/schedule/:path*",
     "/ai-coach/:path*",
+    "/profile/:path*",
     "/auth",
   ],
 };

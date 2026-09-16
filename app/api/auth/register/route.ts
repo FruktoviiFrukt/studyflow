@@ -2,9 +2,9 @@ import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 
 import { prisma } from "@/lib/prisma";
+import { ALLOWED_GROUPS } from "@/lib/groups";
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const ALLOWED_GROUPS = ["TI-245", "TI-246"] as const;
 
 export async function POST(request: Request) {
   const body = await request.json();
