@@ -6,6 +6,7 @@ const adminSections = [
   { href: "/admin/users", label: "Пользователи" },
   { href: "/admin/subjects", label: "Дисциплины" },
   { href: "/admin/schedule", label: "Расписание" },
+  { href: "/admin/ai-coach", label: "AI Coach" },
 ];
 
 type AdminLayoutProps = {
