@@ -30,9 +30,27 @@ export function createSubject(
     ],
   };
 }
-export const initialSubjects = [
-  createSubject("programming", "Программирование", 1),
-  createSubject("math", "Высшая математика", 2),
+export const initialSubjects: GradeSubject[] = [
+  {
+    ...createSubject("programming", "Программирование", 1),
+    stages: [
+      { variable: "g1", name: "Аттестация 1", grade: "8" },
+      { variable: "g2", name: "Аттестация 2", grade: "9" },
+      { variable: "g3", name: "Лабораторные работы", grade: "8.5" },
+      { variable: "g4", name: "Индивидуальная работа", grade: "9" },
+      { variable: "g5", name: "Экзамен", grade: "8" },
+    ],
+  },
+  {
+    ...createSubject("math", "Высшая математика", 2),
+    stages: [
+      { variable: "g1", name: "Аттестация 1", grade: "7" },
+      { variable: "g2", name: "Аттестация 2", grade: "6.5" },
+      { variable: "g3", name: "Лабораторные работы", grade: "8" },
+      { variable: "g4", name: "Индивидуальная работа", grade: "7.5" },
+      { variable: "g5", name: "Экзамен", grade: "7" },
+    ],
+  },
 ];
 
 // Parse arithmetic only: user formulas are never executed as JavaScript.
