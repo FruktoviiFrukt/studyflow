@@ -18,8 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-
-const GROUPS = ["TI-245", "TI-246"] as const;
+import { ALLOWED_GROUPS } from "@/lib/groups";
 
 type RegisterFormProps = {
   onSwitch: () => void;
@@ -337,7 +336,7 @@ export default function RegisterForm({ onSwitch }: RegisterFormProps) {
           </SelectTrigger>
 
           <SelectContent position="popper" sideOffset={4}>
-            {GROUPS.map((group) => (
+            {ALLOWED_GROUPS.map((group) => (
               <SelectItem key={group} value={group}>
                 {group}
               </SelectItem>
