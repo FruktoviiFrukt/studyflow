@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Sparkles } from "lucide-react";
 import NotesInput from "./notes-input";
 import SubjectSelect from "./subject-select";
 import SubjectTopicsPanel from "./subject-topics-panel";
 import GenerationSettings from "./generation-settings";
 import GenerateButton from "./generate-button";
+import GeminiKeyCard from "./GeminiKeyCard";
 import { QuizScreen } from "./QuizScreen";
 import { ResultsScreen } from "./ResultsScreen";
 import { generateMockQuestions } from "@/lib/mockQuiz";
@@ -28,6 +29,7 @@ function toQuizQuestionType(
 }
 
 export default function AiCoach() {
+  const [keyLinked, setKeyLinked] = useState<boolean | null>(null);
   const [step, setStep] = useState<Step>("setup");
 
   const [attachedFiles, setAttachedFiles] = useState<File[]>([]);
@@ -45,6 +47,13 @@ export default function AiCoach() {
     Record<string, string>
   >({});
   const [quizResult, setQuizResult] = useState<QuizResult | null>(null);
+
+  useEffect(() => {
+    fetch("/api/ai-coach/api-key")
+      .then((r) => r.json())
+      .then((d: { linked: boolean }) => setKeyLinked(d.linked))
+      .catch(() => setKeyLinked(false));
+  }, []);
 
   const hasNotes = attachedFiles.length > 0 || noteText.trim().length > 0;
   const hasSubject = selectedSubjectIds.length > 0;
@@ -179,24 +188,37 @@ export default function AiCoach() {
     selectedSubjectIds.includes(s.id),
   );
 
+  const header = (
+    <div>
+      <p className="mb-2 text-xs font-semibold uppercase tracking-[0.16em] text-blue-600">
+        Подготовка к экзамену
+      </p>
+      <div className="flex items-center gap-2">
+        <Sparkles aria-hidden="true" className="size-6 text-blue-600" />
+        <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
+          AI Exam Coach
+        </h2>
+      </div>
+      <p className="mt-2 max-w-2xl text-sm leading-6 text-gray-600">
+        Загрузите конспекты или вставьте текст лекции — AI Exam Coach
+        сгенерирует вопросы для самопроверки по выбранным предметам, с нужным
+        количеством, уровнем сложности и типом вопросов.
+      </p>
+    </div>
+  );
+
+  if (keyLinked === false) {
+    return (
+      <div className="mx-auto max-w-360 space-y-5">
+        {header}
+        <GeminiKeyCard onLinked={() => setKeyLinked(true)} />
+      </div>
+    );
+  }
+
   return (
     <div className="mx-auto max-w-360 space-y-5">
-      <div>
-        <p className="mb-2 text-xs font-semibold uppercase tracking-[0.16em] text-blue-600">
-          Подготовка к экзамену
-        </p>
-        <div className="flex items-center gap-2">
-          <Sparkles aria-hidden="true" className="size-6 text-blue-600" />
-          <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
-            AI Exam Coach
-          </h2>
-        </div>
-        <p className="mt-2 max-w-2xl text-sm leading-6 text-gray-600">
-          Загрузите конспекты или вставьте текст лекции — AI Exam Coach
-          сгенерирует вопросы для самопроверки по выбранным предметам, с нужным
-          количеством, уровнем сложности и типом вопросов.
-        </p>
-      </div>
+      {header}
 
       <NotesInput
         attachedFiles={attachedFiles}
