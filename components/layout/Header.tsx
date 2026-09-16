@@ -1,9 +1,9 @@
 "use client";
 
 import MobileSidebar from "./MobileSidebar";
+import UserMenu from "./UserMenu";
 import { Bell } from "lucide-react";
 import { usePathname } from "next/navigation";
-import { useSession } from "next-auth/react";
 
 const pageTitles: Record<string, string> = {
   "/dashboard": "Dashboard",
@@ -18,11 +18,8 @@ const pageTitles: Record<string, string> = {
 
 export default function Header() {
   const pathname = usePathname();
-  const { data: session } = useSession();
 
   const title = pageTitles[pathname] || "StudyHub";
-  const userName = session?.user?.name ?? "Student";
-  const userEmail = session?.user?.email ?? "";
 
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-gray-200 bg-white px-5 md:px-8">
@@ -51,19 +48,7 @@ export default function Header() {
         <div className="hidden h-7 w-px bg-gray-200 sm:block" />
 
         {/* User */}
-        <div className="flex min-w-0 items-center gap-3">
-          <div className="hidden text-right sm:block">
-            <p className="text-sm font-semibold leading-4 text-gray-900">
-              {userName}
-            </p>
-
-            <p className="mt-1 text-xs text-gray-500">{userEmail}</p>
-          </div>
-
-          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-blue-600 text-sm font-semibold text-white">
-            {userName.charAt(0).toUpperCase()}
-          </div>
-        </div>
+        <UserMenu variant="header" />
       </div>
     </header>
   );
