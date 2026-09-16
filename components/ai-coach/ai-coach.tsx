@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Sparkles } from "lucide-react";
+import { AlertCircle, Sparkles } from "lucide-react";
 import NotesInput from "./notes-input";
 import SubjectSelect from "./subject-select";
 import SubjectTopicsPanel from "./subject-topics-panel";
@@ -10,26 +10,60 @@ import GenerateButton from "./generate-button";
 import GeminiKeyCard from "./GeminiKeyCard";
 import { QuizScreen } from "./QuizScreen";
 import { ResultsScreen } from "./ResultsScreen";
-import { generateMockQuestions } from "@/lib/mockQuiz";
 import type { Question, QuizResult } from "@/types/quiz";
 import {
-  aiCoachSubjects,
   getGenerationReadiness,
+  type ApiSubject,
   type Difficulty,
   type QuestionType,
 } from "@/lib/ai-coach";
 
 type Step = "setup" | "quiz" | "results";
 
-function toQuizQuestionType(
-  selected: QuestionType,
-): "multiple-choice" | "true-false" | "combined" {
-  if (selected === "single") return "multiple-choice";
-  return selected;
+type ApiOption = { id: string; text: string; isCorrect: boolean };
+type ApiQuestion = {
+  id: string;
+  text: string;
+  type: "MULTIPLE_CHOICE" | "TRUE_FALSE";
+  options: ApiOption[];
+};
+type GenerateResponse = {
+  topicName: string;
+  subjectId: string;
+  questions: {
+    easy: ApiQuestion[];
+    medium: ApiQuestion[];
+    hard: ApiQuestion[];
+  };
+  skippedAsDuplicates: number;
+};
+
+function mapQuestions(response: GenerateResponse): Question[] {
+  const { questions, topicName, subjectId } = response;
+  const map = (qs: ApiQuestion[], diff: Difficulty) =>
+    qs.map((q) => ({
+      id: q.id,
+      text: q.text,
+      type: (q.type === "MULTIPLE_CHOICE"
+        ? "multiple-choice"
+        : "true-false") as Question["type"],
+      options: q.options.map((o) => ({ id: o.id, text: o.text })),
+      correctAnswerId: q.options.find((o) => o.isCorrect)?.id ?? "",
+      topic: topicName,
+      subjectId,
+      difficulty: diff,
+    }));
+  return [
+    ...map(questions.easy, "easy"),
+    ...map(questions.medium, "medium"),
+    ...map(questions.hard, "hard"),
+  ];
 }
 
 export default function AiCoach() {
   const [keyLinked, setKeyLinked] = useState<boolean | null>(null);
+  const [subjects, setSubjects] = useState<ApiSubject[]>([]);
+  const [subjectsLoading, setSubjectsLoading] = useState(true);
   const [step, setStep] = useState<Step>("setup");
 
   const [attachedFiles, setAttachedFiles] = useState<File[]>([]);
@@ -39,7 +73,7 @@ export default function AiCoach() {
   const [difficulty, setDifficulty] = useState<Difficulty>("medium");
   const [questionType, setQuestionType] = useState<QuestionType>("single");
   const [isGenerating, setIsGenerating] = useState(false);
-  const [topicCounts, setTopicCounts] = useState<Record<string, number>>({});
+  const [generationError, setGenerationError] = useState<string | null>(null);
 
   const [quizQuestions, setQuizQuestions] = useState<Question[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -55,15 +89,19 @@ export default function AiCoach() {
       .catch(() => setKeyLinked(false));
   }, []);
 
-  const hasNotes = attachedFiles.length > 0 || noteText.trim().length > 0;
-  const hasSubject = selectedSubjectIds.length > 0;
-  const allSubjectsHaveTopics =
-    selectedSubjectIds.length === 0 ||
-    selectedSubjectIds.every((id) => (topicCounts[id] ?? 0) > 0);
+  useEffect(() => {
+    fetch("/api/ai-coach/subjects")
+      .then((r) => (r.ok ? r.json() : Promise.reject()))
+      .then((data: ApiSubject[]) => {
+        setSubjects(data);
+        setSubjectsLoading(false);
+      })
+      .catch(() => setSubjectsLoading(false));
+  }, []);
+
+  const hasNotes = noteText.trim().length > 0;
   const { canGenerate, hint } = getGenerationReadiness({
     hasNotes,
-    hasSubject,
-    allSubjectsHaveTopics,
     questionCount,
   });
   const currentQuestion = quizQuestions[currentIndex];
@@ -84,28 +122,51 @@ export default function AiCoach() {
     );
   }
 
-  function handleTopicSelectionChange(subjectId: string, count: number) {
-    setTopicCounts((prev) => ({ ...prev, [subjectId]: count }));
-  }
-
   async function handleGenerate() {
     if (!canGenerate || isGenerating) return;
     setIsGenerating(true);
+    setGenerationError(null);
     try {
-      await new Promise((resolve) => setTimeout(resolve, 2200));
-
-      const subjectId = selectedSubjectIds[0] ?? aiCoachSubjects[0].id;
-      const questions = generateMockQuestions({
-        subjectId,
-        count: questionCount,
-        difficulty,
-        type: toQuizQuestionType(questionType),
+      const res = await fetch("/api/ai-coach/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ textContent: noteText, questionCount }),
       });
+
+      if (res.status === 402) {
+        setKeyLinked(false);
+        return;
+      }
+
+      if (!res.ok) {
+        let msg = "Ошибка при генерации вопросов";
+        try {
+          const data = (await res.json()) as {
+            message?: string;
+            reason?: string;
+          };
+          msg = data.reason ?? data.message ?? msg;
+        } catch {}
+        setGenerationError(msg);
+        return;
+      }
+
+      const data = (await res.json()) as GenerateResponse;
+      const questions = mapQuestions(data);
+
+      if (questions.length === 0) {
+        setGenerationError(
+          "Все вопросы оказались дублями. Попробуйте другой материал.",
+        );
+        return;
+      }
 
       setQuizQuestions(questions);
       setCurrentIndex(0);
       setSelectedAnswers({});
       setStep("quiz");
+    } catch {
+      setGenerationError("Не удалось подключиться к серверу");
     } finally {
       setIsGenerating(false);
     }
@@ -151,6 +212,7 @@ export default function AiCoach() {
     setSelectedAnswers({});
     setCurrentIndex(0);
     setQuizResult(null);
+    setGenerationError(null);
     setStep(next);
   }
 
@@ -184,7 +246,7 @@ export default function AiCoach() {
     );
   }
 
-  const selectedSubjects = aiCoachSubjects.filter((s) =>
+  const selectedSubjects = subjects.filter((s) =>
     selectedSubjectIds.includes(s.id),
   );
 
@@ -200,9 +262,8 @@ export default function AiCoach() {
         </h2>
       </div>
       <p className="mt-2 max-w-2xl text-sm leading-6 text-gray-600">
-        Загрузите конспекты или вставьте текст лекции — AI Exam Coach
-        сгенерирует вопросы для самопроверки по выбранным предметам, с нужным
-        количеством, уровнем сложности и типом вопросов.
+        Вставьте текст конспекта или лекции — AI Exam Coach определит предмет
+        автоматически и сгенерирует вопросы трёх уровней сложности.
       </p>
     </div>
   );
@@ -232,6 +293,13 @@ export default function AiCoach() {
         hint={hint}
       />
 
+      {generationError && (
+        <div className="flex items-start gap-2 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+          <AlertCircle aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
+          {generationError}
+        </div>
+      )}
+
       <GenerationSettings
         questionCount={questionCount}
         onQuestionCountChange={setQuestionCount}
@@ -242,6 +310,8 @@ export default function AiCoach() {
       />
 
       <SubjectSelect
+        subjects={subjects}
+        loading={subjectsLoading}
         selectedSubjectIds={selectedSubjectIds}
         onToggle={handleToggleSubject}
       />
@@ -249,11 +319,7 @@ export default function AiCoach() {
       {selectedSubjects.length > 0 && (
         <div className="space-y-3">
           {selectedSubjects.map((subject) => (
-            <SubjectTopicsPanel
-              key={subject.id}
-              subject={subject}
-              onSelectionChange={handleTopicSelectionChange}
-            />
+            <SubjectTopicsPanel key={subject.id} subject={subject} />
           ))}
         </div>
       )}

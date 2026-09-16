@@ -1,49 +1,61 @@
 "use client";
 
-import { Plus } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { Card } from "@/components/ui/card";
-import { aiCoachSubjects } from "@/lib/ai-coach";
+import { subjectDotColor, type ApiSubject } from "@/lib/ai-coach";
 import SubjectCard from "./subject-card";
 
 type SubjectSelectProps = {
+  subjects: ApiSubject[];
+  loading: boolean;
   selectedSubjectIds: string[];
   onToggle: (id: string) => void;
 };
 
 export default function SubjectSelect({
+  subjects,
+  loading,
   selectedSubjectIds,
   onToggle,
 }: SubjectSelectProps) {
   return (
     <Card className="rounded-2xl border-gray-200 bg-white p-4 shadow-sm sm:p-5">
-      <h3 className="text-base font-semibold sm:text-lg">Выберите предметы</h3>
+      <h3 className="text-base font-semibold sm:text-lg">Предметы</h3>
       <p className="mt-1 text-xs text-gray-500">
-        Вопросы будут сгенерированы по выбранным предметам. Можно выбрать
-        несколько.
+        Необязательно — Gemini определит предмет автоматически. Выберите, чтобы
+        видеть темы и сохранённые квизы по предмету.
       </p>
 
-      <div
-        role="group"
-        aria-label="Выбор предметов"
-        className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3"
-      >
-        {aiCoachSubjects.map((subject) => (
-          <SubjectCard
-            key={subject.id}
-            subject={subject}
-            selected={selectedSubjectIds.includes(subject.id)}
-            onToggle={onToggle}
-          />
-        ))}
+      {loading && (
+        <div className="mt-4 flex items-center gap-2 text-sm text-gray-400">
+          <Loader2 aria-hidden="true" className="size-4 animate-spin" />
+          Загрузка предметов…
+        </div>
+      )}
 
-        <button
-          type="button"
-          className="flex items-center justify-center gap-2 rounded-xl border-2 border-dashed border-gray-200 p-4 text-sm font-medium text-gray-500 transition-colors hover:border-blue-300 hover:text-blue-600"
+      {!loading && subjects.length === 0 && (
+        <p className="mt-4 text-xs text-gray-400">
+          Реестр предметов пуст — обратитесь к администратору.
+        </p>
+      )}
+
+      {!loading && subjects.length > 0 && (
+        <div
+          role="group"
+          aria-label="Выбор предметов"
+          className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3"
         >
-          <Plus aria-hidden="true" className="size-4" />
-          Добавить предмет из БД
-        </button>
-      </div>
+          {subjects.map((subject) => (
+            <SubjectCard
+              key={subject.id}
+              subject={subject}
+              dotColor={subjectDotColor(subject.id)}
+              selected={selectedSubjectIds.includes(subject.id)}
+              onToggle={onToggle}
+            />
+          ))}
+        </div>
+      )}
     </Card>
   );
 }
