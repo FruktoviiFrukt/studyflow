@@ -34,12 +34,21 @@ export async function PATCH(request: Request) {
     );
   }
 
-  const user = await prisma.user.update({
-    where: { id: session.user.id },
-    data: {
-      name: name.trim(),
-      group,
-    },
+  const user = await prisma.$transaction(async (tx) => {
+    const studyGroup = await tx.studyGroup.upsert({
+      where: { name: group },
+      update: {},
+      create: { name: group },
+    });
+    return tx.user.update({
+      where: { id: session.user.id },
+      data: {
+        name: name.trim(),
+        group,
+        groupId: studyGroup.id,
+        subgroupId: null,
+      },
+    });
   });
 
   return NextResponse.json({ name: user.name, group: user.group });
