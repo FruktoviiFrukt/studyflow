@@ -8,7 +8,7 @@ datasource db {
 }
 
 // ---------------------------------------------------------------------------
-// Auth
+// Auth & Users
 // ---------------------------------------------------------------------------
 
 enum Role {
@@ -17,29 +17,186 @@ enum Role {
 }
 
 model User {
-  id           String   @id @default(cuid())
-  email        String   @unique
+  id           String      @id @default(cuid())
+  email        String      @unique
   password     String
   name         String
-  role         Role     @default(STUDENT)
+  role         Role        @default(STUDENT)
   group        String?
-  geminiApiKey String? // AES-256-GCM encrypted, never stored plain
-  createdAt    DateTime @default(now())
+  groupId      String?
+  subgroupId   String?
+  geminiApiKey String?     // AES-256-GCM encrypted, never stored plain
+  createdAt    DateTime    @default(now())
 
+  // Relations: Schedule module
+  studyGroup   StudyGroup? @relation(fields: [groupId], references: [id], onDelete: Restrict)
+  subgroup     Subgroup?   @relation(fields: [subgroupId, groupId], references: [id, groupId], onDelete: Restrict)
+
+  // Relations: AI Coach module
   enrolledSubjects UserSubject[]
   documents        Document[]
   quizSessions     QuizSession[]
+
+  @@index([groupId])
+  @@index([subgroupId, groupId])
 }
 
 // ---------------------------------------------------------------------------
-// Faculty subject registry  (admin-seeded, read-only for students)
+// Schedule Module Enums & Models
+// ---------------------------------------------------------------------------
+
+enum WeekPattern {
+  EVERY
+  ODD
+  EVEN
+}
+
+enum ScheduleStatus {
+  DRAFT
+  PUBLISHED
+}
+
+enum ScheduleKind {
+  STUDENT
+  GLOBAL
+  ASSESSMENT
+}
+
+enum LessonType {
+  LECTURE
+  LABORATORY
+  PRACTICE
+  SEMINAR
+  UNSPECIFIED
+}
+
+model AcademicYear {
+  id                 String     @id @default(cuid())
+  name               String     @unique
+  startsOn           DateTime   @db.Date
+  endsOn             DateTime   @db.Date
+  firstOddWeekMonday DateTime   @db.Date
+  semesters          Semester[]
+}
+
+model Semester {
+  id             String           @id @default(cuid())
+  academicYearId String
+  number         Int
+  startsOn       DateTime         @db.Date
+  endsOn         DateTime         @db.Date
+  academicYear   AcademicYear     @relation(fields: [academicYearId], references: [id], onDelete: Restrict)
+  schedules      ScheduleImport[]
+
+  @@unique([academicYearId, number])
+}
+
+model StudyGroup {
+  id        String           @id @default(cuid())
+  name      String           @unique
+  subgroups Subgroup[]
+  students  User[]
+  audiences LessonAudience[]
+}
+
+model Subgroup {
+  id        String           @id @default(cuid())
+  groupId   String
+  number    Int
+  group     StudyGroup       @relation(fields: [groupId], references: [id], onDelete: Restrict)
+  students  User[]
+  audiences LessonAudience[]
+
+  @@unique([groupId, number])
+  @@unique([id, groupId])
+}
+
+model Subject {
+  id       String   @id @default(cuid())
+  name     String   @unique
+  colorKey String   @default("blue")
+  lessons  Lesson[]
+}
+
+model ScheduleImport {
+  id             String            @id @default(cuid())
+  semesterId     String
+  course         Int
+  kind           ScheduleKind      @default(STUDENT)
+  title          String
+  sourceFilename String?
+  sourceFileKey  String?
+  importWarnings String[]          @default([])
+  status         ScheduleStatus    @default(DRAFT)
+  validFrom      DateTime          @db.Date
+  validTo        DateTime          @db.Date
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+  semester       Semester          @relation(fields: [semesterId], references: [id], onDelete: Restrict)
+  lessons        Lesson[]
+  holidays       ScheduleHoliday[]
+
+  @@index([semesterId, course, status])
+  @@index([status, validFrom, validTo])
+  @@index([kind, status, validFrom, validTo])
+}
+
+model Lesson {
+  id           String           @id @default(cuid())
+  scheduleId   String
+  subjectId    String
+  weekday      Int
+  startMinutes Int
+  endMinutes   Int
+  weekPattern  WeekPattern      @default(EVERY)
+  type         LessonType       @default(UNSPECIFIED)
+  teacher      String?
+  classroom    String?
+  topic        String?
+  sourceText   String?
+  reviewed     Boolean          @default(false)
+  schedule     ScheduleImport   @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+  subject      Subject          @relation(fields: [subjectId], references: [id], onDelete: Restrict)
+  audiences    LessonAudience[]
+
+  @@index([scheduleId, weekday, startMinutes])
+  @@index([subjectId])
+}
+
+model LessonAudience {
+  id         String     @id @default(cuid())
+  lessonId   String
+  groupId    String
+  subgroupId String?
+  lesson     Lesson     @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  group      StudyGroup @relation(fields: [groupId], references: [id], onDelete: Restrict)
+  subgroup   Subgroup?  @relation(fields: [subgroupId, groupId], references: [id, groupId], onDelete: Restrict)
+
+  @@unique([lessonId, groupId, subgroupId])
+  @@index([groupId, lessonId])
+  @@index([subgroupId, groupId])
+}
+
+model ScheduleHoliday {
+  id         String         @id @default(cuid())
+  scheduleId String
+  name       String
+  startsOn   DateTime       @db.Date
+  endsOn     DateTime       @db.Date
+  schedule   ScheduleImport @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+
+  @@index([scheduleId, startsOn, endsOn])
+}
+
+// ---------------------------------------------------------------------------
+// AI Coach Module: Faculty subject registry & Knowledge base
 // ---------------------------------------------------------------------------
 
 model FacultySubject {
   id        String   @id @default(cuid())
-  name      String   @unique // "Объектно-ориентированное программирование"
-  code      String   @unique // "OOP101"
-  faculty   String // "FCIM"
+  name      String   @unique
+  code      String   @unique
+  faculty   String
   active    Boolean  @default(true)
   createdAt DateTime @default(now())
 
@@ -48,7 +205,6 @@ model FacultySubject {
   documents   Document[]
 }
 
-// Student's enrolled subjects for the current semester
 model UserSubject {
   userId    String
   subjectId String
@@ -59,16 +215,12 @@ model UserSubject {
   @@id([userId, subjectId])
 }
 
-// ---------------------------------------------------------------------------
-// Knowledge base: Topic → Question → Option
-// ---------------------------------------------------------------------------
-
 model Topic {
   id        String   @id @default(cuid())
-  name      String   @unique // globally unique — shared across subjects via M2M join
+  name      String   @unique
   createdAt DateTime @default(now())
 
-  subjects  FacultySubject[] // M2M: one topic can appear under many subjects
+  subjects  FacultySubject[]
   questions Question[]
   documents Document[]
 }
@@ -85,16 +237,16 @@ enum Difficulty {
 }
 
 model Question {
-  id         String       @id @default(cuid())
-  text       String
-  textHash   String       @unique // SHA-256 of normalised text — prevents exact duplicates
-  type       QuestionType
-  difficulty Difficulty
-  topicId    String
-  approvedAt DateTime? // null = visible only to original requester; set = public in community pool
-  createdAt  DateTime     @default(now())
+  id          String       @id @default(cuid())
+  text        String
+  textHash    String       @unique
+  type        QuestionType
+  difficulty  Difficulty
+  topicId     String
+  approvedAt  DateTime?
+  createdAt   DateTime     @default(now())
 
-  topic       Topic                @relation(fields: [topicId], references: [id])
+  topic       Topic                 @relation(fields: [topicId], references: [id])
   options     Option[]
   sessionRefs QuizSessionQuestion[]
   answers     QuizAnswer[]
@@ -109,10 +261,6 @@ model Option {
   question Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
 }
 
-// ---------------------------------------------------------------------------
-// Document upload + generation pipeline
-// ---------------------------------------------------------------------------
-
 enum DocumentStatus {
   PENDING
   PROCESSING
@@ -124,9 +272,9 @@ model Document {
   id           String         @id @default(cuid())
   userId       String
   fileName     String?
-  textContent  String? // extracted text — no binary blobs in DB
-  subjectId    String? // resolved after AI classification
-  topicId      String? // resolved after AI classification
+  textContent  String?
+  subjectId    String?
+  topicId      String?
   status       DocumentStatus @default(PENDING)
   errorMessage String?
   createdAt    DateTime       @default(now())
@@ -136,14 +284,10 @@ model Document {
   topic   Topic?          @relation(fields: [topicId], references: [id])
 }
 
-// ---------------------------------------------------------------------------
-// Quiz sessions (history + "practice weak topics")
-// ---------------------------------------------------------------------------
-
 model QuizSession {
   id          String    @id @default(cuid())
   userId      String
-  score       Int? // 0-100 percentage, null while in progress
+  score       Int?
   completedAt DateTime?
   createdAt   DateTime  @default(now())
 
@@ -152,7 +296,6 @@ model QuizSession {
   answers   QuizAnswer[]
 }
 
-// Ordered list of questions assigned to a session
 model QuizSessionQuestion {
   sessionId  String
   questionId String
@@ -164,7 +307,6 @@ model QuizSessionQuestion {
   @@id([sessionId, questionId])
 }
 
-// One answer per question per session
 model QuizAnswer {
   id               String   @id @default(cuid())
   sessionId        String
@@ -176,5 +318,5 @@ model QuizAnswer {
   session  QuizSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
   question Question    @relation(fields: [questionId], references: [id])
 
-  @@unique([sessionId, questionId]) // one answer per question per session
+  @@unique([sessionId, questionId])
 }
