@@ -242,11 +242,8 @@ type GenerateParams = {
   subjectId: string;
   count: number;
   difficulty: Difficulty;
-  type: "multiple-choice" | "true-false";
+  type: "multiple-choice" | "true-false" | "combined";
 };
-
-/** Демо-генерация: пока нет реального AI-бэкенда, подбираем вопросы из
- готового банка.*/
 
 export function generateMockQuestions({
   subjectId,
@@ -254,23 +251,30 @@ export function generateMockQuestions({
   difficulty,
   type,
 }: GenerateParams): Question[] {
-  const bySubjectAndType = mockQuestions.filter(
-    (q) => q.subjectId === subjectId && q.type === type,
+  const bySubject = mockQuestions.filter((q) => q.subjectId === subjectId);
+  const base = bySubject.length > 0 ? bySubject : mockQuestions;
+
+  const pool =
+    type === "combined"
+      ? base
+      : (() => {
+          const filtered = base.filter((q) => q.type === type);
+          return filtered.length > 0
+            ? filtered
+            : mockQuestions.filter((q) => q.type === type);
+        })();
+
+  const ordered = [...pool].sort(
+    (a, b) =>
+      (b.difficulty === difficulty ? 1 : 0) -
+      (a.difficulty === difficulty ? 1 : 0),
   );
-  const byTypeOnly = mockQuestions.filter((q) => q.type === type);
-
-  const pool = bySubjectAndType.length > 0 ? bySubjectAndType : byTypeOnly;
-
-  const ordered = [...pool].sort((a, b) => {
-    const scoreOf = (q: Question) => (q.difficulty === difficulty ? 1 : 0);
-    return scoreOf(b) - scoreOf(a);
-  });
 
   const result: Question[] = [];
   for (let i = 0; i < count; i += 1) {
-    const base = ordered[i % ordered.length];
+    const q = ordered[i % ordered.length];
     const repeat = Math.floor(i / ordered.length);
-    result.push(repeat === 0 ? base : { ...base, id: `${base.id}-r${repeat}` });
+    result.push(repeat === 0 ? q : { ...q, id: `${q.id}-r${repeat}` });
   }
   return result;
 }

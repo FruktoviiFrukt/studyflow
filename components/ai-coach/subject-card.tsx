@@ -1,26 +1,25 @@
 "use client";
 
-import { Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { AiCoachSubject } from "@/lib/ai-coach";
 
 type SubjectCardProps = {
   subject: AiCoachSubject;
   selected: boolean;
-  onSelect: (id: string) => void;
+  onToggle: (id: string) => void;
 };
 
 export default function SubjectCard({
   subject,
   selected,
-  onSelect,
+  onToggle,
 }: SubjectCardProps) {
   return (
     <button
       type="button"
-      role="radio"
+      role="checkbox"
       aria-checked={selected}
-      onClick={() => onSelect(subject.id)}
+      onClick={() => onToggle(subject.id)}
       className={cn(
         "relative flex flex-col gap-3 rounded-xl border p-4 text-left transition-colors",
         selected
@@ -28,17 +27,12 @@ export default function SubjectCard({
           : "border-gray-200 bg-white hover:border-blue-300 hover:bg-blue-50/30",
       )}
     >
-      {selected && (
-        <span className="absolute right-3 top-3 flex size-5 items-center justify-center rounded-full bg-blue-600 text-white">
-          <Check aria-hidden="true" className="size-3.5" />
-        </span>
-      )}
       <span className="flex items-center gap-2">
         <span
           aria-hidden="true"
           className={cn("size-2.5 shrink-0 rounded-full", subject.dot)}
         />
-        <span className="pr-6 text-sm font-semibold text-gray-900">
+        <span className="text-sm font-semibold text-gray-900">
           {subject.name}
         </span>
       </span>
