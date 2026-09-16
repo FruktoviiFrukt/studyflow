@@ -170,14 +170,14 @@ export type GenerationReadiness = {
 };
 
 export function getGenerationReadiness(params: {
-  hasSubject: boolean;
   hasNotes: boolean;
+  hasSubject: boolean;
   allSubjectsHaveTopics?: boolean;
   questionCount?: number;
 }): GenerationReadiness {
   const {
-    hasSubject,
     hasNotes,
+    hasSubject,
     allSubjectsHaveTopics = true,
     questionCount = 10,
   } = params;
@@ -194,16 +194,11 @@ export function getGenerationReadiness(params: {
       hint: "Выберите хотя бы одну тему для каждого предмета.",
     };
   }
-
-  const missingSteps: string[] = [];
-  if (!hasSubject) missingSteps.push("выберите предмет");
-  if (!hasNotes) missingSteps.push("добавьте конспект или текст заметок");
-
-  return {
-    canGenerate: missingSteps.length === 0,
-    hint:
-      missingSteps.length > 0
-        ? `Чтобы продолжить: ${missingSteps.join(", ")}.`
-        : null,
-  };
+  if (!hasNotes && !hasSubject) {
+    return {
+      canGenerate: false,
+      hint: "Добавьте материалы или выберите предмет с темами.",
+    };
+  }
+  return { canGenerate: true, hint: null };
 }
