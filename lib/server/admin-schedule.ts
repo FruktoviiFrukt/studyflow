@@ -454,6 +454,8 @@ export async function changeSchedule(request: Request, id: string) {
               record.lessons.flatMap((l) => l.audiences.map((a) => a.groupId)),
             ),
           ];
+          if (!groupIds.length)
+            fail("Добавьте группу хотя бы к одному занятию перед публикацией.");
           const other = await tx.scheduleImport.findFirst({
             where: {
               id: { not: id },

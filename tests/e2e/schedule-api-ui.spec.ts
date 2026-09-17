@@ -76,6 +76,87 @@ async function reply(route: Route, kind = "READY", name?: string) {
   await route.fulfill({ json: payload(route.request().url(), kind, name) });
 }
 
+test("global page loads published groups, merges shared lessons and changes weeks", async ({
+  page,
+}) => {
+  let requests = 0;
+  await page.route("**/api/schedule/global?*", async (route) => {
+    requests++;
+    const params = new URL(route.request().url()).searchParams;
+    const from = params.get("from")!;
+    const course = Number(params.get("course"));
+    const groups =
+      course === 3
+        ? [
+            { id: "sd", name: "SD-241" },
+            { id: "ti1", name: "TI-241" },
+            { id: "ti2", name: "TI-242" },
+          ]
+        : [];
+    await route.fulfill({
+      json: {
+        course,
+        from,
+        to: params.get("to"),
+        timeZone: "Europe/Chisinau",
+        groups,
+        days: Array.from({ length: 7 }, (_, index) => ({
+          date: addDays(from, index),
+          groupStates: groups.map((group) => ({
+            groupId: group.id,
+            status: index === 0 && group.id !== "sd" ? "LESSONS" : "NO_LESSONS",
+            week: { number: 3, parity: "ODD" },
+            scheduleId: "global",
+            holidays: [],
+          })),
+          lessons:
+            index === 0 && course === 3
+              ? [
+                  {
+                    id: `shared:${from}`,
+                    lessonId: "shared",
+                    scheduleId: "global",
+                    date: from,
+                    groupIds: ["ti1", "ti2"],
+                    startMinutes: 585,
+                    endMinutes: 675,
+                    subject: {
+                      id: "math",
+                      name: `Математика ${from}`,
+                      colorKey: "blue",
+                    },
+                    type: "LECTURE",
+                    teacher: "Преподаватель",
+                    classroom: "301",
+                    topic: null,
+                  },
+                ]
+              : [],
+        })),
+      },
+    });
+  });
+  await page.goto("/schedule/global");
+  await page.getByRole("button", { name: "3 курс" }).click();
+  await expect(
+    page.getByRole("columnheader", { name: "TI-241" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("columnheader", { name: "SD-241" }),
+  ).toBeVisible();
+  await expect(page.getByText(/^Математика \d{4}-\d{2}-\d{2}$/)).toHaveCount(1);
+  await page.getByRole("combobox").click();
+  await page.getByRole("option", { name: "TI" }).click();
+  await expect(page.getByRole("columnheader", { name: "SD-241" })).toHaveCount(
+    0,
+  );
+  const before = requests;
+  await page.getByRole("button", { name: "Следующая неделя" }).click();
+  await expect.poll(() => requests).toBeGreaterThan(before);
+  await page.getByRole("button", { name: "4 курс" }).click();
+  await expect(page.getByText("Расписание ещё не опубликовано")).toBeVisible();
+});
+
 test("API data, seven slots, holidays, nullable topic and day navigation", async ({
   page,
 }) => {

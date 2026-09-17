@@ -154,10 +154,78 @@ test("global API reads only published schedules of the course and returns calcul
   );
 });
 
+test("group columns come from all lesson audiences, while a shared lesson stays one record", async () => {
+  const timetable = schedule();
+  timetable.lessons[0].audiences.push({
+    groupId: "g1",
+    subgroupId: "subgroup-1",
+    group: { id: "g1", name: "TI-241" },
+  });
+  timetable.lessons.push({
+    ...timetable.lessons[0],
+    id: "tuesday-only",
+    weekday: 1,
+    audiences: [
+      {
+        groupId: "g3",
+        subgroupId: null,
+        group: { id: "g3", name: "TI-243" },
+      },
+    ],
+  });
+  const response = await setup({ schedules: [timetable] }).request(
+    "course=3&from=2026-09-14&to=2026-09-14",
+  );
+  const body = await response.json();
+  assert.equal(response.status, 200);
+  assert.deepEqual(
+    body.groups.map((group) => group.id),
+    ["g1", "g2", "g3"],
+  );
+  assert.deepEqual(
+    body.days[0].groupStates.map((state) => state.status),
+    ["LESSONS", "LESSONS", "NO_LESSONS"],
+  );
+  assert.equal(body.days[0].lessons.length, 1);
+  assert.deepEqual(body.days[0].lessons[0].groupIds, ["g1", "g2"]);
+});
+
+test("API distinguishes unpublished dates, holidays and published days without lessons", async () => {
+  const timetable = schedule();
+  timetable.validFrom = date("2026-09-15");
+  timetable.holidays = [
+    {
+      id: "holiday",
+      name: "Выходной",
+      startsOn: date("2026-09-16"),
+      endsOn: date("2026-09-16"),
+    },
+  ];
+  const response = await setup({ schedules: [timetable] }).request(
+    "course=3&from=2026-09-14&to=2026-09-17",
+  );
+  const body = await response.json();
+  assert.equal(response.status, 200);
+  assert.deepEqual(
+    body.days.map((day) => day.groupStates[0].status),
+    ["NOT_PUBLISHED", "NO_LESSONS", "HOLIDAY", "NO_LESSONS"],
+  );
+  assert.equal(body.days[0].groupStates[0].scheduleId, null);
+  assert.equal(body.days[2].groupStates[0].holidays[0].name, "Выходной");
+  assert.ok(body.days.every((day) => day.lessons.length === 0));
+});
+
 test("empty result, conflicts and internal failures have distinct safe responses", async () => {
   const empty = await setup().request();
   assert.equal(empty.status, 200);
-  assert.deepEqual((await empty.json()).groups, []);
+  const emptyBody = await empty.json();
+  assert.deepEqual(emptyBody.groups, []);
+  assert.equal(emptyBody.days.length, 7);
+  assert.ok(
+    emptyBody.days.every(
+      (day) => !day.groupStates.length && !day.lessons.length,
+    ),
+  );
   const second = schedule();
   second.id = "second";
   const conflict = await setup({ schedules: [schedule(), second] }).request();
