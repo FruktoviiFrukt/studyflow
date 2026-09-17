@@ -29,8 +29,9 @@ type ApiQuestion = {
   options: ApiOption[];
 };
 type GenerateResponse = {
+  ephemeral?: boolean;
   topicName: string;
-  subjectId: string;
+  subjectId: string | null;
   questions: ApiQuestion[];
   totalSaved: number;
   skippedAsDuplicates: number;
@@ -48,7 +49,7 @@ function mapQuestions(response: GenerateResponse): Question[] {
     options: q.options.map((o) => ({ id: o.id, text: o.text })),
     correctAnswerId: q.options.find((o) => o.isCorrect)?.id ?? "",
     topic: response.topicName,
-    subjectId: response.subjectId,
+    subjectId: response.subjectId ?? "",
     difficulty: q.difficulty.toLowerCase() as Difficulty,
   }));
 }
@@ -100,6 +101,7 @@ export default function AiCoach() {
   const [keyError, setKeyError] = useState<string | null>(null);
 
   // Quiz state
+  const [isEphemeral, setIsEphemeral] = useState(false);
   const [quizQuestions, setQuizQuestions] = useState<Question[]>([]);
   const [weakQuestions, setWeakQuestions] = useState<Question[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -243,6 +245,7 @@ export default function AiCoach() {
         );
         return;
       }
+      setIsEphemeral(data.ephemeral ?? false);
       setQuizQuestions(questions);
       setWeakQuestions([]);
       setCurrentIndex(0);
@@ -377,6 +380,7 @@ export default function AiCoach() {
     setQuizResult(null);
     setWeakQuestions([]);
     setGenerationError(null);
+    setIsEphemeral(false);
     setStep("setup");
   }
 
@@ -386,7 +390,13 @@ export default function AiCoach() {
 
   if (step === "quiz" && currentQuestion) {
     return (
-      <div className="flex min-h-[70vh] items-center justify-center px-2 py-8">
+      <div className="flex min-h-[70vh] flex-col items-center justify-center gap-3 px-2 py-8">
+        {isEphemeral && (
+          <p className="w-full max-w-xl rounded-lg border border-amber-200 bg-amber-50 px-4 py-2.5 text-sm text-amber-800">
+            Материал не соответствует ни одному предмету факультета — квиз
+            создан для практики и не будет сохранён.
+          </p>
+        )}
         <QuizScreen
           question={currentQuestion}
           currentIndex={currentIndex}

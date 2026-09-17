@@ -3,10 +3,12 @@
 import { useState } from "react";
 import { Check, ChevronDown, ChevronUp, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { AiCoachSubject } from "@/lib/ai-coach";
+import type { ApiSubject } from "@/lib/ai-coach";
+
+type SubjectWithDot = ApiSubject & { dot?: string };
 
 type SubjectTopicsPanelProps = {
-  subject: AiCoachSubject;
+  subject: SubjectWithDot;
   onSelectionChange: (subjectId: string, selectedCount: number) => void;
 };
 

@@ -223,6 +223,24 @@ Rules:
   return parts;
 }
 
+function buildStoredQuestion(
+  q: GeminiQuestion,
+  difficulty: StoredQuestion["difficulty"],
+): StoredQuestion {
+  return {
+    id: randomUUID(),
+    text: q.text,
+    textHash: textHash(q.text),
+    type: q.type,
+    difficulty,
+    options: q.options.map((o) => ({
+      id: randomUUID(),
+      text: o.text,
+      isCorrect: o.isCorrect,
+    })),
+  };
+}
+
 // ---------------------------------------------------------------------------
 // Route handler
 // ---------------------------------------------------------------------------
@@ -364,25 +382,117 @@ export async function POST(request: Request) {
     );
   }
 
-  if (classification.rejected) {
-    return NextResponse.json(
-      {
-        message: "IRRELEVANT_CONTENT",
-        reason:
-          classification.reason ??
-          "Материал не относится к учебной программе факультета",
-      },
-      { status: 422 },
-    );
+  const unclassified =
+    classification.rejected ||
+    !classification.subjectId ||
+    !classification.topicName;
+
+  if (unclassified) {
+    // Material doesn't match any faculty subject — generate an ephemeral quiz
+    // (questions are returned to the client but nothing is persisted to the DB)
+    let ephemeralRaw: string;
+    try {
+      ephemeralRaw = await callGemini(
+        apiKey,
+        buildGenerationParts(
+          "Общий материал",
+          "Неклассифицированная тема",
+          [],
+          combinedText,
+          visualParts,
+          MAX_PER_LEVEL,
+        ),
+      );
+    } catch (err) {
+      return handleGeminiError(err);
+    }
+
+    let ephemeralGenerated: GeminiQuestions;
+    try {
+      ephemeralGenerated = JSON.parse(ephemeralRaw) as GeminiQuestions;
+      if (
+        !ephemeralGenerated.easy ||
+        !ephemeralGenerated.medium ||
+        !ephemeralGenerated.hard
+      )
+        throw new Error();
+    } catch {
+      return NextResponse.json(
+        { message: "Gemini вернул некорректный формат вопросов" },
+        { status: 502 },
+      );
+    }
+
+    const allEphemeral = [
+      ...ephemeralGenerated.easy.map((q) => ({
+        q,
+        difficulty: "EASY" as const,
+      })),
+      ...ephemeralGenerated.medium.map((q) => ({
+        q,
+        difficulty: "MEDIUM" as const,
+      })),
+      ...ephemeralGenerated.hard.map((q) => ({
+        q,
+        difficulty: "HARD" as const,
+      })),
+    ];
+
+    const diffMap: Record<string, StoredQuestion["difficulty"]> = {
+      easy: "EASY",
+      medium: "MEDIUM",
+      hard: "HARD",
+    };
+    const pool =
+      difficulty === "any"
+        ? shuffle(
+            allEphemeral.map(({ q, difficulty: d }) => ({
+              ...buildStoredQuestion(q, d),
+            })),
+          )
+        : shuffle(
+            allEphemeral
+              .filter(
+                ({ difficulty: d }) => d === (diffMap[difficulty] ?? "MEDIUM"),
+              )
+              .map(({ q, difficulty: d }) => ({
+                ...buildStoredQuestion(q, d),
+              })),
+          );
+    const displayQuestions = pool.slice(0, questionCount);
+
+    if (displayQuestions.length === 0) {
+      return NextResponse.json(
+        {
+          message:
+            "Нет вопросов для выбранной сложности — попробуйте изменить настройки",
+        },
+        { status: 422 },
+      );
+    }
+
+    return NextResponse.json({
+      ephemeral: true,
+      topicId: null,
+      topicName: "Неклассифицированная тема",
+      subjectId: null,
+      subjectName: null,
+      isNewTopic: false,
+      documentId: null,
+      totalSaved: 0,
+      skippedAsDuplicates: 0,
+      questions: displayQuestions.map((q) => ({
+        id: q.id,
+        text: q.text,
+        type: q.type,
+        difficulty: q.difficulty,
+        options: q.options,
+      })),
+    });
   }
 
-  const { subjectId, topicName } = classification;
-  if (!subjectId || !topicName) {
-    return NextResponse.json(
-      { message: "Gemini не смог определить предмет или тему" },
-      { status: 422 },
-    );
-  }
+  const subjectId = classification.subjectId!;
+  const topicName = classification.topicName!;
   const resolvedSubject = facultySubjects.find((s) => s.id === subjectId);
   if (!resolvedSubject) {
     return NextResponse.json(

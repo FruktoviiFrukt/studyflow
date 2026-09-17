@@ -1,202 +1,151 @@
 "use client";
 
-import { FormEvent, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { Check, Loader2, Pencil, Plus, Trash2, X } from "lucide-react";
 
-type SubjectStatus = "Активна" | "Архив";
-type Semester = "1 семестр" | "2 семестр";
-
-type Subject = {
-  id: number;
+type FacultySubject = {
+  id: string;
   name: string;
   code: string;
-  teacher: string;
   faculty: string;
-  semester: Semester;
-  credits: number;
-  status: SubjectStatus;
+  active: boolean;
+  _count: { topics: number };
 };
 
-type SubjectForm = {
-  name: string;
-  code: string;
-  teacher: string;
-  faculty: string;
-  semester: Semester;
-  credits: string;
-};
+type FormState = { name: string; code: string; faculty: string };
+const EMPTY_FORM: FormState = { name: "", code: "", faculty: "FCIM" };
 
-const initialSubjects: Subject[] = [
-  {
-    id: 1,
-    name: "Web Programming",
-    code: "WEB-201",
-    teacher: "Мария Чебан",
-    faculty: "FCIM",
-    semester: "1 семестр",
-    credits: 5,
-    status: "Активна",
-  },
-  {
-    id: 2,
-    name: "Базы данных",
-    code: "DB-202",
-    teacher: "Андрей Русу",
-    faculty: "FCIM",
-    semester: "1 семестр",
-    credits: 4,
-    status: "Активна",
-  },
-  {
-    id: 3,
-    name: "Объектно-ориентированное программирование",
-    code: "OOP-203",
-    teacher: "Ирина Попеску",
-    faculty: "FCIM",
-    semester: "2 семестр",
-    credits: 5,
-    status: "Активна",
-  },
-  {
-    id: 4,
-    name: "Компьютерные сети",
-    code: "NET-204",
-    teacher: "Виктор Морару",
-    faculty: "FCIM",
-    semester: "2 семестр",
-    credits: 4,
-    status: "Архив",
-  },
-  {
-    id: 5,
-    name: "Математический анализ",
-    code: "MATH-101",
-    teacher: "Елена Платон",
-    faculty: "FCIM",
-    semester: "1 семестр",
-    credits: 6,
-    status: "Активна",
-  },
-];
-
-const emptyForm: SubjectForm = {
-  name: "",
-  code: "",
-  teacher: "",
-  faculty: "FCIM",
-  semester: "1 семестр",
-  credits: "4",
-};
+const inputCls =
+  "w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100";
 
 export default function AdminSubjectsPage() {
-  const [subjects, setSubjects] = useState<Subject[]>(initialSubjects);
+  const [subjects, setSubjects] = useState<FacultySubject[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
   const [search, setSearch] = useState("");
-  const [semesterFilter, setSemesterFilter] = useState<"Все" | Semester>("Все");
-  const [statusFilter, setStatusFilter] = useState<"Все" | SubjectStatus>(
+  const [statusFilter, setStatusFilter] = useState<"Все" | "Активна" | "Архив">(
     "Все",
   );
+
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingSubjectId, setEditingSubjectId] = useState<number | null>(null);
-  const [form, setForm] = useState<SubjectForm>(emptyForm);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [form, setForm] = useState<FormState>(EMPTY_FORM);
+  const [saving, setSaving] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
 
-  const filteredSubjects = useMemo(() => {
-    const normalizedSearch = search.trim().toLowerCase();
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
-    return subjects.filter((subject) => {
+  useEffect(() => {
+    let alive = true;
+    fetch("/api/admin/faculty-subjects")
+      .then((r) => (r.ok ? r.json() : Promise.reject()))
+      .then((data: FacultySubject[]) => {
+        if (alive) {
+          setSubjects(data);
+          setLoading(false);
+        }
+      })
+      .catch(() => {
+        if (alive) {
+          setError("Не удалось загрузить список дисциплин");
+          setLoading(false);
+        }
+      });
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return subjects.filter((s) => {
       const matchesSearch =
-        subject.name.toLowerCase().includes(normalizedSearch) ||
-        subject.code.toLowerCase().includes(normalizedSearch) ||
-        subject.teacher.toLowerCase().includes(normalizedSearch);
-
-      const matchesSemester =
-        semesterFilter === "Все" || subject.semester === semesterFilter;
-
+        !q ||
+        s.name.toLowerCase().includes(q) ||
+        s.code.toLowerCase().includes(q) ||
+        s.faculty.toLowerCase().includes(q);
       const matchesStatus =
-        statusFilter === "Все" || subject.status === statusFilter;
-
-      return matchesSearch && matchesSemester && matchesStatus;
+        statusFilter === "Все" ||
+        (statusFilter === "Активна" ? s.active : !s.active);
+      return matchesSearch && matchesStatus;
     });
-  }, [subjects, search, semesterFilter, statusFilter]);
+  }, [subjects, search, statusFilter]);
 
-  function openCreateModal() {
-    setEditingSubjectId(null);
-    setForm(emptyForm);
+  function openCreate() {
+    setEditingId(null);
+    setForm(EMPTY_FORM);
+    setFormError(null);
     setIsModalOpen(true);
   }
 
-  function openEditModal(subject: Subject) {
-    setEditingSubjectId(subject.id);
-    setForm({
-      name: subject.name,
-      code: subject.code,
-      teacher: subject.teacher,
-      faculty: subject.faculty,
-      semester: subject.semester,
-      credits: String(subject.credits),
-    });
+  function openEdit(s: FacultySubject) {
+    setEditingId(s.id);
+    setForm({ name: s.name, code: s.code, faculty: s.faculty });
+    setFormError(null);
     setIsModalOpen(true);
   }
 
   function closeModal() {
     setIsModalOpen(false);
-    setEditingSubjectId(null);
-    setForm(emptyForm);
+    setEditingId(null);
+    setForm(EMPTY_FORM);
+    setFormError(null);
   }
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-
-    const subjectData = {
-      name: form.name.trim(),
-      code: form.code.trim().toUpperCase(),
-      teacher: form.teacher.trim(),
-      faculty: form.faculty.trim().toUpperCase(),
-      semester: form.semester,
-      credits: Number(form.credits),
-    };
-
-    if (editingSubjectId !== null) {
-      setSubjects((currentSubjects) =>
-        currentSubjects.map((subject) =>
-          subject.id === editingSubjectId
-            ? { ...subject, ...subjectData }
-            : subject,
-        ),
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setFormError(null);
+    setSaving(true);
+    try {
+      const url = editingId
+        ? `/api/admin/faculty-subjects/${editingId}`
+        : "/api/admin/faculty-subjects";
+      const method = editingId ? "PATCH" : "POST";
+      const res = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+      });
+      const data = (await res.json()) as FacultySubject & { message?: string };
+      if (!res.ok) {
+        setFormError(data.message ?? "Ошибка при сохранении");
+        return;
+      }
+      setSubjects((prev) =>
+        editingId
+          ? prev.map((s) => (s.id === editingId ? data : s))
+          : [...prev, data].sort((a, b) => a.name.localeCompare(b.name)),
       );
-    } else {
-      setSubjects((currentSubjects) => [
-        {
-          id: Date.now(),
-          ...subjectData,
-          status: "Активна",
-        },
-        ...currentSubjects,
-      ]);
+      closeModal();
+    } catch {
+      setFormError("Ошибка сети");
+    } finally {
+      setSaving(false);
     }
-
-    closeModal();
   }
 
-  function toggleSubjectStatus(subjectId: number) {
-    setSubjects((currentSubjects) =>
-      currentSubjects.map((subject) =>
-        subject.id === subjectId
-          ? {
-              ...subject,
-              status: subject.status === "Активна" ? "Архив" : "Активна",
-            }
-          : subject,
-      ),
-    );
+  async function handleToggleActive(s: FacultySubject) {
+    const res = await fetch(`/api/admin/faculty-subjects/${s.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ active: !s.active }),
+    });
+    if (res.ok) {
+      const data = (await res.json()) as FacultySubject;
+      setSubjects((prev) => prev.map((sub) => (sub.id === s.id ? data : sub)));
+    }
   }
 
-  function deleteSubject(subject: Subject) {
-    const isConfirmed = window.confirm(`Удалить дисциплину «${subject.name}»?`);
-
-    if (!isConfirmed) return;
-
-    setSubjects((currentSubjects) =>
-      currentSubjects.filter((item) => item.id !== subject.id),
-    );
+  async function handleDelete(s: FacultySubject) {
+    if (!window.confirm(`Удалить дисциплину «${s.name}»?`)) return;
+    setDeletingId(s.id);
+    try {
+      await fetch(`/api/admin/faculty-subjects/${s.id}`, { method: "DELETE" });
+      setSubjects((prev) => prev.filter((sub) => sub.id !== s.id));
+    } finally {
+      setDeletingId(null);
+    }
   }
 
   return (
@@ -205,57 +154,38 @@ export default function AdminSubjectsPage() {
         <div className="flex flex-col gap-4 border-b border-gray-200 p-5 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <h2 className="text-xl font-semibold text-gray-900">Дисциплины</h2>
-
             <p className="mt-1 text-sm text-gray-500">
-              Управление учебными дисциплинами университета
+              Реестр официальных дисциплин факультета. Gemini использует этот
+              список для определения предмета при генерации квизов.
             </p>
           </div>
-
           <button
             type="button"
-            onClick={openCreateModal}
-            className="rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-blue-700"
+            onClick={openCreate}
+            className="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-blue-700"
           >
+            <Plus className="size-4" />
             Добавить дисциплину
           </button>
         </div>
 
-        <div className="grid gap-3 border-b border-gray-200 p-5 md:grid-cols-[1fr_200px_180px]">
+        <div className="grid gap-3 border-b border-gray-200 p-5 md:grid-cols-[1fr_180px]">
           <label>
             <span className="sr-only">Поиск дисциплин</span>
-
             <input
               type="search"
               value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder="Поиск по названию, коду или преподавателю"
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Поиск по названию, коду или факультету"
               className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm text-gray-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
             />
           </label>
-
-          <label>
-            <span className="sr-only">Фильтр по семестру</span>
-
-            <select
-              value={semesterFilter}
-              onChange={(event) =>
-                setSemesterFilter(event.target.value as "Все" | Semester)
-              }
-              className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-700 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-            >
-              <option value="Все">Все семестры</option>
-              <option value="1 семестр">1 семестр</option>
-              <option value="2 семестр">2 семестр</option>
-            </select>
-          </label>
-
           <label>
             <span className="sr-only">Фильтр по статусу</span>
-
             <select
               value={statusFilter}
-              onChange={(event) =>
-                setStatusFilter(event.target.value as "Все" | SubjectStatus)
+              onChange={(e) =>
+                setStatusFilter(e.target.value as typeof statusFilter)
               }
               className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-700 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
             >
@@ -266,124 +196,122 @@ export default function AdminSubjectsPage() {
           </label>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="min-w-[1050px] divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
-                  Дисциплина
-                </th>
-                <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
-                  Преподаватель
-                </th>
-                <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
-                  Факультет
-                </th>
-                <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
-                  Семестр
-                </th>
-                <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
-                  Кредиты
-                </th>
-                <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
-                  Статус
-                </th>
-                <th className="px-5 py-3 text-right text-xs font-semibold uppercase tracking-wide text-gray-500">
-                  Действия
-                </th>
-              </tr>
-            </thead>
+        {loading && (
+          <div className="flex items-center gap-2 p-8 text-sm text-gray-400">
+            <Loader2 className="size-4 animate-spin" />
+            Загрузка…
+          </div>
+        )}
+        {error && <p className="p-8 text-sm text-rose-600">{error}</p>}
 
-            <tbody className="divide-y divide-gray-100">
-              {filteredSubjects.map((subject) => (
-                <tr
-                  key={subject.id}
-                  className="transition-colors hover:bg-gray-50"
-                >
-                  <td className="px-5 py-4">
-                    <p className="text-sm font-medium text-gray-900">
-                      {subject.name}
-                    </p>
-                    <p className="mt-1 text-xs text-gray-500">{subject.code}</p>
-                  </td>
-
-                  <td className="whitespace-nowrap px-5 py-4 text-sm text-gray-600">
-                    {subject.teacher}
-                  </td>
-
-                  <td className="whitespace-nowrap px-5 py-4 text-sm text-gray-600">
-                    {subject.faculty}
-                  </td>
-
-                  <td className="whitespace-nowrap px-5 py-4 text-sm text-gray-600">
-                    {subject.semester}
-                  </td>
-
-                  <td className="whitespace-nowrap px-5 py-4 text-sm text-gray-600">
-                    {subject.credits}
-                  </td>
-
-                  <td className="whitespace-nowrap px-5 py-4">
-                    <span
-                      className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${
-                        subject.status === "Активна"
-                          ? "bg-green-100 text-green-700"
-                          : "bg-gray-100 text-gray-600"
-                      }`}
-                    >
-                      {subject.status}
-                    </span>
-                  </td>
-
-                  <td className="whitespace-nowrap px-5 py-4">
-                    <div className="flex justify-end gap-2">
-                      <button
-                        type="button"
-                        onClick={() => openEditModal(subject)}
-                        className="rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-100"
-                      >
-                        Изменить
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => toggleSubjectStatus(subject.id)}
-                        className="rounded-lg border border-orange-200 px-3 py-1.5 text-xs font-medium text-orange-700 hover:bg-orange-50"
-                      >
-                        {subject.status === "Активна"
-                          ? "В архив"
-                          : "Активировать"}
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => deleteSubject(subject)}
-                        className="rounded-lg border border-red-200 px-3 py-1.5 text-xs font-medium text-red-700 hover:bg-red-50"
-                      >
-                        Удалить
-                      </button>
-                    </div>
-                  </td>
+        {!loading && !error && (
+          <div className="overflow-x-auto">
+            <table className="min-w-[640px] w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
+                    Дисциплина
+                  </th>
+                  <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
+                    Факультет
+                  </th>
+                  <th className="px-5 py-3 text-center text-xs font-semibold uppercase tracking-wide text-gray-500">
+                    Тем в AI Coach
+                  </th>
+                  <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
+                    Статус
+                  </th>
+                  <th className="px-5 py-3 text-right text-xs font-semibold uppercase tracking-wide text-gray-500">
+                    Действия
+                  </th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {filtered.map((s) => (
+                  <tr key={s.id} className="transition-colors hover:bg-gray-50">
+                    <td className="px-5 py-4">
+                      <p className="text-sm font-medium text-gray-900">
+                        {s.name}
+                      </p>
+                      <p className="mt-0.5 font-mono text-xs text-gray-500">
+                        {s.code}
+                      </p>
+                    </td>
+                    <td className="whitespace-nowrap px-5 py-4 text-sm text-gray-600">
+                      {s.faculty}
+                    </td>
+                    <td className="whitespace-nowrap px-5 py-4 text-center text-sm text-gray-600">
+                      {s._count.topics}
+                    </td>
+                    <td className="whitespace-nowrap px-5 py-4">
+                      <button
+                        type="button"
+                        onClick={() => handleToggleActive(s)}
+                        className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium transition-colors ${
+                          s.active
+                            ? "bg-green-100 text-green-700 hover:bg-green-200"
+                            : "bg-gray-100 text-gray-500 hover:bg-gray-200"
+                        }`}
+                      >
+                        {s.active ? "Активна" : "Архив"}
+                      </button>
+                    </td>
+                    <td className="whitespace-nowrap px-5 py-4">
+                      <div className="flex justify-end gap-2">
+                        <button
+                          type="button"
+                          onClick={() => openEdit(s)}
+                          className="flex items-center gap-1.5 rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-100"
+                        >
+                          <Pencil className="size-3" />
+                          Изменить
+                        </button>
+                        <button
+                          type="button"
+                          disabled={deletingId === s.id || s._count.topics > 0}
+                          onClick={() => handleDelete(s)}
+                          title={
+                            s._count.topics > 0
+                              ? "Нельзя удалить: есть темы в AI Coach"
+                              : "Удалить"
+                          }
+                          className="flex items-center gap-1.5 rounded-lg border border-red-200 px-3 py-1.5 text-xs font-medium text-red-700 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-40"
+                        >
+                          {deletingId === s.id ? (
+                            <Loader2 className="size-3 animate-spin" />
+                          ) : (
+                            <Trash2 className="size-3" />
+                          )}
+                          Удалить
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+                {filtered.length === 0 && (
+                  <tr>
+                    <td colSpan={5} className="p-10 text-center">
+                      <p className="font-medium text-gray-700">
+                        Дисциплины не найдены
+                      </p>
+                      <p className="mt-1 text-sm text-gray-500">
+                        Измените поисковый запрос или фильтр
+                      </p>
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
 
-          {filteredSubjects.length === 0 && (
-            <div className="p-10 text-center">
-              <p className="font-medium text-gray-700">Дисциплины не найдены</p>
-              <p className="mt-1 text-sm text-gray-500">
-                Измени поисковый запрос или выбранные фильтры
-              </p>
-            </div>
-          )}
-        </div>
-
-        <div className="border-t border-gray-200 px-5 py-4">
-          <p className="text-sm text-gray-500">
-            Найдено дисциплин: {filteredSubjects.length}
-          </p>
-        </div>
+        {!loading && !error && (
+          <div className="border-t border-gray-200 px-5 py-4">
+            <p className="text-sm text-gray-500">
+              Найдено дисциплин: {filtered.length}
+            </p>
+          </div>
+        )}
       </section>
 
       {isModalOpen && (
@@ -395,32 +323,23 @@ export default function AdminSubjectsPage() {
             role="dialog"
             aria-modal="true"
             aria-labelledby="subject-modal-title"
-            className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-6 shadow-xl"
-            onMouseDown={(event) => event.stopPropagation()}
+            className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl"
+            onMouseDown={(e) => e.stopPropagation()}
           >
             <div className="mb-5 flex items-start justify-between gap-4">
-              <div>
-                <h2
-                  id="subject-modal-title"
-                  className="text-xl font-semibold text-gray-900"
-                >
-                  {editingSubjectId === null
-                    ? "Новая дисциплина"
-                    : "Редактирование дисциплины"}
-                </h2>
-
-                <p className="mt-1 text-sm text-gray-500">
-                  Заполни информацию об учебной дисциплине
-                </p>
-              </div>
-
+              <h2
+                id="subject-modal-title"
+                className="text-xl font-semibold text-gray-900"
+              >
+                {editingId ? "Редактирование дисциплины" : "Новая дисциплина"}
+              </h2>
               <button
                 type="button"
                 onClick={closeModal}
-                aria-label="Закрыть окно"
-                className="rounded-lg px-2 py-1 text-xl text-gray-400 hover:bg-gray-100 hover:text-gray-700"
+                aria-label="Закрыть"
+                className="rounded-lg p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700"
               >
-                ×
+                <X className="size-5" />
               </button>
             </div>
 
@@ -429,124 +348,52 @@ export default function AdminSubjectsPage() {
                 <span className="mb-1.5 block text-sm font-medium text-gray-700">
                   Название
                 </span>
-
                 <input
                   required
                   value={form.name}
-                  onChange={(event) =>
-                    setForm((currentForm) => ({
-                      ...currentForm,
-                      name: event.target.value,
-                    }))
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, name: e.target.value }))
                   }
-                  placeholder="Например, Web Programming"
-                  className="w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                  placeholder="Математический анализ"
+                  className={inputCls}
                 />
               </label>
-
               <div className="grid gap-4 sm:grid-cols-2">
                 <label className="block">
                   <span className="mb-1.5 block text-sm font-medium text-gray-700">
-                    Код дисциплины
+                    Код
                   </span>
-
                   <input
                     required
                     value={form.code}
-                    onChange={(event) =>
-                      setForm((currentForm) => ({
-                        ...currentForm,
-                        code: event.target.value,
-                      }))
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, code: e.target.value }))
                     }
-                    placeholder="WEB-201"
-                    className="w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                    placeholder="MATH101"
+                    className={inputCls}
                   />
                 </label>
-
                 <label className="block">
                   <span className="mb-1.5 block text-sm font-medium text-gray-700">
                     Факультет
                   </span>
-
                   <input
                     required
                     value={form.faculty}
-                    onChange={(event) =>
-                      setForm((currentForm) => ({
-                        ...currentForm,
-                        faculty: event.target.value,
-                      }))
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, faculty: e.target.value }))
                     }
                     placeholder="FCIM"
-                    className="w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                    className={inputCls}
                   />
                 </label>
               </div>
 
-              <label className="block">
-                <span className="mb-1.5 block text-sm font-medium text-gray-700">
-                  Преподаватель
-                </span>
+              {formError && (
+                <p className="text-xs text-rose-600">{formError}</p>
+              )}
 
-                <input
-                  required
-                  value={form.teacher}
-                  onChange={(event) =>
-                    setForm((currentForm) => ({
-                      ...currentForm,
-                      teacher: event.target.value,
-                    }))
-                  }
-                  placeholder="Имя и фамилия преподавателя"
-                  className="w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-                />
-              </label>
-
-              <div className="grid gap-4 sm:grid-cols-2">
-                <label className="block">
-                  <span className="mb-1.5 block text-sm font-medium text-gray-700">
-                    Семестр
-                  </span>
-
-                  <select
-                    value={form.semester}
-                    onChange={(event) =>
-                      setForm((currentForm) => ({
-                        ...currentForm,
-                        semester: event.target.value as Semester,
-                      }))
-                    }
-                    className="w-full rounded-lg border border-gray-300 bg-white px-3.5 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-                  >
-                    <option value="1 семестр">1 семестр</option>
-                    <option value="2 семестр">2 семестр</option>
-                  </select>
-                </label>
-
-                <label className="block">
-                  <span className="mb-1.5 block text-sm font-medium text-gray-700">
-                    Количество кредитов
-                  </span>
-
-                  <input
-                    required
-                    type="number"
-                    min="1"
-                    max="30"
-                    value={form.credits}
-                    onChange={(event) =>
-                      setForm((currentForm) => ({
-                        ...currentForm,
-                        credits: event.target.value,
-                      }))
-                    }
-                    className="w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-                  />
-                </label>
-              </div>
-
-              <div className="flex justify-end gap-3 pt-3">
+              <div className="flex justify-end gap-3 pt-2">
                 <button
                   type="button"
                   onClick={closeModal}
@@ -554,12 +401,17 @@ export default function AdminSubjectsPage() {
                 >
                   Отмена
                 </button>
-
                 <button
                   type="submit"
-                  className="rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-blue-700"
+                  disabled={saving}
+                  className="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-60"
                 >
-                  {editingSubjectId === null ? "Добавить" : "Сохранить"}
+                  {saving ? (
+                    <Loader2 className="size-4 animate-spin" />
+                  ) : (
+                    <Check className="size-4" />
+                  )}
+                  {editingId ? "Сохранить" : "Добавить"}
                 </button>
               </div>
             </form>
