@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { isValidGradeSubjects } from "@/lib/gpa-profile";
+import { getStoredSubjects } from "@/lib/server/gpa-profile";
 
 export async function GET() {
   const session = await auth();
@@ -11,11 +12,9 @@ export async function GET() {
     return NextResponse.json({ message: "Не авторизован" }, { status: 401 });
   }
 
-  const profile = await prisma.gpaProfile.findUnique({
-    where: { userId: session.user.id },
-  });
+  const subjects = await getStoredSubjects(session.user.id);
 
-  return NextResponse.json({ subjects: profile?.subjects ?? null });
+  return NextResponse.json({ subjects });
 }
 
 export async function PUT(request: Request) {
