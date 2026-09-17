@@ -1,15 +1,18 @@
 "use client";
 
-import { QuizResult } from "@/types/quiz";
 import {
-  Trophy,
-  Zap,
+  ArrowLeft,
   CheckCircle2,
-  XCircle,
   RotateCcw,
   Target,
-  ArrowLeft,
+  Trophy,
+  XCircle,
+  Zap,
 } from "lucide-react";
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import type { QuizResult } from "@/types/quiz";
 
 interface ResultsScreenProps {
   result: QuizResult;
@@ -24,102 +27,115 @@ export function ResultsScreen({
   onPracticeWeak,
   onBackToCoach,
 }: ResultsScreenProps) {
+  const scoreColor =
+    result.percentage >= 80
+      ? "text-emerald-600"
+      : result.percentage >= 50
+        ? "text-amber-600"
+        : "text-rose-600";
+
   return (
-    <div className="w-full max-w-3xl mx-auto p-6 space-y-8 bg-card rounded-xl border shadow-sm">
+    <Card className="w-full max-w-2xl rounded-2xl border-gray-200 bg-white p-6 shadow-sm sm:p-8">
       {/* Заголовок */}
-      <div className="text-center space-y-2">
-        <div className="inline-flex p-3 bg-primary/10 text-primary rounded-full mb-2">
-          <Trophy className="w-8 h-8" />
-        </div>
-        <h1 className="text-3xl font-bold text-foreground">Результаты теста</h1>
-        <p className="text-muted-foreground text-sm">
-          Отличная работа! Вот подробный разбор ваших результатов.
+      <div className="mb-6 flex flex-col items-center gap-2 text-center">
+        <span className="flex size-14 items-center justify-center rounded-full bg-blue-50">
+          <Trophy aria-hidden="true" className="size-7 text-blue-600" />
+        </span>
+        <h1 className="text-2xl font-bold text-gray-900 sm:text-3xl">
+          Результаты теста
+        </h1>
+        <p className="text-sm text-gray-500">
+          Вот подробный разбор ваших ответов.
         </p>
       </div>
 
+      {/* Итоговый счёт */}
+      <div className="mb-6 flex flex-col items-center">
+        <span className={cn("text-6xl font-bold tabular-nums", scoreColor)}>
+          {result.percentage}%
+        </span>
+        <span className="mt-1 text-sm text-gray-500">
+          {result.correctCount} из {result.totalQuestions} правильных ответов
+        </span>
+      </div>
+
       {/* Метрики */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <div className="p-4 bg-secondary/50 rounded-lg border text-center space-y-1">
-          <span className="text-xs text-muted-foreground uppercase font-semibold">
-            Итоговый балл
+      <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3">
+        <div className="flex flex-col items-center gap-1 rounded-xl border border-amber-200 bg-amber-50 p-3">
+          <Zap
+            aria-hidden="true"
+            className="size-5 fill-amber-500 text-amber-500"
+          />
+          <span className="text-xl font-bold text-amber-600 tabular-nums">
+            +{result.xpEarned}
           </span>
-          <p className="text-2xl font-bold text-foreground">
-            {result.percentage}%
-          </p>
+          <span className="text-xs font-medium text-amber-700">Опыт (XP)</span>
         </div>
 
-        <div className="p-4 bg-secondary/50 rounded-lg border text-center space-y-1">
-          <span className="text-xs text-muted-foreground uppercase font-semibold">
-            Опыт (XP)
+        <div className="flex flex-col items-center gap-1 rounded-xl border border-emerald-200 bg-emerald-50 p-3">
+          <CheckCircle2
+            aria-hidden="true"
+            className="size-5 text-emerald-500"
+          />
+          <span className="text-xl font-bold text-emerald-600 tabular-nums">
+            {result.correctCount}
           </span>
-          <p className="text-2xl font-bold text-amber-500 flex items-center justify-center gap-1">
-            <Zap className="w-5 h-5 fill-amber-500" />+{result.xpEarned}
-          </p>
-        </div>
-
-        <div className="p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-lg text-center space-y-1">
-          <span className="text-xs text-emerald-600 dark:text-emerald-400 uppercase font-semibold">
+          <span className="text-xs font-medium text-emerald-700">
             Правильно
           </span>
-          <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400 flex items-center justify-center gap-1">
-            <CheckCircle2 className="w-5 h-5" />
-            {result.correctCount}
-          </p>
         </div>
 
-        <div className="p-4 bg-rose-500/10 border border-rose-500/20 rounded-lg text-center space-y-1">
-          <span className="text-xs text-rose-600 dark:text-rose-400 uppercase font-semibold">
-            Ошибок
-          </span>
-          <p className="text-2xl font-bold text-rose-600 dark:text-rose-400 flex items-center justify-center gap-1">
-            <XCircle className="w-5 h-5" />
+        <div className="col-span-2 flex flex-col items-center gap-1 rounded-xl border border-rose-200 bg-rose-50 p-3 sm:col-span-1">
+          <XCircle aria-hidden="true" className="size-5 text-rose-500" />
+          <span className="text-xl font-bold text-rose-600 tabular-nums">
             {result.incorrectCount}
-          </p>
+          </span>
+          <span className="text-xs font-medium text-rose-700">Ошибок</span>
         </div>
       </div>
 
       {/* Аналитика тем */}
-      <div className="grid sm:grid-cols-2 gap-6">
-        <div className="space-y-3 p-4 rounded-lg border bg-background">
-          <h3 className="font-semibold text-sm flex items-center gap-2 text-emerald-600 dark:text-emerald-400">
-            <CheckCircle2 className="w-4 h-4" />
+      <div className="mb-6 grid gap-4 sm:grid-cols-2">
+        <div className="rounded-xl border border-gray-200 bg-gray-50/60 p-4">
+          <h3 className="mb-2 flex items-center gap-1.5 text-sm font-semibold text-emerald-700">
+            <CheckCircle2 aria-hidden="true" className="size-4" />
             Сильные темы
           </h3>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-1.5">
             {result.strongTopics.length > 0 ? (
               result.strongTopics.map((topic, i) => (
                 <span
                   key={i}
-                  className="px-2.5 py-1 text-xs font-medium bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-md border border-emerald-500/20"
+                  className="rounded-md border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700"
                 >
                   {topic}
                 </span>
               ))
             ) : (
-              <span className="text-xs text-muted-foreground">
-                Сильные темы пока не определены
+              <span className="text-xs text-gray-400">
+                Сильные темы не определены
               </span>
             )}
           </div>
         </div>
 
-        <div className="space-y-3 p-4 rounded-lg border bg-background">
-          <h3 className="font-semibold text-sm flex items-center gap-2 text-rose-600 dark:text-rose-400">
-            <Target className="w-4 h-4" />
+        <div className="rounded-xl border border-gray-200 bg-gray-50/60 p-4">
+          <h3 className="mb-2 flex items-center gap-1.5 text-sm font-semibold text-rose-700">
+            <Target aria-hidden="true" className="size-4" />
             Темы для повторения
           </h3>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-1.5">
             {result.weakTopics.length > 0 ? (
               result.weakTopics.map((topic, i) => (
                 <span
                   key={i}
-                  className="px-2.5 py-1 text-xs font-medium bg-rose-500/10 text-rose-600 dark:text-rose-400 rounded-md border border-rose-500/20"
+                  className="rounded-md border border-rose-200 bg-rose-50 px-2.5 py-1 text-xs font-medium text-rose-700"
                 >
                   {topic}
                 </span>
               ))
             ) : (
-              <span className="text-xs text-muted-foreground">
+              <span className="text-xs text-gray-400">
                 Ошибок нет! Отличный результат.
               </span>
             )}
@@ -127,35 +143,27 @@ export function ResultsScreen({
         </div>
       </div>
 
-      {/* Кнопки действий */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-4 border-t border-border">
-        <button
-          onClick={onBackToCoach}
-          className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium rounded-md border border-input bg-background hover:bg-accent"
-        >
-          <ArrowLeft className="w-4 h-4" />
+      {/* Кнопки */}
+      <div className="flex flex-col gap-3 border-t border-gray-100 pt-5 sm:flex-row sm:items-center sm:justify-between">
+        <Button variant="outline" onClick={onBackToCoach}>
+          <ArrowLeft aria-hidden="true" />
           Назад в AI Coach
-        </button>
+        </Button>
 
-        <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
-          <button
-            onClick={onRetry}
-            className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium rounded-md border border-input bg-background hover:bg-accent"
-          >
-            <RotateCcw className="w-4 h-4" />
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <Button variant="outline" onClick={onRetry}>
+            <RotateCcw aria-hidden="true" />
             Пройти заново
-          </button>
-
-          <button
+          </Button>
+          <Button
             onClick={onPracticeWeak}
             disabled={result.weakTopics.length === 0}
-            className="w-full sm:w-auto flex items-center justify-center gap-2 px-5 py-2 text-sm font-semibold rounded-md bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <Target className="w-4 h-4" />
+            <Target aria-hidden="true" />
             Проработать слабые темы
-          </button>
+          </Button>
         </div>
       </div>
-    </div>
+    </Card>
   );
 }

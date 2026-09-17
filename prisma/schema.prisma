@@ -18,11 +18,165 @@ enum Role {
 }
 
 model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  password  String
-  name      String
-  role      Role     @default(STUDENT)
-  group     String?
-  createdAt DateTime @default(now())
+  id         String      @id @default(cuid())
+  email      String      @unique
+  password   String
+  name       String
+  role       Role        @default(STUDENT)
+  group      String?
+  groupId    String?
+  subgroupId String?
+  studyGroup StudyGroup? @relation(fields: [groupId], references: [id], onDelete: Restrict)
+  subgroup   Subgroup?   @relation(fields: [subgroupId, groupId], references: [id, groupId], onDelete: Restrict)
+  createdAt  DateTime    @default(now())
+
+  @@index([groupId])
+  @@index([subgroupId, groupId])
+}
+
+enum WeekPattern {
+  EVERY
+  ODD
+  EVEN
+}
+
+enum ScheduleStatus {
+  DRAFT
+  PUBLISHED
+}
+
+enum ScheduleKind {
+  STUDENT
+  GLOBAL
+  ASSESSMENT
+}
+
+enum LessonType {
+  LECTURE
+  LABORATORY
+  PRACTICE
+  SEMINAR
+  UNSPECIFIED
+}
+
+model AcademicYear {
+  id                 String     @id @default(cuid())
+  name               String     @unique
+  startsOn           DateTime   @db.Date
+  endsOn             DateTime   @db.Date
+  // Monday starting the first odd week. Holidays do not reset the count.
+  firstOddWeekMonday DateTime   @db.Date
+  semesters          Semester[]
+}
+
+model Semester {
+  id             String           @id @default(cuid())
+  academicYearId String
+  number         Int
+  startsOn       DateTime         @db.Date
+  endsOn         DateTime         @db.Date
+  academicYear   AcademicYear     @relation(fields: [academicYearId], references: [id], onDelete: Restrict)
+  schedules      ScheduleImport[]
+
+  @@unique([academicYearId, number])
+}
+
+model StudyGroup {
+  id        String           @id @default(cuid())
+  name      String           @unique
+  subgroups Subgroup[]
+  students  User[]
+  audiences LessonAudience[]
+}
+
+model Subgroup {
+  id        String           @id @default(cuid())
+  groupId   String
+  number    Int
+  group     StudyGroup       @relation(fields: [groupId], references: [id], onDelete: Restrict)
+  students  User[]
+  audiences LessonAudience[]
+
+  @@unique([groupId, number])
+  @@unique([id, groupId])
+}
+
+model Subject {
+  id       String   @id @default(cuid())
+  name     String   @unique
+  // Palette key; CSS classes belong to the frontend.
+  colorKey String   @default("blue")
+  lessons  Lesson[]
+}
+
+model ScheduleImport {
+  id             String            @id @default(cuid())
+  semesterId     String
+  course         Int
+  kind           ScheduleKind      @default(STUDENT)
+  title          String
+  sourceFilename String?
+  sourceFileKey  String?
+  importWarnings String[]          @default([])
+  status         ScheduleStatus    @default(DRAFT)
+  validFrom      DateTime          @db.Date
+  validTo        DateTime          @db.Date
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+  semester       Semester          @relation(fields: [semesterId], references: [id], onDelete: Restrict)
+  lessons        Lesson[]
+  holidays       ScheduleHoliday[]
+
+  @@index([semesterId, course, status])
+  @@index([status, validFrom, validTo])
+  @@index([kind, status, validFrom, validTo])
+}
+
+model Lesson {
+  id           String           @id @default(cuid())
+  scheduleId   String
+  subjectId    String
+  // Monday = 0, Sunday = 6. 
+  weekday      Int
+  startMinutes Int
+  endMinutes   Int
+  weekPattern  WeekPattern      @default(EVERY)
+  type         LessonType       @default(UNSPECIFIED)
+  teacher      String?
+  classroom    String?
+  topic        String?
+  sourceText   String?
+  reviewed     Boolean          @default(false)
+  schedule     ScheduleImport   @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+  subject      Subject          @relation(fields: [subjectId], references: [id], onDelete: Restrict)
+  audiences    LessonAudience[]
+
+  @@index([scheduleId, weekday, startMinutes])
+  @@index([subjectId])
+}
+
+model LessonAudience {
+  id         String     @id @default(cuid())
+  lessonId   String
+  groupId    String
+  // Null means the entire group, not an unknown subgroup.
+  subgroupId String?
+  lesson     Lesson     @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  group      StudyGroup @relation(fields: [groupId], references: [id], onDelete: Restrict)
+  subgroup   Subgroup?  @relation(fields: [subgroupId, groupId], references: [id, groupId], onDelete: Restrict)
+
+  @@unique([lessonId, groupId, subgroupId])
+  @@index([groupId, lessonId])
+  @@index([subgroupId, groupId])
+}
+
+model ScheduleHoliday {
+  id         String         @id @default(cuid())
+  scheduleId String
+  name       String
+  startsOn   DateTime       @db.Date
+  endsOn     DateTime       @db.Date
+  schedule   ScheduleImport @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+
+  @@index([scheduleId, startsOn, endsOn])
 }

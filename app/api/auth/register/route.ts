@@ -59,12 +59,19 @@ export async function POST(request: Request) {
 
   const hashedPassword = await bcrypt.hash(password, 10);
 
+  const studyGroup = await prisma.studyGroup.upsert({
+    where: { name: group },
+    update: {},
+    create: { name: group },
+  });
+
   const user = await prisma.user.create({
     data: {
       name: name.trim(),
       email,
       password: hashedPassword,
       group,
+      groupId: studyGroup.id,
     },
   });
 

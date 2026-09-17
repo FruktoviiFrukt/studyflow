@@ -48,7 +48,5 @@ test("AI generation starts disabled until input is supplied", async ({
   page,
 }) => {
   await page.goto("/ai-coach");
-  await expect(
-    page.getByRole("button", { name: "Сгенерировать вопросы" }),
-  ).toBeDisabled();
+  await expect(page.getByLabel("Сгенерировать вопросы")).toBeDisabled();
 });
