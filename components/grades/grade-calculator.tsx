@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Calculator, Plus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -25,6 +25,7 @@ import {
   isLowGrade,
   type GradeSubject,
 } from "@/lib/grades";
+import { fetchGpaProfile, saveGpaProfile } from "@/lib/gpa-profile";
 
 import SubjectCards, { SemesterFilters } from "./subject-cards";
 
@@ -124,11 +125,61 @@ function FormulaEditor({
 }
 
 export default function GradeCalculator() {
-  const [subjects, setSubjects] = useState<GradeSubject[]>(initialSubjects);
-  const [selectedId, setSelectedId] = useState(initialSubjects[0].id);
+  const [subjects, setSubjects] = useState<GradeSubject[] | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [newSubject, setNewSubject] = useState("");
   const [semester, setSemester] = useState<SemesterFilter>("all");
   const [newSemester, setNewSemester] = useState<Semester>(1);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [saveStatus, setSaveStatus] = useState<
+    "idle" | "saving" | "saved" | "error"
+  >("idle");
+  const skipNextSaveRef = useRef(true);
+
+  // Загружаем сохранённые оценки один раз при монтировании.
+  useEffect(() => {
+    let cancelled = false;
+    fetchGpaProfile()
+      .then((loaded) => {
+        if (cancelled) return;
+        setSubjects(loaded && loaded.length > 0 ? loaded : initialSubjects);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setSubjects(initialSubjects);
+        setLoadError(
+          "Не удалось загрузить сохранённые оценки. Показаны демо-данные.",
+        );
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Автосохранение с задержкой после каждого реального изменения (не после начальной загрузки).
+  useEffect(() => {
+    if (subjects === null) return;
+    if (skipNextSaveRef.current) {
+      skipNextSaveRef.current = false;
+      return;
+    }
+    setSaveStatus("saving");
+    const timeout = setTimeout(() => {
+      saveGpaProfile(subjects)
+        .then(() => setSaveStatus("saved"))
+        .catch(() => setSaveStatus("error"));
+    }, 800);
+    return () => clearTimeout(timeout);
+  }, [subjects]);
+
+  if (subjects === null) {
+    return (
+      <div className="mx-auto max-w-[1440px] space-y-6">
+        <p className="text-sm text-gray-500">Загружаем ваши оценки…</p>
+      </div>
+    );
+  }
+
   const visibleSubjects = filterSubjects(subjects, semester);
   const subject =
     visibleSubjects.find((item) => item.id === selectedId) ??
@@ -139,7 +190,7 @@ export default function GradeCalculator() {
   function updateSubject(change: Partial<GradeSubject>) {
     if (!subject) return;
     setSubjects((current) =>
-      current.map((item) =>
+      (current ?? []).map((item) =>
         item.id === subject.id ? { ...item, ...change } : item,
       ),
     );
@@ -147,18 +198,29 @@ export default function GradeCalculator() {
 
   return (
     <div className="mx-auto max-w-[1440px] space-y-6">
-      <div>
-        <p className="mb-2 text-xs font-semibold uppercase tracking-[0.16em] text-blue-600">
-          Успеваемость
-        </p>
-        <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
-          Калькулятор оценок
-        </h2>
-        <p className="mt-2 text-sm leading-6 text-gray-500">
-          Выберите предмет, введите оценки за этапы и настройте формулу оценки
-          за семестр.
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <p className="mb-2 text-xs font-semibold uppercase tracking-[0.16em] text-blue-600">
+            Успеваемость
+          </p>
+          <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
+            Калькулятор оценок
+          </h2>
+          <p className="mt-2 text-sm leading-6 text-gray-500">
+            Выберите предмет, введите оценки за этапы и настройте формулу оценки
+            за семестр.
+          </p>
+        </div>
+        <p aria-live="polite" className="text-xs text-gray-400">
+          {saveStatus === "saving" && "Сохраняем…"}
+          {saveStatus === "saved" && "Сохранено"}
+          {saveStatus === "error" && (
+            <span className="text-red-600">Не удалось сохранить</span>
+          )}
         </p>
       </div>
+
+      {loadError && <p className="text-xs text-amber-600">{loadError}</p>}
 
       <SemesterFilters value={semester} onChange={setSemester} />
       <Card className="rounded-2xl border-blue-100 bg-gradient-to-br from-blue-50 via-white to-white p-6 shadow-sm sm:p-8">
@@ -216,7 +278,7 @@ export default function GradeCalculator() {
             <Select
               value={subject?.id ?? ""}
               disabled={!subject || visibleSubjects.length === 0}
-              onValueChange={(val) => setSelectedId(val)}
+              onValueChange={(val: string) => setSelectedId(val)}
             >
               <SelectTrigger className="w-full">
                 <SelectValue
@@ -244,7 +306,7 @@ export default function GradeCalculator() {
                 newSubject.trim(),
                 newSemester,
               );
-              setSubjects((current) => [...current, item]);
+              setSubjects((current) => [...(current ?? []), item]);
               setSelectedId(item.id);
               if (semester !== "all") setSemester(newSemester);
               setNewSubject("");
@@ -266,7 +328,7 @@ export default function GradeCalculator() {
               <span className="mb-2 block text-sm font-semibold">Семестр</span>
               <Select
                 value={String(newSemester)}
-                onValueChange={(value) =>
+                onValueChange={(value: string) =>
                   setNewSemester(Number(value) as Semester)
                 }
               >
