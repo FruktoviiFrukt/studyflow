@@ -21,25 +21,27 @@ export type TemplateLesson = {
 export function calculateGlobalTemplate(
   schedules: TemplateSchedule[],
   groups: TemplateGroup[],
+  course: number,
+  semester: 1 | 2,
 ) {
   const published = schedules.filter(
-    (schedule) => schedule.kind === "GLOBAL" && schedule.status === "PUBLISHED",
+    (schedule) =>
+      schedule.kind === "GLOBAL" &&
+      schedule.status === "PUBLISHED" &&
+      schedule.course === course &&
+      schedule.semester.number === semester,
   );
   const latest = published.reduce<TemplateSchedule | null>(
     (current, schedule) => {
       if (!current) return schedule;
       const year = schedule.semester.academicYear.startsOn.getTime();
       const previous = current.semester.academicYear.startsOn.getTime();
-      return year > previous ||
-        (year === previous &&
-          schedule.semester.number > current.semester.number)
-        ? schedule
-        : current;
+      return year > previous ? schedule : current;
     },
     null,
   );
   if (!latest)
-    return { academicYear: null, semester: null, groups: [], days: [] };
+    return { course, academicYear: null, semester, groups: [], days: [] };
 
   const term = published.filter(
     (schedule) => schedule.semesterId === latest.semesterId,
@@ -102,6 +104,7 @@ export function calculateGlobalTemplate(
     }),
   );
   return {
+    course,
     academicYear: latest.semester.academicYear.name,
     semester: latest.semester.number,
     groups: visibleGroups,

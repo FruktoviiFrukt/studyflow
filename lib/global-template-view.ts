@@ -4,6 +4,7 @@ import type { TemplateLesson } from "./server/global-schedule-template.ts";
 export type TemplateGroup = { id: string; name: string };
 export type TemplateDay = { weekday: number; lessons: TemplateLesson[] };
 export type TemplateResponse = {
+  course: number;
   academicYear: string | null;
   semester: number | null;
   groups: TemplateGroup[];
@@ -51,6 +52,7 @@ export function adminGlobalTemplate(lessons: AdminLesson[]): TemplateResponse {
     topic: lesson.topic || null,
   }));
   return {
+    course: 0,
     academicYear: null,
     semester: null,
     groups: names.map((name) => ({ id: name, name })),

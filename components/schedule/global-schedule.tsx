@@ -20,16 +20,21 @@ export default function GlobalSchedule() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [attempt, setAttempt] = useState(0);
+  const [course, setCourse] = useState(1);
+  const [semester, setSemester] = useState<1 | 2>(1);
   const [stream, setStream] = useState("all");
   const [parity, setParity] = useState<"ODD" | "EVEN">("ODD");
 
   useEffect(() => {
     const controller = new AbortController();
     let active = true;
-    fetch("/api/schedule/global/template", {
-      cache: "no-store",
-      signal: controller.signal,
-    })
+    fetch(
+      `/api/schedule/global/template?course=${course}&semester=${semester}`,
+      {
+        cache: "no-store",
+        signal: controller.signal,
+      },
+    )
       .then(async (response) => {
         const body = await response.json();
         if (!response.ok)
@@ -49,7 +54,7 @@ export default function GlobalSchedule() {
       active = false;
       controller.abort();
     };
-  }, [attempt]);
+  }, [attempt, course, semester]);
 
   const streams = [
     ...new Set(data?.groups.map((group) => streamOf(group.name)) ?? []),
@@ -74,6 +79,91 @@ export default function GlobalSchedule() {
           </p>
         )}
       </div>
+      <Card className="rounded-2xl border-gray-200 bg-white p-4 shadow-sm sm:p-5">
+        <div className="flex flex-wrap items-end gap-5">
+          <div>
+            <p className="mb-2 text-sm font-medium text-gray-600">Курс</p>
+            <div
+              role="group"
+              aria-label="Курс"
+              className="flex flex-wrap gap-2"
+            >
+              {[1, 2, 3, 4].map((value) => (
+                <Button
+                  key={value}
+                  variant={course === value ? "default" : "outline"}
+                  aria-pressed={course === value}
+                  onClick={() => {
+                    if (course === value) return;
+                    setData(null);
+                    setError("");
+                    setLoading(true);
+                    setCourse(value);
+                    setStream("all");
+                  }}
+                >
+                  {value} курс
+                </Button>
+              ))}
+            </div>
+          </div>
+          <div className="grid gap-2 text-sm font-medium text-gray-600">
+            <span>Семестр</span>
+            <Select
+              value={String(semester)}
+              onValueChange={(value) => {
+                if (semester === Number(value)) return;
+                setData(null);
+                setError("");
+                setLoading(true);
+                setSemester(Number(value) as 1 | 2);
+                setStream("all");
+              }}
+            >
+              <SelectTrigger aria-label="Семестр" className="w-36">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="1">1 семестр</SelectItem>
+                <SelectItem value="2">2 семестр</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="grid gap-2 text-sm font-medium text-gray-600">
+            <span>Направление</span>
+            <Select value={stream} onValueChange={setStream}>
+              <SelectTrigger aria-label="Направление" className="w-[200px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Все направления</SelectItem>
+                {streams.map((value) => (
+                  <SelectItem key={value} value={value}>
+                    {value}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div role="group" aria-label="Чётность недели" className="flex gap-2">
+            {(
+              [
+                ["ODD", "Нечётная"],
+                ["EVEN", "Чётная"],
+              ] as const
+            ).map(([value, label]) => (
+              <Button
+                key={value}
+                variant={parity === value ? "default" : "outline"}
+                aria-pressed={parity === value}
+                onClick={() => setParity(value)}
+              >
+                {label}
+              </Button>
+            ))}
+          </div>
+        </div>
+      </Card>
       {loading ? (
         <Card role="status" className="rounded-2xl border-gray-200">
           <LoadingIndicator text="Загружаем глобальное расписание…" />
@@ -90,7 +180,8 @@ export default function GlobalSchedule() {
       ) : !data?.groups.length ? (
         <Card className="rounded-2xl border-gray-200 p-10 text-center">
           <h3 className="font-semibold">
-            Глобальное расписание ещё не опубликовано
+            Расписание для {course} курса, {semester} семестра ещё не
+            опубликовано
           </h3>
           <p className="mt-2 text-sm text-gray-500">
             После публикации группы и занятия появятся здесь.
@@ -98,45 +189,6 @@ export default function GlobalSchedule() {
         </Card>
       ) : (
         <Card className="min-w-0 overflow-hidden rounded-2xl border-gray-200 bg-white shadow-sm">
-          <div className="flex flex-wrap items-end justify-between gap-4 border-b border-gray-200 p-4 sm:p-5">
-            <div className="grid gap-2 text-sm font-medium text-gray-600">
-              <span>Направление</span>
-              <Select value={stream} onValueChange={setStream}>
-                <SelectTrigger className="w-[200px]">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Все направления</SelectItem>
-                  {streams.map((value) => (
-                    <SelectItem key={value} value={value}>
-                      {value}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div
-              role="group"
-              aria-label="Чётность недели"
-              className="flex gap-2"
-            >
-              {(
-                [
-                  ["ODD", "Нечётная"],
-                  ["EVEN", "Чётная"],
-                ] as const
-              ).map(([value, label]) => (
-                <Button
-                  key={value}
-                  variant={parity === value ? "default" : "outline"}
-                  aria-pressed={parity === value}
-                  onClick={() => setParity(value)}
-                >
-                  {label}
-                </Button>
-              ))}
-            </div>
-          </div>
           <GlobalTimetable data={data} groups={groups} parity={parity} />
           <p className="border-t border-gray-200 bg-gray-50 px-4 py-3 text-xs text-gray-500">
             Общие занятия соседних групп объединены. Таблица показывает

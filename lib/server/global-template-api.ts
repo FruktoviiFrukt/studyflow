@@ -23,9 +23,20 @@ export function createGlobalTemplateGet({ authenticate, db }: Dependencies) {
           { code: "UNAUTHORIZED", message: "Войдите в аккаунт." },
           401,
         );
-      if (new URL(request.url).search)
+      const params = [...new URL(request.url).searchParams.entries()];
+      const course = Number(params.find(([key]) => key === "course")?.[1]);
+      const semester = Number(params.find(([key]) => key === "semester")?.[1]);
+      if (
+        params.length !== 2 ||
+        params.filter(([key]) => key === "course").length !== 1 ||
+        params.filter(([key]) => key === "semester").length !== 1 ||
+        !Number.isInteger(course) ||
+        course < 1 ||
+        course > 10 ||
+        ![1, 2].includes(semester)
+      )
         return json(
-          { code: "INVALID_QUERY", message: "Параметры не требуются." },
+          { code: "INVALID_QUERY", message: "Выберите курс и семестр." },
           400,
         );
       const user = await db.user.findUnique({
@@ -38,7 +49,12 @@ export function createGlobalTemplateGet({ authenticate, db }: Dependencies) {
           401,
         );
       const schedules = await db.scheduleImport.findMany({
-        where: { kind: "GLOBAL", status: "PUBLISHED" },
+        where: {
+          kind: "GLOBAL",
+          status: "PUBLISHED",
+          course,
+          semester: { number: semester },
+        },
         include: {
           semester: { include: { academicYear: true } },
           holidays: true,
@@ -57,7 +73,14 @@ export function createGlobalTemplateGet({ authenticate, db }: Dependencies) {
         for (const lesson of schedule.lessons)
           for (const audience of lesson.audiences)
             groups.set(audience.group.id, audience.group);
-      return json(calculateGlobalTemplate(schedules, [...groups.values()]));
+      return json(
+        calculateGlobalTemplate(
+          schedules,
+          [...groups.values()],
+          course,
+          semester as 1 | 2,
+        ),
+      );
     } catch (error) {
       if (error instanceof ScheduleConflictError)
         return json(

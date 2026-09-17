@@ -11,11 +11,12 @@ const groups = [
   { id: "g1", name: "TI-241" },
   { id: "g2", name: "TI-242" },
 ];
-function schedule(id, semester = 1) {
+function schedule(id, semester = 1, course = 3) {
   return {
     id,
     semesterId: `sem-${semester}`,
     kind: "GLOBAL",
+    course,
     status: "PUBLISHED",
     validFrom: date("2026-09-01"),
     semester: {
@@ -41,7 +42,8 @@ function schedule(id, semester = 1) {
 }
 
 test("weekly template keeps all groups and parity without selecting a date", () => {
-  const result = calculateGlobalTemplate([schedule("first")], groups);
+  const result = calculateGlobalTemplate([schedule("first")], groups, 3, 1);
+  assert.equal(result.course, 3);
   assert.equal(result.academicYear, "2026/2027");
   assert.equal(result.semester, 1);
   assert.deepEqual(result.groups, groups);
@@ -51,14 +53,31 @@ test("weekly template keeps all groups and parity without selecting a date", () 
   assert.equal(result.days[0].lessons[0].date, undefined);
 });
 
-test("latest semester is selected and equal-period duplicates are rejected", () => {
+test("course and semester are selected independently of the viewer", () => {
   assert.equal(
-    calculateGlobalTemplate([schedule("old"), schedule("new", 2)], groups)
-      .semester,
+    calculateGlobalTemplate(
+      [schedule("first"), schedule("second", 2)],
+      groups,
+      3,
+      2,
+    ).semester,
     2,
   );
+  assert.equal(
+    calculateGlobalTemplate(
+      [schedule("first"), schedule("other", 1, 2)],
+      groups,
+      2,
+      1,
+    ).days[0].lessons[0].id,
+    "lesson-other",
+  );
+  assert.deepEqual(
+    calculateGlobalTemplate([schedule("first")], groups, 2, 2).groups,
+    [],
+  );
   assert.throws(
-    () => calculateGlobalTemplate([schedule("a"), schedule("b")], groups),
+    () => calculateGlobalTemplate([schedule("a"), schedule("b")], groups, 3, 1),
     /Несколько/,
   );
 });
