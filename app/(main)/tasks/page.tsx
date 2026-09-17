@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useRef, useEffect } from "react";
+import { useMemo, useState, useRef, useEffect, useCallback } from "react";
 import {
   Plus,
   Clock,
@@ -35,7 +35,6 @@ import { Button } from "@/components/ui/button";
 import TaskDialog from "@/components/tasks/task-dialog";
 import {
   TASK_STATUSES,
-  INITIAL_TASKS,
   type Task,
   type TaskInput,
   type TaskStatus,
@@ -44,7 +43,7 @@ import {
 import { Progress } from "@/components/ui/progress";
 
 /* ------------------------------------------------------------------ */
-/*  Types & Interfaces                                                */
+/*  Types                                                              */
 /* ------------------------------------------------------------------ */
 export interface SelectOption {
   value: string;
@@ -52,7 +51,7 @@ export interface SelectOption {
 }
 
 /* ------------------------------------------------------------------ */
-/*  Custom Select Component                                           */
+/*  Custom Select Component                                            */
 /* ------------------------------------------------------------------ */
 interface CustomSelectProps {
   value: string;
@@ -136,15 +135,8 @@ function CustomSelect({
 }
 
 /* ------------------------------------------------------------------ */
-/*  Mock data & Meta                                                  */
+/*  Meta                                                               */
 /* ------------------------------------------------------------------ */
-const INITIAL_SUBJECTS = [
-  "Программирование",
-  "Высшая математика",
-  "Базы данных",
-  "Компьютерные сети",
-];
-
 const STATUS_FILTERS = [{ value: "all", label: "Все" }, ...TASK_STATUSES];
 
 const STATUS_ORDER: Record<TaskStatus, number> = {
@@ -185,16 +177,13 @@ function isOverdue(iso: string, status: TaskStatus): boolean {
   if (status === "done" || !iso) return false;
   const [year, month, day] = iso.split("-").map(Number);
   if (!year || !month || !day) return false;
-
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-
-  const taskDate = new Date(year, month - 1, day);
-  return taskDate < today;
+  return new Date(year, month - 1, day) < today;
 }
 
 /* ------------------------------------------------------------------ */
-/*  Status toggle                                                     */
+/*  Status toggle                                                      */
 /* ------------------------------------------------------------------ */
 interface StatusToggleProps {
   status: TaskStatus;
@@ -238,11 +227,11 @@ function StatusToggle({ status, onToggle }: StatusToggleProps) {
 }
 
 /* ------------------------------------------------------------------ */
-/*  Task row                                                          */
+/*  Task card                                                          */
 /* ------------------------------------------------------------------ */
 interface TaskCardProps {
   task: Task;
-  onCycleStatus: (id: number) => void;
+  onCycleStatus: (id: string) => void;
   onEdit: (task: Task) => void;
 }
 
@@ -318,7 +307,7 @@ function TaskCard({ task, onCycleStatus, onEdit }: TaskCardProps) {
 }
 
 /* ------------------------------------------------------------------ */
-/*  Manage Subjects Dialog                                            */
+/*  Manage Subjects Dialog                                             */
 /* ------------------------------------------------------------------ */
 interface ManageSubjectsDialogProps {
   open: boolean;
@@ -356,7 +345,6 @@ function ManageSubjectsDialog({
         </DialogHeader>
 
         <div className="space-y-4 my-2">
-          {/* Form to add */}
           <div className="flex gap-2">
             <input
               value={newSubject}
@@ -377,7 +365,6 @@ function ManageSubjectsDialog({
             </Button>
           </div>
 
-          {/* List of subjects */}
           <div className="space-y-1.5 max-h-60 overflow-y-auto pr-1">
             {subjects.length === 0 ? (
               <p className="text-sm text-muted-foreground py-4 text-center">
@@ -419,15 +406,45 @@ function ManageSubjectsDialog({
 }
 
 /* ------------------------------------------------------------------ */
-/*  Page                                                              */
+/*  Page                                                               */
 /* ------------------------------------------------------------------ */
 export default function TasksPage() {
-  const [subjects, setSubjects] = useState<string[]>(INITIAL_SUBJECTS);
-  const [tasks, setTasks] = useState<Task[]>(INITIAL_TASKS);
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [extraSubjects, setExtraSubjects] = useState<string[]>([]);
+
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [subjectFilter, setSubjectFilter] = useState<string>("all");
   const [taskDialog, setTaskDialog] = useState<{ task?: Task } | null>(null);
-  const [manageSubjectsOpen, setManageSubjectsOpen] = useState<boolean>(false);
+  const [manageSubjectsOpen, setManageSubjectsOpen] = useState(false);
+
+  // Load tasks from API
+  const loadTasks = useCallback(async () => {
+    try {
+      const res = await fetch("/api/tasks");
+      if (res.ok) {
+        const data = (await res.json()) as Task[];
+        setTasks(data);
+      }
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadTasks();
+  }, [loadTasks]);
+
+  // Subjects = unique values from tasks + extras added via dialog
+  const subjects = useMemo(() => {
+    const fromTasks = tasks
+      .map((t) => t.subject)
+      .filter((s) => s && s !== "Без предмета");
+    const all = [...new Set([...fromTasks, ...extraSubjects])].sort((a, b) =>
+      a.localeCompare(b),
+    );
+    return all;
+  }, [tasks, extraSubjects]);
 
   const subjectFilterOptions: SelectOption[] = useMemo(() => {
     return [
@@ -439,7 +456,7 @@ export default function TasksPage() {
 
   const counts = useMemo(() => {
     const subjectTasks = tasks.filter(
-      (task) => subjectFilter === "all" || task.subject === subjectFilter,
+      (t) => subjectFilter === "all" || t.subject === subjectFilter,
     );
     const total = subjectTasks.length;
     const done = subjectTasks.filter((t) => t.status === "done").length;
@@ -463,68 +480,86 @@ export default function TasksPage() {
       .sort((a, b) => {
         const statusDiff = STATUS_ORDER[a.status] - STATUS_ORDER[b.status];
         if (statusDiff !== 0) return statusDiff;
-        return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
+        return a.dueDate.localeCompare(b.dueDate);
       });
   }, [tasks, statusFilter, subjectFilter]);
 
-  function cycleStatus(id: number) {
+  async function cycleStatus(id: string) {
+    const task = tasks.find((t) => t.id === id);
+    if (!task) return;
+    const next: TaskStatus =
+      task.status === "todo"
+        ? "in_progress"
+        : task.status === "in_progress"
+          ? "done"
+          : "todo";
+
+    // Optimistic update
     setTasks((prev) =>
-      prev.map((t) => {
-        if (t.id !== id) return t;
-        const next: TaskStatus =
-          t.status === "todo"
-            ? "in_progress"
-            : t.status === "in_progress"
-              ? "done"
-              : "todo";
-        return { ...t, status: next };
-      }),
+      prev.map((t) => (t.id === id ? { ...t, status: next } : t)),
     );
+
+    const res = await fetch(`/api/tasks/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: next }),
+    });
+    if (!res.ok) {
+      // Rollback
+      setTasks((prev) =>
+        prev.map((t) => (t.id === id ? { ...t, status: task.status } : t)),
+      );
+    }
   }
 
-  function saveTask(data: TaskInput) {
-    setTasks((previous) =>
-      taskDialog?.task
-        ? previous.map((task) =>
-            task.id === taskDialog.task?.id ? { ...task, ...data } : task,
-          )
-        : [
-            {
-              id: Math.max(0, ...previous.map((task) => task.id)) + 1,
-              ...data,
-            },
-            ...previous,
-          ],
-    );
+  async function saveTask(data: TaskInput) {
+    const isEdit = !!taskDialog?.task;
+    const id = taskDialog?.task?.id;
+
+    if (isEdit && id) {
+      const res = await fetch(`/api/tasks/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      if (res.ok) {
+        const updated = (await res.json()) as Task;
+        setTasks((prev) => prev.map((t) => (t.id === id ? updated : t)));
+      }
+    } else {
+      const res = await fetch("/api/tasks", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      if (res.ok) {
+        const created = (await res.json()) as Task;
+        setTasks((prev) => [created, ...prev]);
+      }
+    }
     setTaskDialog(null);
   }
 
-  function deleteTask(id: number) {
-    setTasks((previous) => previous.filter((task) => task.id !== id));
+  async function deleteTask(id: string) {
+    await fetch(`/api/tasks/${id}`, { method: "DELETE" });
+    setTasks((prev) => prev.filter((t) => t.id !== id));
     setTaskDialog(null);
   }
 
   function handleAddSubject(name: string) {
     const trimmed = name.trim();
     if (!trimmed) return;
-    const exists = subjects.some(
-      (s) => s.trim().toLowerCase() === trimmed.toLowerCase(),
-    );
-    if (!exists) {
-      setSubjects((prev) => [...prev, trimmed]);
-    }
+    setExtraSubjects((prev) => {
+      const exists = [...prev, ...subjects].some(
+        (s) => s.toLowerCase() === trimmed.toLowerCase(),
+      );
+      return exists ? prev : [...prev, trimmed];
+    });
   }
 
   function handleDeleteSubject(name: string) {
-    setSubjects((prev) => prev.filter((s) => s !== name));
-    if (subjectFilter === name) {
-      setSubjectFilter("all");
-    }
-    setTasks((prev) =>
-      prev.map((task) =>
-        task.subject === name ? { ...task, subject: "Без предмета" } : task,
-      ),
-    );
+    setExtraSubjects((prev) => prev.filter((s) => s !== name));
+    if (subjectFilter === name) setSubjectFilter("all");
   }
 
   return (
@@ -636,7 +671,12 @@ export default function TasksPage() {
         {/* Task list */}
         <Card className="rounded-2xl border-gray-200 bg-white shadow-sm">
           <CardContent className="p-3 sm:p-5">
-            {filteredTasks.length === 0 ? (
+            {loading ? (
+              <div className="flex items-center justify-center gap-2 py-14 text-sm text-muted-foreground">
+                <Loader2 size={18} className="animate-spin" />
+                Загрузка заданий…
+              </div>
+            ) : filteredTasks.length === 0 ? (
               <div className="py-14 text-center">
                 <p className="font-semibold text-card-foreground">
                   Здесь пока пусто
@@ -652,7 +692,7 @@ export default function TasksPage() {
                     key={task.id}
                     task={task}
                     onCycleStatus={cycleStatus}
-                    onEdit={(task) => setTaskDialog({ task })}
+                    onEdit={(t) => setTaskDialog({ task: t })}
                   />
                 ))}
               </div>

@@ -36,11 +36,34 @@ model User {
   enrolledSubjects UserSubject[]
   documents        Document[]
   quizSessions     QuizSession[]
+  tasks            Task[]
 
   gpaProfile GpaProfile?
 
   @@index([groupId])
   @@index([subgroupId, groupId])
+}
+
+// ---------------------------------------------------------------------------
+// Tasks Module
+// ---------------------------------------------------------------------------
+
+model Task {
+  id        String   @id @default(cuid())
+  userId    String
+  title     String
+  subject   String
+  type      String
+  priority  String
+  status    String
+  dueDate   String
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 // ---------------------------------------------------------------------------

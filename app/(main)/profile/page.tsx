@@ -7,7 +7,7 @@ import GeminiKeyCard from "@/components/ai-coach/GeminiKeyCard";
 import { getNextLesson } from "@/lib/schedule";
 import { calculateOverall, gradeStatus, initialSubjects } from "@/lib/grades";
 import { getStoredSubjects } from "@/lib/server/gpa-profile";
-import { INITIAL_TASKS } from "@/lib/tasks";
+import { prisma } from "@/lib/prisma";
 
 export const metadata: Metadata = { title: "Профиль | StudyHub" };
 
@@ -24,12 +24,17 @@ export default async function ProfilePage() {
   }
 
   const nextLesson = getNextLesson();
-  const storedSubjects = await getStoredSubjects(session.user.id);
+  const [storedSubjects, upcomingTasks] = await Promise.all([
+    getStoredSubjects(session.user.id),
+    prisma.task.findMany({
+      where: { userId: session.user.id, status: { not: "done" } },
+      orderBy: { dueDate: "asc" },
+      take: 3,
+      select: { id: true, title: true, dueDate: true },
+    }),
+  ]);
   const subjects = storedSubjects ?? initialSubjects;
   const overall = calculateOverall(subjects);
-  const upcomingTasks = INITIAL_TASKS.filter((task) => task.status !== "done")
-    .sort((a, b) => a.dueDate.localeCompare(b.dueDate))
-    .slice(0, 3);
 
   return (
     <div className="mx-auto max-w-2xl">
