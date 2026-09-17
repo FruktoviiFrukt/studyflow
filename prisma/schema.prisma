@@ -1,8 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
-
 generator client {
   provider = "prisma-client"
   output   = "../lib/generated/prisma"
@@ -12,27 +7,45 @@ datasource db {
   provider = "postgresql"
 }
 
+// ---------------------------------------------------------------------------
+// Auth & Users
+// ---------------------------------------------------------------------------
+
 enum Role {
   STUDENT
   ADMIN
 }
 
 model User {
-  id         String      @id @default(cuid())
-  email      String      @unique
-  password   String
-  name       String
-  role       Role        @default(STUDENT)
-  group      String?
-  groupId    String?
-  subgroupId String?
+  id           String   @id @default(cuid())
+  email        String   @unique
+  password     String
+  name         String
+  role         Role     @default(STUDENT)
+  group        String?
+  groupId      String?
+  subgroupId   String?
+  geminiApiKey String? // AES-256-GCM encrypted, never stored plain
+  createdAt    DateTime @default(now())
+
+  // Relations: Schedule module
   studyGroup StudyGroup? @relation(fields: [groupId], references: [id], onDelete: Restrict)
   subgroup   Subgroup?   @relation(fields: [subgroupId, groupId], references: [id, groupId], onDelete: Restrict)
-  createdAt  DateTime    @default(now())
+
+  // Relations: AI Coach module
+  enrolledSubjects UserSubject[]
+  documents        Document[]
+  quizSessions     QuizSession[]
+
+  gpaProfile GpaProfile?
 
   @@index([groupId])
   @@index([subgroupId, groupId])
 }
+
+// ---------------------------------------------------------------------------
+// Schedule Module Enums & Models
+// ---------------------------------------------------------------------------
 
 enum WeekPattern {
   EVERY
@@ -136,7 +149,7 @@ model Lesson {
   id           String           @id @default(cuid())
   scheduleId   String
   subjectId    String
-  // Monday = 0, Sunday = 6. 
+  // Monday = 0, Sunday = 6.
   weekday      Int
   startMinutes Int
   endMinutes   Int
@@ -179,4 +192,149 @@ model ScheduleHoliday {
   schedule   ScheduleImport @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
 
   @@index([scheduleId, startsOn, endsOn])
+}
+
+// ---------------------------------------------------------------------------
+// AI Coach Module: Faculty subject registry & Knowledge base
+// ---------------------------------------------------------------------------
+
+model FacultySubject {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  code      String   @unique
+  faculty   String
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  topics      Topic[]
+  enrollments UserSubject[]
+  documents   Document[]
+}
+
+model UserSubject {
+  userId    String
+  subjectId String
+
+  user    User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subject FacultySubject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+
+  @@id([userId, subjectId])
+}
+
+model Topic {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  createdAt DateTime @default(now())
+
+  subjects  FacultySubject[]
+  questions Question[]
+  documents Document[]
+}
+
+enum QuestionType {
+  MULTIPLE_CHOICE
+  TRUE_FALSE
+}
+
+enum Difficulty {
+  EASY
+  MEDIUM
+  HARD
+}
+
+model Question {
+  id         String       @id @default(cuid())
+  text       String
+  textHash   String       @unique
+  type       QuestionType
+  difficulty Difficulty
+  topicId    String
+  approvedAt DateTime?
+  createdAt  DateTime     @default(now())
+
+  topic       Topic                 @relation(fields: [topicId], references: [id])
+  options     Option[]
+  sessionRefs QuizSessionQuestion[]
+  answers     QuizAnswer[]
+}
+
+model Option {
+  id         String  @id @default(cuid())
+  text       String
+  isCorrect  Boolean
+  questionId String
+
+  question Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+}
+
+enum DocumentStatus {
+  PENDING
+  PROCESSING
+  DONE
+  REJECTED
+}
+
+model Document {
+  id           String         @id @default(cuid())
+  userId       String
+  fileName     String?
+  textContent  String?
+  subjectId    String?
+  topicId      String?
+  status       DocumentStatus @default(PENDING)
+  errorMessage String?
+  createdAt    DateTime       @default(now())
+
+  user    User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subject FacultySubject? @relation(fields: [subjectId], references: [id], onDelete: SetNull)
+  topic   Topic?          @relation(fields: [topicId], references: [id], onDelete: SetNull)
+}
+
+model QuizSession {
+  id          String    @id @default(cuid())
+  userId      String
+  score       Int?
+  completedAt DateTime?
+  createdAt   DateTime  @default(now())
+
+  user      User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  questions QuizSessionQuestion[]
+  answers   QuizAnswer[]
+}
+
+model QuizSessionQuestion {
+  sessionId  String
+  questionId String
+  order      Int
+
+  session  QuizSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  question Question    @relation(fields: [questionId], references: [id])
+
+  @@id([sessionId, questionId])
+}
+
+model QuizAnswer {
+  id               String   @id @default(cuid())
+  sessionId        String
+  questionId       String
+  selectedOptionId String
+  isCorrect        Boolean
+  createdAt        DateTime @default(now())
+
+  session  QuizSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  question Question    @relation(fields: [questionId], references: [id])
+
+  @@unique([sessionId, questionId])
+}
+
+// ---------------------------------------------------------------------------
+// GPA calculator
+// ---------------------------------------------------------------------------
+
+model GpaProfile {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subjects  Json
+  updatedAt DateTime @updatedAt
 }

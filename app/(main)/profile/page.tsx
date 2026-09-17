@@ -3,8 +3,10 @@ import { redirect } from "next/navigation";
 
 import { auth } from "@/auth";
 import ProfileForm from "@/components/profile/ProfileForm";
+import GeminiKeyCard from "@/components/ai-coach/GeminiKeyCard";
 import { getNextLesson } from "@/lib/schedule";
 import { calculateOverall, gradeStatus, initialSubjects } from "@/lib/grades";
+import { getStoredSubjects } from "@/lib/server/gpa-profile";
 import { INITIAL_TASKS } from "@/lib/tasks";
 
 export const metadata: Metadata = { title: "Профиль | StudyHub" };
@@ -22,7 +24,9 @@ export default async function ProfilePage() {
   }
 
   const nextLesson = getNextLesson();
-  const overall = calculateOverall(initialSubjects);
+  const storedSubjects = await getStoredSubjects(session.user.id);
+  const subjects = storedSubjects ?? initialSubjects;
+  const overall = calculateOverall(subjects);
   const upcomingTasks = INITIAL_TASKS.filter((task) => task.status !== "done")
     .sort((a, b) => a.dueDate.localeCompare(b.dueDate))
     .slice(0, 3);
@@ -80,7 +84,7 @@ export default async function ProfilePage() {
 
           <p className="mt-1 text-xs text-gray-500">
             {gradeStatus(overall.average)} · учтено {overall.countedSubjects} из{" "}
-            {initialSubjects.length}
+            {subjects.length}
           </p>
         </div>
 
@@ -113,6 +117,10 @@ export default async function ProfilePage() {
         email={session.user.email ?? ""}
         group={session.user.group}
       />
+
+      <div className="mt-6">
+        <GeminiKeyCard />
+      </div>
     </div>
   );
 }
