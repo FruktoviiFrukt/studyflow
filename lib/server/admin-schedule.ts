@@ -13,6 +13,7 @@ import {
   type ScheduleHoliday,
 } from "@/lib/admin-schedule";
 import { validateScheduleRange, academicWeek } from "./student-schedule";
+import { mondayOf } from "../schedule";
 
 const execute = promisify(execFile);
 const root = path.resolve(
@@ -267,7 +268,7 @@ export async function importSchedule(request: Request) {
   const kind = form.get("kind") ?? "STUDENT";
   if (typeof kind !== "string" || !Object.hasOwn(SCHEDULE_KIND_LABELS, kind))
     fail("Выберите тип расписания.");
-  const from = String(form.get("from") || ""),
+  let from = String(form.get("from") || ""),
     to = String(form.get("to") || ""),
     first = String(form.get("first") || "");
   const course = Number(form.get("course")),
@@ -281,10 +282,30 @@ export async function importSchedule(request: Request) {
     ![1, 2].includes(number)
   )
     fail("Проверьте год, курс и семестр.");
-  validateScheduleRange(from, to);
-  academicWeek(from, first);
   const yearFrom = `${year.slice(0, 4)}-09-01`,
     yearTo = `${year.slice(5)}-08-31`;
+  if (kind === "GLOBAL") {
+    const existingYear = await prisma.academicYear.findUnique({
+      where: { name: year },
+      include: { semesters: { where: { number } } },
+    });
+    const existingSemester = existingYear?.semesters[0];
+    from = existingSemester
+      ? iso(existingSemester.startsOn)
+      : number === 1
+        ? yearFrom
+        : `${year.slice(5)}-01-01`;
+    to = existingSemester
+      ? iso(existingSemester.endsOn)
+      : number === 1
+        ? `${year.slice(0, 4)}-12-31`
+        : yearTo;
+    first = existingYear
+      ? iso(existingYear.firstOddWeekMonday)
+      : mondayOf(yearFrom);
+  }
+  validateScheduleRange(from, to);
+  academicWeek(from, first);
   if (
     from < yearFrom ||
     to > yearTo ||
