@@ -17,25 +17,27 @@ enum Role {
 }
 
 model User {
-  id           String      @id @default(cuid())
-  email        String      @unique
+  id           String   @id @default(cuid())
+  email        String   @unique
   password     String
   name         String
-  role         Role        @default(STUDENT)
+  role         Role     @default(STUDENT)
   group        String?
   groupId      String?
   subgroupId   String?
-  geminiApiKey String?     // AES-256-GCM encrypted, never stored plain
-  createdAt    DateTime    @default(now())
+  geminiApiKey String? // AES-256-GCM encrypted, never stored plain
+  createdAt    DateTime @default(now())
 
   // Relations: Schedule module
-  studyGroup   StudyGroup? @relation(fields: [groupId], references: [id], onDelete: Restrict)
-  subgroup     Subgroup?   @relation(fields: [subgroupId, groupId], references: [id, groupId], onDelete: Restrict)
+  studyGroup StudyGroup? @relation(fields: [groupId], references: [id], onDelete: Restrict)
+  subgroup   Subgroup?   @relation(fields: [subgroupId, groupId], references: [id, groupId], onDelete: Restrict)
 
   // Relations: AI Coach module
   enrolledSubjects UserSubject[]
   documents        Document[]
   quizSessions     QuizSession[]
+
+  gpaProfile GpaProfile?
 
   @@index([groupId])
   @@index([subgroupId, groupId])
@@ -241,14 +243,14 @@ enum Difficulty {
 }
 
 model Question {
-  id          String       @id @default(cuid())
-  text        String
-  textHash    String       @unique
-  type        QuestionType
-  difficulty  Difficulty
-  topicId     String
-  approvedAt  DateTime?
-  createdAt   DateTime     @default(now())
+  id         String       @id @default(cuid())
+  text       String
+  textHash   String       @unique
+  type       QuestionType
+  difficulty Difficulty
+  topicId    String
+  approvedAt DateTime?
+  createdAt  DateTime     @default(now())
 
   topic       Topic                 @relation(fields: [topicId], references: [id])
   options     Option[]
@@ -257,7 +259,7 @@ model Question {
 }
 
 model Option {
-  id         String   @id @default(cuid())
+  id         String  @id @default(cuid())
   text       String
   isCorrect  Boolean
   questionId String
@@ -323,4 +325,16 @@ model QuizAnswer {
   question Question    @relation(fields: [questionId], references: [id])
 
   @@unique([sessionId, questionId])
+}
+
+// ---------------------------------------------------------------------------
+// GPA calculator
+// ---------------------------------------------------------------------------
+
+model GpaProfile {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subjects  Json
+  updatedAt DateTime @updatedAt
 }
