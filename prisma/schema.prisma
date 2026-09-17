@@ -30,6 +30,8 @@ model User {
   subgroup   Subgroup?   @relation(fields: [subgroupId, groupId], references: [id, groupId], onDelete: Restrict)
   createdAt  DateTime    @default(now())
 
+  gpaProfile GpaProfile?
+
   @@index([groupId])
   @@index([subgroupId, groupId])
 }
@@ -179,4 +181,12 @@ model ScheduleHoliday {
   schedule   ScheduleImport @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
 
   @@index([scheduleId, startsOn, endsOn])
+}
+
+model GpaProfile {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subjects  Json
+  updatedAt DateTime @updatedAt
 }
