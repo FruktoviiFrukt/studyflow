@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { auth } from "@/auth";
-import { getDashboardUser } from "@/lib/dashboard";
+import { getDashboardData } from "@/lib/dashboard";
 import { TodaySchedule } from "@/components/dashboard/today-schedule";
 import { TodayLessonsSummaryCard } from "@/components/dashboard/today-lessons-summary-card";
 import { TodayScheduleProvider } from "@/components/dashboard/today-schedule-context";
@@ -34,25 +34,6 @@ const deadlines = [
   },
 ];
 
-const subjects = [
-  {
-    name: "Программирование",
-    progress: 82,
-  },
-  {
-    name: "Высшая математика",
-    progress: 68,
-  },
-  {
-    name: "Базы данных",
-    progress: 74,
-  },
-  {
-    name: "Компьютерные сети",
-    progress: 57,
-  },
-];
-
 const quickActions = [
   {
     title: "Новое задание",
@@ -82,13 +63,13 @@ const quickActions = [
 
 export default async function DashboardPage() {
   const session = await auth();
-
-  const user = session?.user?.id
-    ? await getDashboardUser(session.user.id)
+  const dashboard = session?.user?.id
+    ? await getDashboardData(session.user.id)
     : null;
 
-  const userName = user?.name ?? "Студент";
-  const userGroup = user?.group;
+  const userName = dashboard?.user.name ?? "Студент";
+  const userGroup = dashboard?.user.group;
+  const subjects = dashboard?.subjectProgress ?? [];
 
   return (
     <TodayScheduleProvider>
@@ -197,26 +178,44 @@ export default async function DashboardPage() {
             </div>
 
             <div className="space-y-5">
-              {subjects.map((subject) => (
-                <div key={subject.name}>
-                  <div className="mb-2 flex items-center justify-between">
-                    <p className="text-sm font-medium text-gray-700">
-                      {subject.name}
-                    </p>
+              {subjects.length === 0 ? (
+                <p className="rounded-xl bg-gray-50 p-4 text-sm text-gray-600">
+                  Добавьте оценки на странице среднего балла.
+                </p>
+              ) : (
+                subjects.map((subject) => (
+                  <div key={subject.id}>
+                    <div className="mb-2 flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-gray-700">
+                          {subject.name}
+                        </p>
+                        <p className="mt-1 text-xs text-gray-400">
+                          Семестр {subject.semester}
+                        </p>
+                      </div>
 
-                    <p className="text-sm font-semibold text-gray-900">
-                      {subject.progress}%
-                    </p>
-                  </div>
+                      <div className="text-right">
+                        <p className="text-sm font-semibold text-gray-900">
+                          {subject.progress}%
+                        </p>
+                        <p className="mt-1 text-xs text-gray-400">
+                          {subject.grade === null
+                            ? "Нет итоговой оценки"
+                            : `${subject.grade.toFixed(2)} / 10`}
+                        </p>
+                      </div>
+                    </div>
 
-                  <div className="h-2 w-full overflow-hidden rounded-full bg-gray-100">
-                    <div
-                      className="h-full rounded-full bg-blue-600 transition-all"
-                      style={{ width: `${subject.progress}%` }}
-                    />
+                    <div className="h-2 w-full overflow-hidden rounded-full bg-gray-100">
+                      <div
+                        className="h-full rounded-full bg-blue-600 transition-all"
+                        style={{ width: `${subject.progress}%` }}
+                      />
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))
+              )}
             </div>
           </section>
 

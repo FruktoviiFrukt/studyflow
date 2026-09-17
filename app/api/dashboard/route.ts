@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { auth } from "@/auth";
-import { getDashboardUser } from "@/lib/dashboard";
+import { getDashboardData } from "@/lib/dashboard";
 import type {
   DashboardErrorResponse,
   DashboardResponse,
@@ -20,9 +20,9 @@ export async function GET() {
       return NextResponse.json(response, { status: 401 });
     }
 
-    const user = await getDashboardUser(userId);
+    const dashboard = await getDashboardData(userId);
 
-    if (!user) {
+    if (!dashboard) {
       const response: DashboardErrorResponse = {
         message: "Пользователь не найден",
       };
@@ -30,9 +30,7 @@ export async function GET() {
       return NextResponse.json(response, { status: 404 });
     }
 
-    const response: DashboardResponse = {
-      user,
-    };
+    const response: DashboardResponse = dashboard;
 
     return NextResponse.json(response);
   } catch (error) {
