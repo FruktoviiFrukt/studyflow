@@ -2,9 +2,9 @@ import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 
 import { prisma } from "@/lib/prisma";
+import { ALLOWED_GROUPS } from "@/lib/groups";
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const ALLOWED_GROUPS = ["TI-245", "TI-246"] as const;
 
 export async function POST(request: Request) {
   const body = await request.json();
@@ -59,12 +59,19 @@ export async function POST(request: Request) {
 
   const hashedPassword = await bcrypt.hash(password, 10);
 
+  const studyGroup = await prisma.studyGroup.upsert({
+    where: { name: group },
+    update: {},
+    create: { name: group },
+  });
+
   const user = await prisma.user.create({
     data: {
       name: name.trim(),
       email,
       password: hashedPassword,
       group,
+      groupId: studyGroup.id,
     },
   });
 

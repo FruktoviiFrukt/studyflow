@@ -233,3 +233,64 @@ export function getDemoLessons(monday: string): Lesson[] {
     date: addDays(monday, day),
   }));
 }
+
+export type NextLesson = {
+  subject: string;
+  day: string;
+  date: string;
+  start: string;
+  end: string;
+  classroom: string;
+};
+
+function sortBySlot(lessons: Lesson[]): Lesson[] {
+  return [...lessons].sort((a, b) =>
+    a.date === b.date ? a.slot - b.slot : a.date.localeCompare(b.date),
+  );
+}
+
+export function getNextLesson(now = new Date()): NextLesson | null {
+  const todayDate = universityToday(now);
+  const nowTime = new Intl.DateTimeFormat("en-GB", {
+    timeZone: UNIVERSITY_TIME_ZONE,
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).format(now);
+
+  const monday = mondayOf(todayDate);
+  const upcomingThisWeek = sortBySlot(
+    getDemoLessons(monday).filter((lesson) => {
+      if (lesson.date > todayDate) return true;
+      if (lesson.date === todayDate)
+        return timeSlots[lesson.slot].start >= nowTime;
+      return false;
+    }),
+  );
+
+  const candidate =
+    upcomingThisWeek[0] ??
+    sortBySlot(getDemoLessons(addDays(monday, 7)))[0] ??
+    null;
+
+  if (!candidate) {
+    return null;
+  }
+
+  const slot = timeSlots[candidate.slot];
+  const candidateMonday = mondayOf(candidate.date);
+  const dayIndex = Math.round(
+    (parseDate(candidate.date).getTime() -
+      parseDate(candidateMonday).getTime()) /
+      86400000,
+  );
+
+  return {
+    subject: subjects[candidate.subject].name,
+    day: weekdays[dayIndex] ?? "",
+    date: candidate.date,
+    start: slot.start,
+    end: slot.end,
+    classroom: candidate.classroom,
+  };
+}
