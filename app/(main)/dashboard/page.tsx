@@ -1,9 +1,11 @@
 import Link from "next/link";
 import { auth } from "@/auth";
 import { getDashboardUser } from "@/lib/dashboard";
+import { TodaySchedule } from "@/components/dashboard/today-schedule";
+import { TodayLessonsSummaryCard } from "@/components/dashboard/today-lessons-summary-card";
+import { TodayScheduleProvider } from "@/components/dashboard/today-schedule-context";
 
 import {
-  CalendarDays,
   CheckCircle2,
   Clock3,
   BookOpen,
@@ -13,27 +15,6 @@ import {
   Sparkles,
   ArrowRight,
 } from "lucide-react";
-
-const todaySchedule = [
-  {
-    time: "08:00 – 09:30",
-    subject: "Программирование",
-    type: "Лекция",
-    classroom: "3-301",
-  },
-  {
-    time: "09:45 – 11:15",
-    subject: "Высшая математика",
-    type: "Практика",
-    classroom: "3-214",
-  },
-  {
-    time: "11:30 – 13:00",
-    subject: "Компьютерные сети",
-    type: "Лабораторная",
-    classroom: "3-302",
-  },
-];
 
 const deadlines = [
   {
@@ -110,233 +91,183 @@ export default async function DashboardPage() {
   const userGroup = user?.group;
 
   return (
-    <div className="mx-auto max-w-7xl">
-      {/* Greeting */}
-      <section className="mb-8">
-        <p className="text-sm font-semibold uppercase tracking-wide text-blue-600">
-          Личный кабинет
-        </p>
+    <TodayScheduleProvider>
+      <div className="mx-auto max-w-7xl">
+        {/* Greeting */}
+        <section className="mb-8">
+          <p className="text-sm font-semibold uppercase tracking-wide text-blue-600">
+            Личный кабинет
+          </p>
 
-        <h2 className="mt-2 text-3xl font-bold tracking-tight text-gray-900">
-          Добро пожаловать, {userName}
-        </h2>
+          <h2 className="mt-2 text-3xl font-bold tracking-tight text-gray-900">
+            Добро пожаловать, {userName}
+          </h2>
 
-        <p className="mt-2 text-sm text-gray-500">
-          {userGroup
-            ? `Группа ${userGroup} · Здесь собрана основная информация о твоей учёбе.`
-            : "Здесь собрана основная информация о твоей учёбе."}
-        </p>
-      </section>
+          <p className="mt-2 text-sm text-gray-500">
+            {userGroup
+              ? `Группа ${userGroup} · Здесь собрана основная информация о твоей учёбе.`
+              : "Здесь собрана основная информация о твоей учёбе."}
+          </p>
+        </section>
 
-      {/* Summary cards */}
-      <section className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <SummaryCard
-          title="Занятия сегодня"
-          value="3"
-          description="Следующее занятие в 08:00"
-          icon={CalendarDays}
-        />
+        {/* Summary cards */}
+        <section className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <TodayLessonsSummaryCard />
 
-        <SummaryCard
-          title="Ближайшие дедлайны"
-          value="3"
-          description="На этой неделе"
-          icon={Clock3}
-        />
+          <SummaryCard
+            title="Ближайшие дедлайны"
+            value="3"
+            description="На этой неделе"
+            icon={Clock3}
+          />
 
-        <SummaryCard
-          title="Выполнено заданий"
-          value="12"
-          description="За текущий семестр"
-          icon={CheckCircle2}
-        />
+          <SummaryCard
+            title="Выполнено заданий"
+            value="12"
+            description="За текущий семестр"
+            icon={CheckCircle2}
+          />
 
-        <SummaryCard
-          title="Учебные материалы"
-          value="18"
-          description="Доступных файлов"
-          icon={BookOpen}
-        />
-      </section>
+          <SummaryCard
+            title="Учебные материалы"
+            value="18"
+            description="Доступных файлов"
+            icon={BookOpen}
+          />
+        </section>
 
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
-        {/* Today's schedule */}
-        <section className="rounded-2xl border border-gray-200 bg-white p-6 xl:col-span-2">
-          <div className="mb-5 flex items-center justify-between gap-4">
-            <div>
-              <h3 className="text-lg font-semibold text-gray-900">
-                Расписание на сегодня
-              </h3>
+        <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
+          {/* Today's schedule */}
+          <TodaySchedule />
 
-              <p className="mt-1 text-sm text-gray-500">
-                Занятия на текущий день
-              </p>
+          {/* Deadlines */}
+          <section className="rounded-2xl border border-gray-200 bg-white p-6">
+            <div className="mb-5 flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">
+                  Ближайшие дедлайны
+                </h3>
+
+                <p className="mt-1 text-sm text-gray-500">
+                  Задания, которые нужно сдать
+                </p>
+              </div>
+
+              <Link
+                href="/tasks"
+                className="text-sm font-medium text-blue-600 hover:text-blue-700"
+              >
+                Все
+              </Link>
             </div>
 
-            <Link
-              href="/schedule"
-              className="flex items-center gap-1 text-sm font-medium text-blue-600 transition hover:text-blue-700"
-            >
-              Всё расписание
-              <ArrowRight size={16} />
-            </Link>
-          </div>
-
-          <div className="space-y-3">
-            {todaySchedule.map((lesson) => (
-              <div
-                key={`${lesson.time}-${lesson.subject}`}
-                className="flex flex-col gap-4 rounded-xl border border-gray-100 bg-gray-50 p-4 sm:flex-row sm:items-center"
-              >
-                <div className="w-full sm:w-32">
-                  <p className="text-sm font-semibold text-blue-600">
-                    {lesson.time}
-                  </p>
-                </div>
-
-                <div className="flex-1">
-                  <p className="font-semibold text-gray-900">
-                    {lesson.subject}
-                  </p>
-
-                  <p className="mt-1 text-sm text-gray-500">{lesson.type}</p>
-                </div>
-
-                <div className="rounded-lg bg-white px-3 py-2 text-sm font-medium text-gray-600">
-                  Каб. {lesson.classroom}
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        {/* Deadlines */}
-        <section className="rounded-2xl border border-gray-200 bg-white p-6">
-          <div className="mb-5 flex items-center justify-between">
-            <div>
-              <h3 className="text-lg font-semibold text-gray-900">
-                Ближайшие дедлайны
-              </h3>
-
-              <p className="mt-1 text-sm text-gray-500">
-                Задания, которые нужно сдать
-              </p>
-            </div>
-
-            <Link
-              href="/tasks"
-              className="text-sm font-medium text-blue-600 hover:text-blue-700"
-            >
-              Все
-            </Link>
-          </div>
-
-          <div className="space-y-3">
-            {deadlines.map((deadline) => (
-              <div
-                key={`${deadline.subject}-${deadline.task}`}
-                className="rounded-xl border border-gray-100 p-4"
-              >
-                <p className="text-xs font-semibold uppercase tracking-wide text-blue-600">
-                  {deadline.subject}
-                </p>
-
-                <p className="mt-2 text-sm font-semibold text-gray-900">
-                  {deadline.task}
-                </p>
-
-                <div className="mt-3 flex items-center gap-2 text-xs text-gray-500">
-                  <Clock3 size={14} />
-                  <span>{deadline.date}</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        {/* Subject progress */}
-        <section className="rounded-2xl border border-gray-200 bg-white p-6 xl:col-span-2">
-          <div className="mb-5">
-            <h3 className="text-lg font-semibold text-gray-900">
-              Прогресс по предметам
-            </h3>
-
-            <p className="mt-1 text-sm text-gray-500">
-              Текущий учебный прогресс
-            </p>
-          </div>
-
-          <div className="space-y-5">
-            {subjects.map((subject) => (
-              <div key={subject.name}>
-                <div className="mb-2 flex items-center justify-between">
-                  <p className="text-sm font-medium text-gray-700">
-                    {subject.name}
-                  </p>
-
-                  <p className="text-sm font-semibold text-gray-900">
-                    {subject.progress}%
-                  </p>
-                </div>
-
-                <div className="h-2 w-full overflow-hidden rounded-full bg-gray-100">
-                  <div
-                    className="h-full rounded-full bg-blue-600 transition-all"
-                    style={{ width: `${subject.progress}%` }}
-                  />
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        {/* Quick actions */}
-        <section className="rounded-2xl border border-gray-200 bg-white p-6">
-          <div className="mb-5">
-            <h3 className="text-lg font-semibold text-gray-900">
-              Быстрые действия
-            </h3>
-
-            <p className="mt-1 text-sm text-gray-500">
-              Часто используемые функции
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-1">
-            {quickActions.map((action) => {
-              const Icon = action.icon;
-
-              return (
-                <Link
-                  key={action.title}
-                  href={action.href}
-                  className="group flex items-center gap-4 rounded-xl border border-gray-100 p-4 transition hover:border-blue-200 hover:bg-blue-50/50"
+            <div className="space-y-3">
+              {deadlines.map((deadline) => (
+                <div
+                  key={`${deadline.subject}-${deadline.task}`}
+                  className="rounded-xl border border-gray-100 p-4"
                 >
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600 transition group-hover:bg-blue-100">
-                    <Icon size={19} />
-                  </div>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-blue-600">
+                    {deadline.subject}
+                  </p>
 
-                  <div className="min-w-0 flex-1">
+                  <p className="mt-2 text-sm font-semibold text-gray-900">
+                    {deadline.task}
+                  </p>
+
+                  <div className="mt-3 flex items-center gap-2 text-xs text-gray-500">
+                    <Clock3 size={14} />
+                    <span>{deadline.date}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          {/* Subject progress */}
+          <section className="rounded-2xl border border-gray-200 bg-white p-6 xl:col-span-2">
+            <div className="mb-5">
+              <h3 className="text-lg font-semibold text-gray-900">
+                Прогресс по предметам
+              </h3>
+
+              <p className="mt-1 text-sm text-gray-500">
+                Текущий учебный прогресс
+              </p>
+            </div>
+
+            <div className="space-y-5">
+              {subjects.map((subject) => (
+                <div key={subject.name}>
+                  <div className="mb-2 flex items-center justify-between">
+                    <p className="text-sm font-medium text-gray-700">
+                      {subject.name}
+                    </p>
+
                     <p className="text-sm font-semibold text-gray-900">
-                      {action.title}
-                    </p>
-
-                    <p className="mt-1 text-xs text-gray-500">
-                      {action.description}
+                      {subject.progress}%
                     </p>
                   </div>
 
-                  <ArrowRight
-                    size={16}
-                    className="text-gray-400 transition group-hover:text-blue-600"
-                  />
-                </Link>
-              );
-            })}
-          </div>
-        </section>
+                  <div className="h-2 w-full overflow-hidden rounded-full bg-gray-100">
+                    <div
+                      className="h-full rounded-full bg-blue-600 transition-all"
+                      style={{ width: `${subject.progress}%` }}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          {/* Quick actions */}
+          <section className="rounded-2xl border border-gray-200 bg-white p-6">
+            <div className="mb-5">
+              <h3 className="text-lg font-semibold text-gray-900">
+                Быстрые действия
+              </h3>
+
+              <p className="mt-1 text-sm text-gray-500">
+                Часто используемые функции
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-1">
+              {quickActions.map((action) => {
+                const Icon = action.icon;
+
+                return (
+                  <Link
+                    key={action.title}
+                    href={action.href}
+                    className="group flex items-center gap-4 rounded-xl border border-gray-100 p-4 transition hover:border-blue-200 hover:bg-blue-50/50"
+                  >
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600 transition group-hover:bg-blue-100">
+                      <Icon size={19} />
+                    </div>
+
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-semibold text-gray-900">
+                        {action.title}
+                      </p>
+
+                      <p className="mt-1 text-xs text-gray-500">
+                        {action.description}
+                      </p>
+                    </div>
+
+                    <ArrowRight
+                      size={16}
+                      className="text-gray-400 transition group-hover:text-blue-600"
+                    />
+                  </Link>
+                );
+              })}
+            </div>
+          </section>
+        </div>
       </div>
-    </div>
+    </TodayScheduleProvider>
   );
 }
 
