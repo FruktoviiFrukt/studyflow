@@ -1,13 +1,15 @@
-import { createHash, randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { decryptApiKey } from "@/lib/byok";
 import {
-  readTopicQuestions,
-  writeTopicQuestions,
-  type StoredQuestion,
-} from "@/lib/questions-file";
+  addTopicQuestions,
+  DIFFICULTY_BY_LEVEL,
+  listTopicQuestions,
+  shuffle,
+  toClientQuestion,
+  type NewQuestion,
+} from "@/lib/server/question-bank";
 import mammoth from "mammoth";
 
 // ---------------------------------------------------------------------------
@@ -50,25 +52,6 @@ const INLINE_MIME_TYPES = new Set([
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-
-function normalizeText(text: string): string {
-  return text
-    .toLowerCase()
-    .replace(/[^\w\s]/g, "")
-    .replace(/\s+/g, " ")
-    .trim();
-}
-function textHash(text: string): string {
-  return createHash("sha256").update(normalizeText(text)).digest("hex");
-}
-function shuffle<T>(arr: T[]): T[] {
-  const a = [...arr];
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
-  }
-  return a;
-}
 
 async function callGemini(
   apiKey: string,
@@ -406,8 +389,7 @@ export async function POST(request: Request) {
       subjects: { connect: { id: subjectId } },
     },
   });
-  const existingQuestions = readTopicQuestions(topic.id);
-  const existingHashSet = new Set(existingQuestions.map((q) => q.textHash));
+  const existingQuestions = await listTopicQuestions(prisma, [topic.id]);
   const isNewTopic = existingQuestions.length === 0;
 
   // [9] Create Document record
@@ -447,7 +429,11 @@ export async function POST(request: Request) {
   let generated: GeminiQuestions;
   try {
     generated = JSON.parse(generationRaw) as GeminiQuestions;
-    if (!generated.easy || !generated.medium || !generated.hard)
+    if (
+      !Array.isArray(generated.easy) ||
+      !Array.isArray(generated.medium) ||
+      !Array.isArray(generated.hard)
+    )
       throw new Error();
   } catch {
     await prisma.document.update({
@@ -460,60 +446,37 @@ export async function POST(request: Request) {
     );
   }
 
-  // [11] Dedup + build StoredQuestion objects
-  const allGenerated: {
-    q: GeminiQuestion;
-    difficulty: StoredQuestion["difficulty"];
-  }[] = [
-    ...generated.easy.map((q) => ({ q, difficulty: "EASY" as const })),
-    ...generated.medium.map((q) => ({ q, difficulty: "MEDIUM" as const })),
-    ...generated.hard.map((q) => ({ q, difficulty: "HARD" as const })),
-  ];
-
-  const batchSeen = new Set<string>();
-  const unique = allGenerated.filter(({ q }) => {
-    const hash = textHash(q.text);
-    if (existingHashSet.has(hash) || batchSeen.has(hash)) return false;
-    batchSeen.add(hash);
-    return true;
-  });
-
-  const newQuestions: StoredQuestion[] = unique.map(({ q, difficulty }) => ({
-    id: randomUUID(),
-    text: q.text,
-    textHash: textHash(q.text),
-    type: q.type,
-    difficulty,
-    options: q.options.map((o) => ({
-      id: randomUUID(),
-      text: o.text,
-      isCorrect: o.isCorrect,
-    })),
-  }));
-
-  // [12] Persist to file
-  const allQuestions = [...existingQuestions, ...newQuestions];
-  writeTopicQuestions(topic.id, allQuestions);
+  // [11] Persist to the question bank; duplicates and malformed items are skipped there
+  const candidates: NewQuestion[] = [
+    ...generated.easy.map((q) => ({ ...q, difficulty: "EASY" as const })),
+    ...generated.medium.map((q) => ({ ...q, difficulty: "MEDIUM" as const })),
+    ...generated.hard.map((q) => ({ ...q, difficulty: "HARD" as const })),
+  ].filter(
+    (q) =>
+      typeof q.text === "string" &&
+      (q.type === "MULTIPLE_CHOICE" || q.type === "TRUE_FALSE") &&
+      Array.isArray(q.options),
+  );
+  const { saved, skipped } = await addTopicQuestions(
+    prisma,
+    topic.id,
+    candidates,
+  );
+  const allQuestions = [...existingQuestions, ...saved];
 
   await prisma.document.update({
     where: { id: document.id },
     data: { status: "DONE" },
   });
 
-  // [13] Build display pool — "any" returns a random mix of all difficulties
-  const diffMap: Record<string, StoredQuestion["difficulty"]> = {
-    easy: "EASY",
-    medium: "MEDIUM",
-    hard: "HARD",
-  };
-  const pool =
+  // [12] Build display pool — "any" returns a random mix of all difficulties
+  const pool = shuffle(
     difficulty === "any"
-      ? shuffle(allQuestions)
-      : shuffle(
-          allQuestions.filter(
-            (q) => q.difficulty === (diffMap[difficulty] ?? "MEDIUM"),
-          ),
-        );
+      ? allQuestions
+      : allQuestions.filter(
+          (q) => q.difficulty === (DIFFICULTY_BY_LEVEL[difficulty] ?? "MEDIUM"),
+        ),
+  );
   const displayQuestions = pool.slice(0, questionCount);
 
   if (displayQuestions.length === 0) {
@@ -533,15 +496,9 @@ export async function POST(request: Request) {
     subjectName: resolvedSubject.name,
     isNewTopic,
     documentId: document.id,
-    totalSaved: newQuestions.length,
-    skippedAsDuplicates: allGenerated.length - unique.length,
-    questions: displayQuestions.map((q) => ({
-      id: q.id,
-      text: q.text,
-      type: q.type,
-      difficulty: q.difficulty,
-      options: q.options,
-    })),
+    totalSaved: saved.length,
+    skippedAsDuplicates: skipped,
+    questions: displayQuestions.map(toClientQuestion),
   });
 }
 

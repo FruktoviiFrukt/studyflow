@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
-import { countTopicQuestions } from "@/lib/questions-file";
+import { countQuestionsByTopic } from "@/lib/server/question-bank";
 
 export async function GET() {
   const session = await auth();
@@ -24,14 +24,18 @@ export async function GET() {
     },
   });
 
-  // Count questions from centralized JSON files (data/topics/{topicId}.json)
+  const counts = await countQuestionsByTopic(
+    prisma,
+    subjects.flatMap((s) => s.topics.map((t) => t.id)),
+  );
+
   const result = subjects
     .map((s) => {
       let easy = 0,
         medium = 0,
         hard = 0;
       const topicsWithCounts = s.topics.map((t) => {
-        const c = countTopicQuestions(t.id);
+        const c = counts.get(t.id) ?? { easy: 0, medium: 0, hard: 0, total: 0 };
         easy += c.easy;
         medium += c.medium;
         hard += c.hard;

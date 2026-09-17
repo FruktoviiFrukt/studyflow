@@ -49,6 +49,4 @@ next-env.d.ts
 /playwright-report/
 /test-results/
 /.data/
-# generated AI Coach question banks (data/topics/*.json)
-/data/
 __pycache__/
