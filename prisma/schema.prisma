@@ -25,4 +25,13 @@ model User {
   role      Role     @default(STUDENT)
   group     String?
   createdAt DateTime @default(now())
+  gpaProfile GpaProfile?
+}
+
+model GpaProfile {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subjects  Json
+  updatedAt DateTime @updatedAt
 }
