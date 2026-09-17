@@ -1,22 +1,14 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
-import { readTopicQuestions, type StoredQuestion } from "@/lib/questions-file";
+import {
+  DIFFICULTY_BY_LEVEL,
+  listTopicQuestions,
+  shuffle,
+  toClientQuestion,
+} from "@/lib/server/question-bank";
 
-function shuffle<T>(arr: T[]): T[] {
-  const a = [...arr];
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
-  }
-  return a;
-}
-
-const DIFFICULTY_MAP: Record<string, StoredQuestion["difficulty"]> = {
-  easy: "EASY",
-  medium: "MEDIUM",
-  hard: "HARD",
-};
+const MAX_TOPICS = 50;
 
 export async function POST(request: Request) {
   const session = await auth();
@@ -33,7 +25,12 @@ export async function POST(request: Request) {
 
   const { topicIds, difficulty, count } = body;
 
-  if (!Array.isArray(topicIds) || topicIds.length === 0) {
+  if (
+    !Array.isArray(topicIds) ||
+    topicIds.length === 0 ||
+    topicIds.length > MAX_TOPICS ||
+    !topicIds.every((id) => typeof id === "string" && id.length <= 64)
+  ) {
     return NextResponse.json(
       { message: "Выберите хотя бы одну тему" },
       { status: 400 },
@@ -44,30 +41,17 @@ export async function POST(request: Request) {
   const isAny = difficultyStr === "any";
   const requestedDifficulty = isAny
     ? null
-    : (DIFFICULTY_MAP[difficultyStr] ?? "MEDIUM");
+    : (DIFFICULTY_BY_LEVEL[difficultyStr] ?? "MEDIUM");
   const requestedCount =
     typeof count === "number" && count >= 1 ? Math.min(count, 100) : 5;
 
-  // Resolve topicIds → topic names from DB (subjectId no longer needed for file path)
-  const topics = await prisma.topic.findMany({
-    where: { id: { in: topicIds as string[] } },
-    select: { id: true, name: true },
-  });
+  const allQuestions = await listTopicQuestions(prisma, topicIds as string[]);
 
-  // Read questions from centralized JSON files
-  type QuizQuestion = StoredQuestion & { topicName: string };
-  const allQuestions: QuizQuestion[] = [];
-  for (const t of topics) {
-    const qs = readTopicQuestions(t.id);
-    for (const q of qs) {
-      allQuestions.push({ ...q, topicName: t.name });
-    }
-  }
-
-  // Filter by difficulty (skip filter for "any")
-  const pool = isAny
-    ? shuffle(allQuestions)
-    : shuffle(allQuestions.filter((q) => q.difficulty === requestedDifficulty));
+  const pool = shuffle(
+    isAny
+      ? allQuestions
+      : allQuestions.filter((q) => q.difficulty === requestedDifficulty),
+  );
 
   if (pool.length === 0) {
     return NextResponse.json(
@@ -80,16 +64,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const sampled = pool.slice(0, requestedCount);
-
   return NextResponse.json({
-    questions: sampled.map((q) => ({
-      id: q.id,
-      text: q.text,
-      type: q.type,
-      difficulty: q.difficulty,
-      topicName: q.topicName,
-      options: q.options,
-    })),
+    questions: pool.slice(0, requestedCount).map(toClientQuestion),
   });
 }

@@ -17,25 +17,27 @@ enum Role {
 }
 
 model User {
-  id           String      @id @default(cuid())
-  email        String      @unique
+  id           String   @id @default(cuid())
+  email        String   @unique
   password     String
   name         String
-  role         Role        @default(STUDENT)
+  role         Role     @default(STUDENT)
   group        String?
   groupId      String?
   subgroupId   String?
-  geminiApiKey String?     // AES-256-GCM encrypted, never stored plain
-  createdAt    DateTime    @default(now())
+  geminiApiKey String? // AES-256-GCM encrypted, never stored plain
+  createdAt    DateTime @default(now())
 
   // Relations: Schedule module
-  studyGroup   StudyGroup? @relation(fields: [groupId], references: [id], onDelete: Restrict)
-  subgroup     Subgroup?   @relation(fields: [subgroupId, groupId], references: [id, groupId], onDelete: Restrict)
+  studyGroup StudyGroup? @relation(fields: [groupId], references: [id], onDelete: Restrict)
+  subgroup   Subgroup?   @relation(fields: [subgroupId, groupId], references: [id, groupId], onDelete: Restrict)
 
   // Relations: AI Coach module
   enrolledSubjects UserSubject[]
   documents        Document[]
   quizSessions     QuizSession[]
+
+  gpaProfile GpaProfile?
 
   @@index([groupId])
   @@index([subgroupId, groupId])
@@ -75,6 +77,7 @@ model AcademicYear {
   name               String     @unique
   startsOn           DateTime   @db.Date
   endsOn             DateTime   @db.Date
+  // Monday starting the first odd week. Holidays do not reset the count.
   firstOddWeekMonday DateTime   @db.Date
   semesters          Semester[]
 }
@@ -114,6 +117,7 @@ model Subgroup {
 model Subject {
   id       String   @id @default(cuid())
   name     String   @unique
+  // Palette key; CSS classes belong to the frontend.
   colorKey String   @default("blue")
   lessons  Lesson[]
 }
@@ -145,6 +149,7 @@ model Lesson {
   id           String           @id @default(cuid())
   scheduleId   String
   subjectId    String
+  // Monday = 0, Sunday = 6.
   weekday      Int
   startMinutes Int
   endMinutes   Int
@@ -167,6 +172,7 @@ model LessonAudience {
   id         String     @id @default(cuid())
   lessonId   String
   groupId    String
+  // Null means the entire group, not an unknown subgroup.
   subgroupId String?
   lesson     Lesson     @relation(fields: [lessonId], references: [id], onDelete: Cascade)
   group      StudyGroup @relation(fields: [groupId], references: [id], onDelete: Restrict)
@@ -237,14 +243,14 @@ enum Difficulty {
 }
 
 model Question {
-  id          String       @id @default(cuid())
-  text        String
-  textHash    String       @unique
-  type        QuestionType
-  difficulty  Difficulty
-  topicId     String
-  approvedAt  DateTime?
-  createdAt   DateTime     @default(now())
+  id         String       @id @default(cuid())
+  text       String
+  textHash   String       @unique
+  type       QuestionType
+  difficulty Difficulty
+  topicId    String
+  approvedAt DateTime?
+  createdAt  DateTime     @default(now())
 
   topic       Topic                 @relation(fields: [topicId], references: [id])
   options     Option[]
@@ -253,7 +259,7 @@ model Question {
 }
 
 model Option {
-  id         String   @id @default(cuid())
+  id         String  @id @default(cuid())
   text       String
   isCorrect  Boolean
   questionId String
@@ -279,9 +285,9 @@ model Document {
   errorMessage String?
   createdAt    DateTime       @default(now())
 
-  user    User            @relation(fields: [userId], references: [id])
-  subject FacultySubject? @relation(fields: [subjectId], references: [id])
-  topic   Topic?          @relation(fields: [topicId], references: [id])
+  user    User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subject FacultySubject? @relation(fields: [subjectId], references: [id], onDelete: SetNull)
+  topic   Topic?          @relation(fields: [topicId], references: [id], onDelete: SetNull)
 }
 
 model QuizSession {
@@ -291,7 +297,7 @@ model QuizSession {
   completedAt DateTime?
   createdAt   DateTime  @default(now())
 
-  user      User                  @relation(fields: [userId], references: [id])
+  user      User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
   questions QuizSessionQuestion[]
   answers   QuizAnswer[]
 }
@@ -319,4 +325,16 @@ model QuizAnswer {
   question Question    @relation(fields: [questionId], references: [id])
 
   @@unique([sessionId, questionId])
+}
+
+// ---------------------------------------------------------------------------
+// GPA calculator
+// ---------------------------------------------------------------------------
+
+model GpaProfile {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subjects  Json
+  updatedAt DateTime @updatedAt
 }
