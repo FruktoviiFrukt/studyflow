@@ -135,20 +135,26 @@ export default function GradeCalculator() {
     "idle" | "saving" | "saved" | "error"
   >("idle");
   const skipNextSaveRef = useRef(true);
+  // После неудачной загрузки не сохраняем: иначе пустое состояние затёрло бы
+  // реальные данные пользователя в базе.
+  const saveBlockedRef = useRef(false);
 
   // Загружаем сохранённые оценки один раз при монтировании.
+  // null в ответе означает, что профиля ещё нет: показываем демо-набор,
+  // чтобы было с чего начать. Пустой сохранённый список остаётся пустым.
   useEffect(() => {
     let cancelled = false;
     fetchGpaProfile()
       .then((loaded) => {
         if (cancelled) return;
-        setSubjects(loaded && loaded.length > 0 ? loaded : initialSubjects);
+        setSubjects(loaded ?? initialSubjects);
       })
       .catch(() => {
         if (cancelled) return;
-        setSubjects(initialSubjects);
+        saveBlockedRef.current = true;
+        setSubjects([]);
         setLoadError(
-          "Не удалось загрузить сохранённые оценки. Показаны демо-данные.",
+          "Не удалось загрузить сохранённые оценки. Обновите страницу, чтобы попробовать снова.",
         );
       });
     return () => {
@@ -161,6 +167,10 @@ export default function GradeCalculator() {
     if (subjects === null) return;
     if (skipNextSaveRef.current) {
       skipNextSaveRef.current = false;
+      return;
+    }
+    if (saveBlockedRef.current) {
+      setSaveStatus("error");
       return;
     }
     setSaveStatus("saving");
@@ -278,7 +288,7 @@ export default function GradeCalculator() {
             <Select
               value={subject?.id ?? ""}
               disabled={!subject || visibleSubjects.length === 0}
-              onValueChange={(val: string) => setSelectedId(val)}
+              onValueChange={(val) => setSelectedId(val)}
             >
               <SelectTrigger className="w-full">
                 <SelectValue
@@ -328,7 +338,7 @@ export default function GradeCalculator() {
               <span className="mb-2 block text-sm font-semibold">Семестр</span>
               <Select
                 value={String(newSemester)}
-                onValueChange={(value: string) =>
+                onValueChange={(value) =>
                   setNewSemester(Number(value) as Semester)
                 }
               >

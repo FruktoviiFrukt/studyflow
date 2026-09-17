@@ -25,8 +25,17 @@ export async function PUT(request: Request) {
     return NextResponse.json({ message: "Не авторизован" }, { status: 401 });
   }
 
-  const body = await request.json();
-  const { subjects } = body as { subjects?: unknown };
+  let body: { subjects?: unknown };
+  try {
+    body = (await request.json()) as { subjects?: unknown };
+  } catch {
+    return NextResponse.json(
+      { message: "Неверный формат запроса" },
+      { status: 400 },
+    );
+  }
+
+  const { subjects } = body;
 
   if (!isValidGradeSubjects(subjects)) {
     return NextResponse.json(
