@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+
 import { Card } from "@/components/ui/card";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { cn } from "@/lib/utils";
@@ -8,6 +10,9 @@ import {
   questionCountOptions,
   type Difficulty,
 } from "@/lib/ai-coach";
+
+const MIN_COUNT = 5;
+const MAX_COUNT = 100;
 
 type GenerationSettingsProps = {
   questionCount: number;
@@ -22,11 +27,23 @@ export default function GenerationSettings({
   difficulty,
   onDifficultyChange,
 }: GenerationSettingsProps) {
-  function handleCountInput(e: React.ChangeEvent<HTMLInputElement>) {
-    const val = parseInt(e.target.value, 10);
-    if (!isNaN(val) && val >= 5) {
-      onQuestionCountChange(Math.min(val, 100));
-    }
+  // The field keeps its own text while the user types, so an intermediate
+  // value like "1" (on the way to "10") is not rejected and rewritten.
+  const [draft, setDraft] = useState(String(questionCount));
+  // Re-sync the text when the parent changes the count (preset buttons).
+  const [syncedCount, setSyncedCount] = useState(questionCount);
+  if (questionCount !== syncedCount) {
+    setSyncedCount(questionCount);
+    setDraft(String(questionCount));
+  }
+
+  function commitCount() {
+    const val = parseInt(draft, 10);
+    const next = isNaN(val)
+      ? MIN_COUNT
+      : Math.min(Math.max(val, MIN_COUNT), MAX_COUNT);
+    setDraft(String(next));
+    if (next !== questionCount) onQuestionCountChange(next);
   }
 
   return (
@@ -46,8 +63,12 @@ export default function GenerationSettings({
               type="number"
               min="5"
               max="100"
-              value={questionCount}
-              onChange={handleCountInput}
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              onBlur={commitCount}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") commitCount();
+              }}
               aria-label="Количество вопросов"
               className="w-20 rounded-lg border border-gray-200 bg-white py-1.5 px-3 text-center text-sm tabular-nums shadow-sm focus:border-blue-400 focus:outline-none focus:ring-1 focus:ring-blue-400"
             />

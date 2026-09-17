@@ -1,19 +1,24 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
 
+import { auth } from "@/auth";
+
+// Only sections that exist; add a row here when a page is added.
 const adminSections = [
   { href: "/admin", label: "Обзор" },
-  { href: "/admin/users", label: "Пользователи" },
-  { href: "/admin/subjects", label: "Дисциплины" },
   { href: "/admin/schedule", label: "Расписание" },
-  { href: "/admin/materials", label: "Материалы" },
 ];
 
 type AdminLayoutProps = {
   children: ReactNode;
 };
 
-export default function AdminLayout({ children }: AdminLayoutProps) {
+export default async function AdminLayout({ children }: AdminLayoutProps) {
+  const session = await auth();
+  if (!session?.user) redirect("/auth");
+  if (session.user.role !== "ADMIN") redirect("/dashboard");
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">

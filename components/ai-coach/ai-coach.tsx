@@ -110,7 +110,9 @@ export default function AiCoach() {
 
   useEffect(() => {
     fetch("/api/ai-coach/api-key")
-      .then((r) => r.json())
+      .then((r) =>
+        r.ok ? r.json() : Promise.reject(new Error(String(r.status))),
+      )
       .then((d: { linked: boolean }) => setKeyLinked(d.linked))
       .catch(() => setKeyLinked(false));
   }, []);

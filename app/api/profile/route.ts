@@ -11,11 +11,16 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ message: "Не авторизовано" }, { status: 401 });
   }
 
-  const body = await request.json();
-  const { name, group } = body as {
-    name?: unknown;
-    group?: unknown;
-  };
+  let body: { name?: unknown; group?: unknown };
+  try {
+    body = (await request.json()) as typeof body;
+  } catch {
+    return NextResponse.json(
+      { message: "Неверный формат запроса" },
+      { status: 400 },
+    );
+  }
+  const { name, group } = body;
 
   if (typeof name !== "string" || !name.trim()) {
     return NextResponse.json(

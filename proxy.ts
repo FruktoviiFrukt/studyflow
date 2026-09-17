@@ -26,6 +26,7 @@ export const config = {
     "/schedule/:path*",
     "/ai-coach/:path*",
     "/profile/:path*",
+    "/admin/:path*",
     "/auth",
   ],
 };

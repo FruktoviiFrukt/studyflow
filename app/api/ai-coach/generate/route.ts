@@ -8,7 +8,7 @@ import {
   listTopicQuestions,
   shuffle,
   toClientQuestion,
-  type NewQuestion,
+  isWellFormedQuestion,
 } from "@/lib/server/question-bank";
 import mammoth from "mammoth";
 
@@ -38,6 +38,10 @@ type GeminiQuestions = {
 const MAX_TEXT_LENGTH = 6_000;
 const MAX_PER_LEVEL = 13;
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
+const MAX_FILES = 5;
+const MAX_TOTAL_UPLOAD = 20 * 1024 * 1024; // 20 MB across all files
+const MAX_TOPIC_NAME = 120;
+const GEMINI_TIMEOUT_MS = 60_000;
 const GEMINI_MODEL = process.env.GEMINI_MODEL ?? "gemini-3.5-flash-lite";
 const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
 
@@ -59,6 +63,7 @@ async function callGemini(
 ): Promise<string> {
   const res = await fetch(GEMINI_URL, {
     method: "POST",
+    signal: AbortSignal.timeout(GEMINI_TIMEOUT_MS),
     headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
     body: JSON.stringify({
       contents: [{ parts }],
@@ -244,10 +249,18 @@ export async function POST(request: Request) {
   const difficulty = String(formData.get("difficulty") ?? "medium") as
     "easy" | "medium" | "hard" | "any";
   const rawFiles = formData.getAll("file");
-  const files = rawFiles.filter(
-    (v): v is File =>
-      v instanceof File && v.size > 0 && v.size <= MAX_FILE_SIZE,
-  );
+  const files = rawFiles
+    .filter(
+      (v): v is File =>
+        v instanceof File && v.size > 0 && v.size <= MAX_FILE_SIZE,
+    )
+    .slice(0, MAX_FILES);
+  if (files.reduce((sum, f) => sum + f.size, 0) > MAX_TOTAL_UPLOAD) {
+    return NextResponse.json(
+      { message: "Суммарный размер вложений не должен превышать 20 МБ" },
+      { status: 413 },
+    );
+  }
 
   // [3] Process files — extract text from TXT/DOCX, keep PDF/images as visual
   let extractedText = "";
@@ -363,7 +376,11 @@ export async function POST(request: Request) {
     );
   }
 
-  const { subjectId, topicName } = classification;
+  const subjectId = classification.subjectId;
+  const topicName =
+    typeof classification.topicName === "string"
+      ? classification.topicName.trim().slice(0, MAX_TOPIC_NAME)
+      : undefined;
   if (!subjectId || !topicName) {
     return NextResponse.json(
       { message: "Gemini не смог определить предмет или тему" },
@@ -447,21 +464,30 @@ export async function POST(request: Request) {
   }
 
   // [11] Persist to the question bank; duplicates and malformed items are skipped there
-  const candidates: NewQuestion[] = [
+  const candidates = [
     ...generated.easy.map((q) => ({ ...q, difficulty: "EASY" as const })),
     ...generated.medium.map((q) => ({ ...q, difficulty: "MEDIUM" as const })),
     ...generated.hard.map((q) => ({ ...q, difficulty: "HARD" as const })),
-  ].filter(
-    (q) =>
-      typeof q.text === "string" &&
-      (q.type === "MULTIPLE_CHOICE" || q.type === "TRUE_FALSE") &&
-      Array.isArray(q.options),
-  );
-  const { saved, skipped } = await addTopicQuestions(
-    prisma,
-    topic.id,
-    candidates,
-  );
+  ].filter(isWellFormedQuestion);
+  let saved: Awaited<ReturnType<typeof addTopicQuestions>>["saved"];
+  let skipped: number;
+  try {
+    ({ saved, skipped } = await addTopicQuestions(
+      prisma,
+      topic.id,
+      candidates,
+    ));
+  } catch (err) {
+    console.error("[generate] persisting questions failed:", err);
+    await prisma.document.update({
+      where: { id: document.id },
+      data: { status: "REJECTED", errorMessage: "Failed to store questions" },
+    });
+    return NextResponse.json(
+      { message: "Не удалось сохранить вопросы, попробуйте ещё раз" },
+      { status: 500 },
+    );
+  }
   const allQuestions = [...existingQuestions, ...saved];
 
   await prisma.document.update({

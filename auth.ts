@@ -3,6 +3,11 @@ import Credentials from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 
 import { prisma } from "@/lib/prisma";
+import { normalizeEmail } from "@/lib/email";
+
+// Compared against when the email is unknown, so a failed login takes the
+// same time whether or not the account exists.
+const UNKNOWN_USER_HASH = bcrypt.hashSync("unknown-user-placeholder", 10);
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   session: {
@@ -26,16 +31,15 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         }
 
         const user = await prisma.user.findUnique({
-          where: { email },
+          where: { email: normalizeEmail(email) },
         });
 
-        if (!user) {
-          return null;
-        }
+        const passwordMatches = await bcrypt.compare(
+          password,
+          user?.password ?? UNKNOWN_USER_HASH,
+        );
 
-        const passwordMatches = await bcrypt.compare(password, user.password);
-
-        if (!passwordMatches) {
+        if (!user || !passwordMatches) {
           return null;
         }
 

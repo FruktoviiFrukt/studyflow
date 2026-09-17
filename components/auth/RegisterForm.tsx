@@ -115,6 +115,10 @@ export default function RegisterForm({ onSwitch }: RegisterFormProps) {
       }
 
       router.push("/dashboard");
+    } catch {
+      setErrors({
+        email: "Не удалось связаться с сервером, проверьте соединение",
+      });
     } finally {
       setIsSubmitting(false);
     }

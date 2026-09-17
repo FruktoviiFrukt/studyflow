@@ -48,3 +48,39 @@ test("well-formed check enforces option counts and a single correct answer", () 
     false,
   );
 });
+
+test("options with wrong field types are rejected before reaching the database", () => {
+  const base = { text: "Q", type: "TRUE_FALSE", difficulty: "EASY" };
+  assert.equal(
+    isWellFormedQuestion({
+      ...base,
+      options: [
+        { text: "Верно", isCorrect: true },
+        { text: "Неверно", isCorrect: false },
+      ],
+    }),
+    true,
+  );
+  assert.equal(
+    isWellFormedQuestion({
+      ...base,
+      options: [
+        { text: 123, isCorrect: true },
+        { text: "x", isCorrect: false },
+      ],
+    }),
+    false,
+  );
+  assert.equal(
+    isWellFormedQuestion({
+      ...base,
+      options: [
+        { text: "a", isCorrect: "yes" },
+        { text: "b", isCorrect: false },
+      ],
+    }),
+    false,
+  );
+  assert.equal(isWellFormedQuestion({ ...base, options: [null, null] }), false);
+  assert.equal(isWellFormedQuestion({ ...base, text: 5, options: [] }), false);
+});

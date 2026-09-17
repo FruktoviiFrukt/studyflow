@@ -36,7 +36,9 @@ export default function GeminiKeyCard({
 
   useEffect(() => {
     fetch("/api/ai-coach/api-key")
-      .then((r) => r.json())
+      .then((r) =>
+        r.ok ? r.json() : Promise.reject(new Error(String(r.status))),
+      )
       .then((data: { linked: boolean }) => setLinked(data.linked))
       .catch(() => setLinked(false));
   }, []);

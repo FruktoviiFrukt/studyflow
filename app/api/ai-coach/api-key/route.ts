@@ -13,6 +13,7 @@ async function validateGeminiKey(
     // The key travels in a header, not in the URL, so it never lands in access logs.
     const res = await fetch(GEMINI_VALIDATE_URL, {
       headers: { "x-goog-api-key": key },
+      signal: AbortSignal.timeout(15_000),
     });
     if (res.ok) return { ok: true };
 

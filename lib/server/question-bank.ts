@@ -59,12 +59,33 @@ export function questionTextHash(text: string): string {
   return createHash("sha256").update(normalizeQuestionText(text)).digest("hex");
 }
 
-export function isWellFormedQuestion(q: NewQuestion): boolean {
-  if (!q.text.trim()) return false;
-  const correct = q.options.filter((o) => o.isCorrect).length;
+/** Untrusted (model) output: true when the value has the shape of NewQuestion. */
+export function isQuestionShape(value: unknown): value is NewQuestion {
+  if (typeof value !== "object" || value === null) return false;
+  const q = value as Record<string, unknown>;
+  return (
+    typeof q.text === "string" &&
+    (q.type === "MULTIPLE_CHOICE" || q.type === "TRUE_FALSE") &&
+    (q.difficulty === "EASY" ||
+      q.difficulty === "MEDIUM" ||
+      q.difficulty === "HARD") &&
+    Array.isArray(q.options) &&
+    q.options.every(
+      (o) =>
+        typeof o === "object" &&
+        o !== null &&
+        typeof (o as Record<string, unknown>).text === "string" &&
+        typeof (o as Record<string, unknown>).isCorrect === "boolean",
+    )
+  );
+}
+
+/** Shape plus quiz rules: non-empty text, one correct answer, 2 or 4 options. */
+export function isWellFormedQuestion(value: unknown): value is NewQuestion {
+  if (!isQuestionShape(value) || !value.text.trim()) return false;
+  const correct = value.options.filter((o) => o.isCorrect).length;
   if (correct !== 1) return false;
-  if (q.type === "TRUE_FALSE") return q.options.length === 2;
-  return q.options.length === 4;
+  return value.options.length === (value.type === "TRUE_FALSE" ? 2 : 4);
 }
 
 export async function listTopicQuestions(
@@ -146,40 +167,66 @@ export async function addTopicQuestions(
     toInsert.push({ q, hash });
   });
 
-  const saved = await db.$transaction(
-    toInsert.map(({ q, hash }) =>
-      db.question.create({
-        data: {
-          text: q.text,
-          textHash: hash,
-          type: q.type,
-          difficulty: q.difficulty,
-          topicId,
-          options: {
-            create: q.options.map((o) => ({
-              text: o.text,
-              isCorrect: o.isCorrect,
-            })),
-          },
-        },
-        select: {
-          id: true,
-          topicId: true,
-          text: true,
-          textHash: true,
-          type: true,
-          difficulty: true,
-          topic: { select: { name: true } },
-          options: { select: { id: true, text: true, isCorrect: true } },
-        },
-      }),
-    ),
-  );
+  // Inserted one by one instead of in a single transaction: two users may
+  // generate the same topic at once, and a duplicate textHash from the other
+  // request must skip that one question, not roll back the whole batch.
+  const saved: Awaited<ReturnType<typeof insertQuestion>>[] = [];
+  for (const { q, hash } of toInsert) {
+    try {
+      saved.push(await insertQuestion(db, topicId, q, hash));
+    } catch (error) {
+      if (isUniqueViolation(error)) continue;
+      throw error;
+    }
+  }
 
   return {
     saved: saved.map(({ topic, ...q }) => ({ ...q, topicName: topic.name })),
     skipped: candidates.length - saved.length,
   };
+}
+
+function insertQuestion(
+  db: PrismaClient,
+  topicId: string,
+  q: NewQuestion,
+  hash: string,
+) {
+  return db.question.create({
+    data: {
+      text: q.text,
+      textHash: hash,
+      type: q.type,
+      difficulty: q.difficulty,
+      topicId,
+      options: {
+        create: q.options.map((o) => ({
+          text: o.text,
+          isCorrect: o.isCorrect,
+        })),
+      },
+    },
+    select: {
+      id: true,
+      topicId: true,
+      text: true,
+      textHash: true,
+      type: true,
+      difficulty: true,
+      topic: { select: { name: true } },
+      options: { select: { id: true, text: true, isCorrect: true } },
+    },
+  });
+}
+
+// Checked by shape so this module stays loadable by plain `node --test`,
+// which cannot resolve extensionless imports of the generated client.
+function isUniqueViolation(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    (error as { code?: unknown }).code === "P2002"
+  );
 }
 
 export function shuffle<T>(arr: T[]): T[] {

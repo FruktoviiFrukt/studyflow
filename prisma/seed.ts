@@ -39,6 +39,14 @@ const FACULTY_SUBJECTS = [
 ];
 
 async function main() {
+  if (
+    !process.env.SEED_ADMIN_PASSWORD &&
+    process.env.NODE_ENV === "production"
+  ) {
+    throw new Error(
+      "SEED_ADMIN_PASSWORD must be set when seeding a production database",
+    );
+  }
   const password = process.env.SEED_ADMIN_PASSWORD ?? DEV_DEFAULT_PASSWORD;
   const hashedPassword = await bcrypt.hash(password, 10);
 
