@@ -1,0 +1,1308 @@
+<title>StudyFlow Audit II</title>
+<link
+  rel="stylesheet"
+  href="https://fonts.googleapis.com/css2?family=Manrope:wght@600;700;800&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap"
+/>
+<style>
+  :root {
+    --ground: #f5f7fb;
+    --surface: #ffffff;
+    --surface-2: #eef2f9;
+    --line: #d9dfeb;
+    --ink: #151a2d;
+    --ink-2: #3a4257;
+    --muted: #5f6880;
+    --accent: #1e4ed8;
+    --accent-ink: #ffffff;
+    --accent-soft: #e4ebfb;
+    --accent-line: #b9c9f3;
+    --ok: #137a5b;
+    --ok-soft: #dff3ea;
+    --warn: #9a6700;
+    --warn-soft: #fbf0d3;
+    --crit: #b42318;
+    --crit-soft: #fbe3df;
+    --code-bg: #eef1f7;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground: #0f1320;
+      --surface: #161b2b;
+      --surface-2: #1d2335;
+      --line: #2a3247;
+      --ink: #e8ebf4;
+      --ink-2: #c3c9d8;
+      --muted: #98a1b8;
+      --accent: #7ea1ff;
+      --accent-ink: #0b1430;
+      --accent-soft: #1c2a52;
+      --accent-line: #33509a;
+      --ok: #4fc79a;
+      --ok-soft: #123528;
+      --warn: #e2b04a;
+      --warn-soft: #3a2d0c;
+      --crit: #f08a7e;
+      --crit-soft: #3f1713;
+      --code-bg: #111626;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground: #0f1320;
+    --surface: #161b2b;
+    --surface-2: #1d2335;
+    --line: #2a3247;
+    --ink: #e8ebf4;
+    --ink-2: #c3c9d8;
+    --muted: #98a1b8;
+    --accent: #7ea1ff;
+    --accent-ink: #0b1430;
+    --accent-soft: #1c2a52;
+    --accent-line: #33509a;
+    --ok: #4fc79a;
+    --ok-soft: #123528;
+    --warn: #e2b04a;
+    --warn-soft: #3a2d0c;
+    --crit: #f08a7e;
+    --crit-soft: #3f1713;
+    --code-bg: #111626;
+  }
+  * {
+    box-sizing: border-box;
+  }
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font:
+      16px/1.6 "IBM Plex Sans",
+      system-ui,
+      -apple-system,
+      "Segoe UI",
+      Roboto,
+      sans-serif;
+    padding-inline: 16px;
+    padding-block: 0 64px;
+  }
+  .wrap {
+    max-width: 1180px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: 220px minmax(0, 1fr);
+    gap: 40px;
+    align-items: start;
+  }
+  @media (max-width: 900px) {
+    .wrap {
+      grid-template-columns: minmax(0, 1fr);
+    }
+  }
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: Manrope, "IBM Plex Sans", system-ui, sans-serif;
+    text-wrap: balance;
+    margin: 0;
+    color: var(--ink);
+  }
+  h1 {
+    font-size: clamp(30px, 4.2vw, 44px);
+    font-weight: 800;
+    line-height: 1.1;
+    letter-spacing: -0.01em;
+  }
+  h2 {
+    font-size: 26px;
+    font-weight: 800;
+    letter-spacing: -0.01em;
+    margin-top: 56px;
+    padding-top: 24px;
+    border-top: 1px solid var(--line);
+  }
+  h3 {
+    font-size: 19px;
+    font-weight: 700;
+    margin-top: 32px;
+  }
+  h4 {
+    font-size: 16px;
+    font-weight: 700;
+    margin-top: 20px;
+  }
+  p {
+    margin: 12px 0;
+    max-width: 72ch;
+  }
+  ul,
+  ol {
+    max-width: 72ch;
+    padding-left: 22px;
+    margin: 10px 0;
+  }
+  li {
+    margin: 5px 0;
+  }
+  li > ul {
+    margin-top: 4px;
+  }
+  a {
+    color: var(--accent);
+  }
+  code,
+  pre,
+  .mono {
+    font-family:
+      "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  code {
+    font-size: 0.9em;
+    background: var(--code-bg);
+    padding: 1px 6px;
+    border-radius: 5px;
+    color: var(--ink-2);
+  }
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 14px 16px;
+    overflow-x: auto;
+    font-size: 13.5px;
+    line-height: 1.55;
+    margin: 14px 0;
+  }
+  pre code {
+    background: none;
+    padding: 0;
+    font-size: inherit;
+  }
+  .eyebrow {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 12px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  header.hero {
+    padding-block: 48px 8px;
+  }
+  header.hero .lead {
+    font-size: 18px;
+    color: var(--ink-2);
+    max-width: 66ch;
+  }
+  .meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 20px;
+    margin-top: 18px;
+    font-size: 14px;
+    color: var(--muted);
+  }
+  .meta b {
+    color: var(--ink);
+    font-weight: 600;
+  }
+  nav.toc {
+    position: sticky;
+    top: 24px;
+    font-size: 14px;
+    line-height: 1.5;
+    padding-top: 56px;
+  }
+  @media (max-width: 900px) {
+    nav.toc {
+      position: static;
+      padding-top: 16px;
+      border-bottom: 1px solid var(--line);
+      padding-bottom: 16px;
+    }
+  }
+  nav.toc ol {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    max-width: none;
+  }
+  nav.toc li {
+    margin: 0;
+  }
+  nav.toc a {
+    display: block;
+    padding: 5px 10px;
+    border-left: 2px solid var(--line);
+    color: var(--muted);
+    text-decoration: none;
+  }
+  nav.toc a:hover,
+  nav.toc a:focus-visible {
+    color: var(--ink);
+    border-color: var(--accent);
+    outline: none;
+  }
+  nav.toc .n {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 12px;
+    color: var(--accent);
+    margin-right: 8px;
+  }
+  .verdict {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 12px;
+    margin: 22px 0;
+  }
+  .tile {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 14px 16px;
+  }
+  .tile .k {
+    font-size: 12px;
+    color: var(--muted);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+  .tile .v {
+    font-family: Manrope, sans-serif;
+    font-weight: 800;
+    font-size: 26px;
+    line-height: 1.15;
+    margin-top: 6px;
+    font-variant-numeric: tabular-nums;
+  }
+  .tile .s {
+    font-size: 13px;
+    color: var(--muted);
+    margin-top: 4px;
+  }
+  .chip {
+    display: inline-block;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 2px 9px;
+    border-radius: 999px;
+    border: 1px solid transparent;
+    white-space: nowrap;
+    vertical-align: middle;
+  }
+  .chip.ok {
+    background: var(--ok-soft);
+    color: var(--ok);
+  }
+  .chip.warn {
+    background: var(--warn-soft);
+    color: var(--warn);
+  }
+  .chip.crit {
+    background: var(--crit-soft);
+    color: var(--crit);
+  }
+  .chip.info {
+    background: var(--accent-soft);
+    color: var(--accent);
+  }
+  .chip.mute {
+    background: var(--surface-2);
+    color: var(--muted);
+  }
+  .tablewrap {
+    overflow-x: auto;
+    margin: 16px 0;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: var(--surface);
+  }
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    font-size: 14px;
+    min-width: 640px;
+  }
+  th,
+  td {
+    padding: 9px 12px;
+    text-align: left;
+    vertical-align: top;
+    border-bottom: 1px solid var(--line);
+  }
+  th {
+    font-size: 12px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--muted);
+    font-weight: 600;
+    background: var(--surface-2);
+  }
+  tr:last-child td {
+    border-bottom: none;
+  }
+  td.num {
+    font-variant-numeric: tabular-nums;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 13px;
+  }
+  .callout {
+    border-left: 3px solid var(--accent);
+    background: var(--accent-soft);
+    padding: 12px 16px;
+    border-radius: 0 10px 10px 0;
+    margin: 18px 0;
+    max-width: 76ch;
+  }
+  .callout.warn {
+    border-color: var(--warn);
+    background: var(--warn-soft);
+  }
+  .callout.crit {
+    border-color: var(--crit);
+    background: var(--crit-soft);
+  }
+  .callout p {
+    margin: 6px 0;
+  }
+  .finding {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 14px 18px;
+    margin: 12px 0;
+    max-width: 80ch;
+  }
+  .finding .t {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+    font-weight: 600;
+  }
+  .finding .t .id {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .finding p {
+    margin: 8px 0 0;
+  }
+  .finding .fix {
+    margin-top: 8px;
+    font-size: 14px;
+    color: var(--ink-2);
+  }
+  .finding .fix b {
+    color: var(--ink);
+  }
+  .grid2 {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 14px;
+    margin: 16px 0;
+  }
+  .phase {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 18px 20px;
+  }
+  .phase h3 {
+    margin-top: 0;
+  }
+  .phase .when {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 12.5px;
+    color: var(--accent);
+    letter-spacing: 0.04em;
+  }
+  .phase .goal {
+    color: var(--ink-2);
+    font-style: italic;
+  }
+  .phase ul {
+    max-width: none;
+  }
+  .gate {
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px dashed var(--line);
+    font-size: 14px;
+  }
+  .gate b {
+    color: var(--ok);
+  }
+  pre.mermaid {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 12px;
+    overflow-x: auto;
+    text-align: center;
+  }
+  figcaption {
+    font-size: 13px;
+    color: var(--muted);
+    margin-top: 6px;
+  }
+  figure {
+    margin: 18px 0;
+  }
+  .small {
+    font-size: 14px;
+    color: var(--muted);
+  }
+  .kv {
+    display: grid;
+    grid-template-columns: max-content 1fr;
+    gap: 6px 18px;
+    font-size: 14.5px;
+    max-width: 76ch;
+  }
+  .kv dt {
+    color: var(--muted);
+  }
+  .kv dd {
+    margin: 0;
+  }
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    * {
+      scroll-behavior: auto !important;
+    }
+  }
+  html {
+    scroll-behavior: smooth;
+  }
+</style>
+<div class="wrap">
+  <nav class="toc" aria-label="Содержание">
+    <ol>
+      <li>
+        <a href="#s0"><span class="n">0</span>Что произошло за день</a>
+      </li>
+      <li>
+        <a href="#s1"><span class="n">1</span>Сводные оценки</a>
+      </li>
+      <li>
+        <a href="#s2"><span class="n">2</span>Готовность по модулям</a>
+      </li>
+      <li>
+        <a href="#s3"><span class="n">3</span>Взаимодействие модулей</a>
+      </li>
+      <li>
+        <a href="#s4"><span class="n">4</span>Ошибки</a>
+      </li>
+      <li>
+        <a href="#s5"><span class="n">5</span>Безопасность</a>
+      </li>
+      <li>
+        <a href="#s6"><span class="n">6</span>Дизайн и доступность</a>
+      </li>
+      <li>
+        <a href="#s7"><span class="n">7</span>Что уже исправлено: PR #63</a>
+      </li>
+      <li>
+        <a href="#s8"><span class="n">8</span>Приоритеты на неделю</a>
+      </li>
+    </ol>
+  </nav>
+  <main>
+    <header class="hero">
+      <div class="eyebrow">Аудит после интеграции</div>
+      <h1>StudyFlow: срез 17 сентября 2026</h1>
+      <p class="lead">
+        Четыре независимых прохода по
+        <span class="mono">origin/develop @ 43f04ea</span>: готовность и
+        взаимодействие модулей, ошибки, дизайн и доступность, безопасность.
+        Проверено локально на чистой базе: миграции, сид, lint, tsc, 48
+        юнит-тестов, 4 интеграционных, сборка.
+      </p>
+      <div class="meta">
+        <span
+          ><b>Стек</b> Next.js 16.3.4 · React 19.2.8 · Tailwind 4 · Prisma 7.10
+          · PostgreSQL 16 · Auth.js 5 beta</span
+        >
+        <span
+          ><b>Деплой</b> Vercel + Neon, сервисный
+          <span class="mono">main @ bee516b</span></span
+        >
+        <span
+          ><b>Исправления</b> PR #63
+          <span class="mono">fix/audit-2026-09-17</span></span
+        >
+      </div>
+    </header>
+    <div class="verdict">
+      <div class="tile">
+        <div class="k">Готовность</div>
+        <div class="v"><span class="chip warn">68 %</span></div>
+        <div class="s">три модуля на базе, задания и материалы без бэкенда</div>
+      </div>
+      <div class="tile">
+        <div class="k">Интеграция</div>
+        <div class="v"><span class="chip crit">38 / 100</span></div>
+        <div class="s">дашборд и профиль на демо-константах</div>
+      </div>
+      <div class="tile">
+        <div class="k">Ошибки</div>
+        <div class="v">
+          <span class="chip warn">2 high · 6 medium · 6 low</span>
+        </div>
+        <div class="s">high закрыты в PR #63</div>
+      </div>
+      <div class="tile">
+        <div class="k">Дизайн и a11y</div>
+        <div class="v"><span class="chip warn">48 / 100</span></div>
+        <div class="s">дизайн-система не доведена до модулей</div>
+      </div>
+      <div class="tile">
+        <div class="k">Безопасность</div>
+        <div class="v"><span class="chip warn">68 / 100</span></div>
+        <div class="s">0 critical, 2 high закрыты в PR #63</div>
+      </div>
+      <div class="tile">
+        <div class="k">Продакшен</div>
+        <div class="v"><span class="chip ok">догнал develop</span></div>
+        <div class="s">заморозка интегратора снята вручную</div>
+      </div>
+    </div>
+
+    <h2 id="s0">0. Что произошло за день</h2>
+    <ul>
+      <li>
+        Влиты PR #62 (GPA с сохранением в Postgres) и PR #60 (AI Coach:
+        BYOK-ключ Gemini, банк вопросов в Postgres). В оба PR ревьюер допушил
+        правки с соавторством авторов; открытых PR в командном репозитории не
+        осталось.
+      </li>
+      <li>
+        Продакшен на Vercel догнал <code>develop</code>: сервисный
+        <code>main</code> получил мерж-коммит <code>bee516b</code>, деплой
+        прошёл валидацию (lint, миграции, тесты, e2e) и опубликован. Новые роуты
+        <code>/api/gpa</code> и <code>/api/ai-coach/*</code> отвечают 401 без
+        сессии.
+      </li>
+      <li>
+        Причина недельной заморозки продакшена: интегратор
+        <code>integrate.yml</code> помечал <code>develop</code> как
+        <code>conflict</code> и молча пропускал его вместе со всеми зависимыми
+        ветками. Конфликт add/add в семи файлах админки расписания возник из-за
+        того, что 14 сентября интегратор подхватил снимок feature-ветки, а 15–16
+        сентября автор переработала модуль и влила в <code>develop</code> другую
+        версию тех же файлов. Разрешено вручную в пользу <code>develop</code>.
+      </li>
+      <li>
+        Открыт PR #63 <code>fix/audit-2026-09-17</code> с закрытием
+        высокоприоритетных находок этого аудита (раздел 8).
+      </li>
+    </ul>
+    <h2 id="s1">1. Сводные оценки</h2>
+    <div class="tablewrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Направление</th>
+            <th>Оценка</th>
+            <th>Одной строкой</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Готовность функционала</td>
+            <td class="num">68 %</td>
+            <td>три модуля на базе, задания и материалы без бэкенда</td>
+          </tr>
+          <tr>
+            <td>Взаимодействие модулей</td>
+            <td class="num">38 / 100</td>
+            <td>
+              связующие экраны на демо-константах, «предмет» в пяти
+              представлениях
+            </td>
+          </tr>
+          <tr>
+            <td>Ошибки</td>
+            <td>2 high · 6 medium · 6 low</td>
+            <td>
+              тесты и парсер формул устойчивы, слабые места в валидации и
+              регистрации
+            </td>
+          </tr>
+          <tr>
+            <td>Дизайн и доступность</td>
+            <td class="num">48 / 100</td>
+            <td>
+              дизайн-система заведена, модули её не используют, аудит 11.09 не
+              закрыт
+            </td>
+          </tr>
+          <tr>
+            <td>Безопасность</td>
+            <td class="num">68 / 100</td>
+            <td>авторизация и инъекции в порядке, нет продакшен-гигиены</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <h2 id="s2">2. Готовность по модулям</h2>
+    <div class="tablewrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Модуль</th>
+            <th>Было в README</th>
+            <th>Фактически на develop</th>
+            <th>%</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Аутентификация</td>
+            <td>Auth.js, в develop</td>
+            <td>
+              регистрация с учебной группой, роли STUDENT/ADMIN, e2e
+              <code>auth.spec.ts</code>
+            </td>
+            <td class="num">85</td>
+          </tr>
+          <tr>
+            <td>Расписание</td>
+            <td>демо-данные</td>
+            <td>
+              <code>/api/schedule</code>, 9 Prisma-моделей, импорт PDF, unit +
+              integration + e2e
+            </td>
+            <td class="num">85</td>
+          </tr>
+          <tr>
+            <td>Инфраструктура, CI, тесты</td>
+            <td>—</td>
+            <td>CI Quality / Database / Browser, Vercel, 21 тестовый файл</td>
+            <td class="num">85</td>
+          </tr>
+          <tr>
+            <td>Средний балл</td>
+            <td>UI готов, данные в памяти</td>
+            <td>
+              <code>/api/gpa</code> → <code>GpaProfile</code>, unit +
+              integration
+            </td>
+            <td class="num">80</td>
+          </tr>
+          <tr>
+            <td>AI Exam Coach</td>
+            <td>генерация из демо-банка</td>
+            <td>
+              BYOK Gemini (AES-GCM), 4 роута, банк вопросов в
+              <code>Question</code>/<code>Option</code>, тесты
+            </td>
+            <td class="num">80</td>
+          </tr>
+          <tr>
+            <td>Профиль</td>
+            <td><span class="chip crit">нет строки</span></td>
+            <td><code>/api/profile</code>, форма, GPA из БД</td>
+            <td class="num">75</td>
+          </tr>
+          <tr>
+            <td>Админка расписания</td>
+            <td><span class="chip crit">нет строки</span></td>
+            <td>
+              <code>app/admin/*</code>, <code>/api/admin/schedule/*</code>,
+              импорт PDF, редактор пар, праздники, e2e
+            </td>
+            <td class="num">75</td>
+          </tr>
+          <tr>
+            <td>Каркас и дашборд</td>
+            <td>статические данные</td>
+            <td>
+              дизайн-система и навигация готовы, дашборд на трёх захардкоженных
+              массивах
+            </td>
+            <td class="num">50</td>
+          </tr>
+          <tr>
+            <td>Задания</td>
+            <td>UI готов, данные в памяти</td>
+            <td>
+              без изменений: <code>INITIAL_TASKS</code> в <code>useState</code>,
+              нет API и модели
+            </td>
+            <td class="num">40</td>
+          </tr>
+          <tr>
+            <td>Материалы</td>
+            <td>файлы в памяти</td>
+            <td>
+              без изменений: <code>INITIAL_MATERIALS</code>, файл никуда не
+              загружается
+            </td>
+            <td class="num">30</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <p>
+      Веса (сумма 100): расписание 15, AI Coach 15, задания 12, аутентификация
+      10, дашборд 10, материалы 10, инфраструктура 10, GPA 8, профиль 5, админка
+      5. Взвешенная сумма ≈ <b>68 %</b>. Главные дыры: задания и материалы без
+      бэкенда, дашборд не читает реальные данные — это около трети веса на
+      уровне 30–50 %.
+    </p>
+    <p>
+      С 10 сентября (мерж ветки <code>imurd</code>, PR #37) в
+      <code>develop</code> пришло 62 коммита, 105 файлов, +10 253 / −887 строк,
+      19 новых Prisma-моделей, 10 новых API-роутов, 11 новых тестовых файлов и
+      слой <code>lib/server/*</code>.
+    </p>
+    <h2 id="s3">3. Взаимодействие модулей</h2>
+    <div class="tablewrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Связь</th>
+            <th>Состояние</th>
+            <th>Где смотреть</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Расписание → БД по группе пользователя</td>
+            <td><span class="chip ok">есть</span></td>
+            <td><code>lib/server/schedule-api.ts:57-98</code></td>
+          </tr>
+          <tr>
+            <td>Dashboard → расписание, дедлайны, GPA</td>
+            <td><span class="chip crit">нет, хардкод</span></td>
+            <td><code>app/(main)/dashboard/page.tsx:15,36,54</code></td>
+          </tr>
+          <tr>
+            <td>Профиль → «следующая пара»</td>
+            <td><span class="chip crit">нет, демо</span></td>
+            <td>
+              <code>profile/page.tsx:26</code> → <code>getDemoLessons</code> в
+              <code>lib/schedule.ts:252</code>
+            </td>
+          </tr>
+          <tr>
+            <td>Профиль → GPA</td>
+            <td><span class="chip ok">есть</span></td>
+            <td>
+              <code>profile/page.tsx:27</code> <code>getStoredSubjects</code>
+            </td>
+          </tr>
+          <tr>
+            <td>Профиль → задания</td>
+            <td><span class="chip crit">нет</span></td>
+            <td><code>profile/page.tsx:30</code> <code>INITIAL_TASKS</code></td>
+          </tr>
+          <tr>
+            <td>Задания → БД / Материалы → БД</td>
+            <td><span class="chip crit">нет</span></td>
+            <td>
+              <code>lib/tasks.ts:41</code>,
+              <code>components/materials/materials.tsx:29</code>
+            </td>
+          </tr>
+          <tr>
+            <td>Аттестации, глобальное расписание → БД</td>
+            <td><span class="chip crit">нет</span></td>
+            <td>
+              <code>lib/assessments.ts:10</code>,
+              <code>lib/global-schedule.ts:91</code>
+            </td>
+          </tr>
+          <tr>
+            <td>GPA → БД / AI Coach → БД</td>
+            <td><span class="chip ok">есть</span></td>
+            <td><code>app/api/gpa</code>, <code>app/api/ai-coach/*</code></td>
+          </tr>
+          <tr>
+            <td>«Предмет» как единая сущность</td>
+            <td><span class="chip crit">нет</span></td>
+            <td>
+              <code>Subject</code> и <code>FacultySubject</code> без связи; JSON
+              в GPA; free-text в задачах и материалах; словарь в
+              <code>lib/schedule.ts:80</code>
+            </td>
+          </tr>
+          <tr>
+            <td>Группа пользователя → задания, AI Coach, материалы</td>
+            <td><span class="chip crit">нет</span></td>
+            <td>
+              <code>groupId</code> используют только schedule-api и
+              admin-schedule
+            </td>
+          </tr>
+          <tr>
+            <td>Навигация покрывает все страницы</td>
+            <td><span class="chip warn">частично</span></td>
+            <td>
+              <span class="chip crit"
+                >нет <code>/gpa/calculator</code> и пункта админки для роли
+                ADMIN</span
+              >
+            </td>
+          </tr>
+          <tr>
+            <td>Мёртвые ссылки админки</td>
+            <td><span class="chip warn">проблема</span></td>
+            <td>
+              <code>app/admin/layout.tsx:6-9</code> → <code>/admin/users</code>,
+              <code>/subjects</code>, <code>/materials</code> (закрыто в PR #63)
+            </td>
+          </tr>
+          <tr>
+            <td><code>proxy.ts</code> защищает все маршруты</td>
+            <td><span class="chip warn">частично</span></td>
+            <td>
+              <span class="chip crit"
+                >нет <code>/admin/:path*</code> (закрыто в PR #63);
+                <code>/api/*</code> защищается вручную</span
+              >
+            </td>
+          </tr>
+          <tr>
+            <td>Единые UI-примитивы</td>
+            <td><span class="chip warn">частично</span></td>
+            <td>
+              raw <code>&lt;button&gt;</code> 6× в tasks, по 4× в auth-формах,
+              2× в ai-coach
+            </td>
+          </tr>
+          <tr>
+            <td>Общие типы Difficulty/QuestionType</td>
+            <td><span class="chip crit">нет, 3 копии</span></td>
+            <td>
+              <code>types/quiz.ts</code>, <code>lib/ai-coach.ts</code>, Prisma
+              enum
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <p>
+      Топ-5 разрывов: (1) дашборд полностью статичен; (2) задания и материалы
+      без персистентности и API; (3) два несвязанных справочника предметов плюс
+      free-text; (4) профиль показывает демо-пару при работающем
+      <code>/api/schedule</code>; (5) защита админки неполная и мёртвые ссылки.
+      Оценка интеграции: <b>38 / 100</b>.
+    </p>
+    <h2 id="s4">4. Ошибки</h2>
+    <p>
+      Парсер формул <code>lib/grades.ts</code> прогнан примерно на 30
+      вредоносных формулах, все корректно отклоняются. Расчёт расписания (UTC,
+      понедельник, чётность, каникулы) покрыт тестами.
+    </p>
+    <div class="tablewrap">
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Sev</th>
+            <th>Где</th>
+            <th>Проблема</th>
+            <th>Фикс</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="num">1</td>
+            <td><span class="chip crit">high</span></td>
+            <td>
+              <code>app/api/ai-coach/generate/route.ts:450-464</code>,
+              <code>question-bank.ts:147</code>
+            </td>
+            <td>
+              ответ Gemini проверяется без опций:
+              <code>{"options":[null]}</code> → 500,
+              <code>Document</code> навсегда <code>PROCESSING</code>
+            </td>
+            <td>
+              валидировать каждую опцию, при сбое → <code>REJECTED</code> (PR
+              #63)
+            </td>
+          </tr>
+          <tr>
+            <td class="num">2</td>
+            <td><span class="chip crit">high</span></td>
+            <td><code>app/api/auth/register/route.ts:10,49-76</code></td>
+            <td>
+              <code>request.json()</code> без try/catch, гонка одинаковых email
+              → 500 вместо 400/409
+            </td>
+            <td>try/catch, <code>P2002</code> → 409 (PR #63)</td>
+          </tr>
+          <tr>
+            <td class="num">3</td>
+            <td><span class="chip warn">medium</span></td>
+            <td><code>lib/server/question-bank.ts:234-262</code></td>
+            <td>
+              параллельная генерация одной темы → <code>P2002</code> откатывает
+              весь батч
+            </td>
+            <td>пропускать дубль поштучно (PR #63)</td>
+          </tr>
+          <tr>
+            <td class="num">4</td>
+            <td><span class="chip warn">medium</span></td>
+            <td>
+              <code>lib/groups.ts:1</code> vs
+              <code>lib/server/admin-schedule.ts:212</code>
+            </td>
+            <td>
+              группы для регистрации — константа из двух, импорт создаёт любые;
+              студент навсегда в <code>PROFILE_REQUIRED</code>
+            </td>
+            <td>валидировать по <code>StudyGroup</code></td>
+          </tr>
+          <tr>
+            <td class="num">5</td>
+            <td><span class="chip warn">medium</span></td>
+            <td>
+              <code>components/ai-coach/generation-settings.tsx:25-50</code>
+            </td>
+            <td>
+              контролируемый number-input отбрасывает <code>&lt;5</code>: ввод
+              «10» превращается в 50
+            </td>
+            <td>строковый draft, commit по blur (PR #63)</td>
+          </tr>
+          <tr>
+            <td class="num">6</td>
+            <td><span class="chip warn">medium</span></td>
+            <td><code>app/api/profile/route.ts:14</code></td>
+            <td><code>request.json()</code> без try/catch → 500</td>
+            <td>400 (PR #63)</td>
+          </tr>
+          <tr>
+            <td class="num">7</td>
+            <td><span class="chip warn">medium</span></td>
+            <td><code>components/auth/RegisterForm.tsx:77-118</code></td>
+            <td>
+              <code>try…finally</code> без <code>catch</code>, сетевая ошибка
+              молча теряется
+            </td>
+            <td><code>catch</code> с сообщением (PR #63)</td>
+          </tr>
+          <tr>
+            <td class="num">8</td>
+            <td><span class="chip warn">medium</span></td>
+            <td><code>generate/route.ts:382-391</code></td>
+            <td>
+              <code>topic.upsert</code> по имени при параллельных запросах →
+              <code>P2002</code>; имя темы без лимита
+            </td>
+            <td>ретрай; лимит 120 символов (PR #63, лимит)</td>
+          </tr>
+          <tr>
+            <td class="num">9</td>
+            <td><span class="chip info">low</span></td>
+            <td>
+              <code>register/route.ts:25,71</code>, <code>auth.ts:26</code>
+            </td>
+            <td>email не нормализуется</td>
+            <td>trim + lowercase (PR #63)</td>
+          </tr>
+          <tr>
+            <td class="num">10</td>
+            <td><span class="chip info">low</span></td>
+            <td>
+              <code>ai-coach.tsx:113</code>, <code>GeminiKeyCard.tsx:39</code>
+            </td>
+            <td><code>r.json()</code> без <code>r.ok</code></td>
+            <td>проверка статуса (PR #63)</td>
+          </tr>
+          <tr>
+            <td class="num">11</td>
+            <td><span class="chip info">low</span></td>
+            <td>
+              <code>proxy.ts:22-31</code>, <code>app/admin/layout.tsx</code>
+            </td>
+            <td><code>/admin</code> вне matcher и без проверки роли</td>
+            <td>matcher + redirect (PR #63)</td>
+          </tr>
+          <tr>
+            <td class="num">12</td>
+            <td><span class="chip info">low</span></td>
+            <td><code>lib/server/admin-schedule.ts:220-251</code></td>
+            <td>
+              N+1: до 2000 последовательных upsert/create в одной транзакции
+            </td>
+            <td><code>createMany</code></td>
+          </tr>
+          <tr>
+            <td class="num">13</td>
+            <td><span class="chip info">low</span></td>
+            <td><code>generate/route.ts:246-250</code></td>
+            <td>число файлов не ограничено</td>
+            <td>5 файлов / 20 МБ (PR #63)</td>
+          </tr>
+          <tr>
+            <td class="num">14</td>
+            <td><span class="chip info">low</span></td>
+            <td><code>components/grades/grade-calculator.tsx:176-183</code></td>
+            <td>
+              debounce не отменяет уже отправленный PUT, старый payload может
+              перезаписать новый
+            </td>
+            <td><code>AbortController</code></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <h2 id="s5">5. Безопасность</h2>
+    <p><b>High</b></p>
+    <ol>
+      <li>
+        <code>prisma/seed.ts:7,42</code> — без
+        <code>SEED_ADMIN_PASSWORD</code> создаётся <code>admin@utm.md</code> /
+        <code>admin123</code> с ролью ADMIN. Фикс: ошибка в production без
+        переменной (PR #63).
+      </li>
+      <li>
+        <code>next.config.ts</code> — нет CSP, <code>frame-ancestors</code>,
+        <code>nosniff</code>, <code>Referrer-Policy</code>; админка
+        кликджекается. Фикс: <code>headers()</code> (PR #63).
+      </li>
+    </ol>
+    <p><b>Medium</b></p>
+    <ol>
+      <li>
+        <code>generate/route.ts:382-391,460</code> — prompt injection в общий
+        банк: имя темы от Gemini upsert-ится глобально, вопросы видны всем.
+        Частично: лимит длины имени (PR #63); модерация или per-user видимость
+        остаётся.
+      </li>
+      <li>Нет rate limiting на регистрации, логине, генерации.</li>
+      <li>
+        <code>auth.ts:32-34</code> — перебор пользователей по таймингу;
+        регистрация отвечает 409. Тайминг выровнен (PR #63).
+      </li>
+      <li>
+        Email не нормализуется, <code>findUnique</code> регистрозависим (PR
+        #63).
+      </li>
+      <li><code>/admin</code> вне matcher и без проверки роли (PR #63).</li>
+      <li>
+        <code>lib/byok.ts:10-14</code> — ключ BYOK производный от
+        <code>AUTH_SECRET</code>, без разделения и версии; ротация ломает все
+        ключи.
+      </li>
+    </ol>
+    <p><b>Low</b></p>
+    <ol>
+      <li>
+        <code>request.json()</code> без try/catch в регистрации и профиле (PR
+        #63).
+      </li>
+      <li>
+        Клиент может менять <code>name</code>/<code>group</code> в JWT через
+        <code>useSession().update()</code>; на авторизацию не влияет.
+      </li>
+      <li>Полное тело ошибок Gemini в <code>console.error</code>.</li>
+      <li>
+        Тип файла по расширению; mammoth распаковывает ZIP без лимита
+        распакованного размера.
+      </li>
+      <li>Нет таймаута на fetch к Gemini (PR #63).</li>
+      <li>Пароль без максимальной длины (PR #63: 128).</li>
+      <li><code>file.name</code> без лимита длины в заголовке расписания.</li>
+    </ol>
+    <p>
+      <b>Проверено и в порядке.</b> Все <code>/api/**</code>, кроме регистрации,
+      проверяют сессию; GPA, профиль, ключ фильтруются по
+      <code>session.user.id</code>; админ-роуты перечитывают роль из БД и
+      проверяют Origin; IDOR не найден. Единственный <code>$executeRaw</code> —
+      константный advisory lock.
+      <code>dangerouslySetInnerHTML</code> отсутствует. SSRF нет: PDF-парсер —
+      subprocess с фиксированными аргументами, таймаутом 90 с и лимитами.
+      Секретов в репозитории нет; ключ Gemini уходит в заголовке и клиенту не
+      возвращается. <code>callbackUrl</code> фиксирован. CSRF закрыт
+      SameSite-cookie и JSON content-type. <code>npm audit</code>: 4 high
+      транзитивных через CLI Prisma, не runtime; <code>next-auth</code> на beta.
+    </p>
+    <p>Итого: 0 critical, 2 high, 6 medium, 7 low. Оценка <b>68 / 100</b>.</p>
+    <h2 id="s6">6. Дизайн и доступность</h2>
+    <p>
+      <b>Статус аудита 11.09.</b> Исправлено частично:
+      <code>metadata.title</code> для
+      profile/schedule/materials/ai-coach/assessments/global,
+      <code>role="status"</code>/<code>alert</code> в schedule и admin,
+      <code>aria-label</code> у статуса задачи. Не исправлено: skip-link,
+      <code>CustomSelect</code> в задачах, AuthTabs без <code>role="tab"</code>,
+      ответы квиза только цветом, <code>focus:ring-blue-100</code> в 8 файлах,
+      <code>text-red-500</code> в ошибках, <code>text-gray-400</code> в 35
+      местах, два <code>h1</code> на странице, <code>motion-reduce</code> один
+      раз, кнопка закрытия диалога 16px.
+    </p>
+    <div class="tablewrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Критерий</th>
+            <th>1–5</th>
+            <th>Главное замечание</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Визуальная консистентность</td>
+            <td class="num">3</td>
+            <td>
+              токены заведены, используют только <code>components/ui</code> и
+              tasks; остальное <code>gray-*</code>, auth на
+              <code>slate-*</code>; шрифт Geist не подключён
+            </td>
+          </tr>
+          <tr>
+            <td>Переиспользование компонентов</td>
+            <td class="num">2</td>
+            <td>
+              <code>EmptyState</code>, <code>ErrorState</code>,
+              <code>LoadingIndicator</code>, <code>Input</code> — 0
+              использований вне ui; 38 raw <code>&lt;input&gt;</code>
+            </td>
+          </tr>
+          <tr>
+            <td>Состояния</td>
+            <td class="num">2</td>
+            <td>
+              dashboard, assessments, global-schedule, materials, profile без
+              loading/error
+            </td>
+          </tr>
+          <tr>
+            <td>Адаптивность</td>
+            <td class="num">3</td>
+            <td>
+              <code>grid-cols-3</code> без префикса, <code>w-[200px]</code>,
+              <code>max-w-[1440px]</code> vs <code>1600px</code>
+            </td>
+          </tr>
+          <tr>
+            <td>Доступность</td>
+            <td class="num">2</td>
+            <td>критичные пункты 11.09 открыты</td>
+          </tr>
+          <tr>
+            <td>Язык и копирайт</td>
+            <td class="num">3</td>
+            <td>
+              «Dashboard»/«AI Exam Coach» в русской навигации; бренд StudyHub vs
+              StudyFlow; квиз/тест
+            </td>
+          </tr>
+          <tr>
+            <td>Тёмная тема</td>
+            <td class="num">1</td>
+            <td>отсутствует</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <p>
+      <b>10 правок:</b> skip-link и <code>&lt;main id="main"&gt;</code>, дубли
+      <code>h1</code> → <code>h2</code>; <code>CustomSelect</code> →
+      <code>ui/select</code>; <code>role="tablist"/"tab"</code> в AuthTabs и
+      вкладках ai-coach; <code>radiogroup</code> в QuizScreen; глобальный
+      <code>focus-visible</code>; контраст <code>gray-400</code> →
+      <code>gray-500/600</code>, <code>red-500</code> → <code>red-700</code>;
+      <code>EmptyState/ErrorState/LoadingIndicator</code> в dashboard,
+      assessments, global, materials; кнопка закрытия диалога
+      <code>size-9</code>; единая терминология и бренд, единый helper даты;
+      подключить шрифт или убрать токен, ввести
+      <code>prefers-color-scheme</code> и перевести модули на токены.
+    </p>
+    <p>
+      <b>Визуальный аутсайдер — Auth:</b> единственный модуль на палитре
+      <code>slate</code> (27 вхождений), <code>focus:ring-4</code>, свои кнопки
+      вместо <code>&lt;Button&gt;</code>, другой бренд. Второй — AI Coach: 45
+      вхождений <code>emerald/rose</code> против <code>red/amber/green</code> в
+      остальном приложении, 12 raw-кнопок, свой скроллбар. Tasks, напротив,
+      единственный модуль на shadcn-токенах. Оценка <b>48 / 100</b>.
+    </p>
+    <h2 id="s7">7. Что уже исправлено: PR #63</h2>
+    <p>
+      Ветка <code>fix/audit-2026-09-17</code> → <code>develop</code>, 3 коммита,
+      CI зелёный после правки совместимости с <code>node --test</code>.
+    </p>
+    <ul>
+      <li>
+        Security-заголовки: CSP с <code>frame-ancestors 'none'</code>,
+        <code>nosniff</code>, <code>Referrer-Policy</code>,
+        <code>X-Frame-Options</code>, <code>Permissions-Policy</code>;
+        <code>'unsafe-eval'</code> только вне production.
+      </li>
+      <li>
+        Сид на продакшене без <code>SEED_ADMIN_PASSWORD</code> падает с ошибкой.
+      </li>
+      <li>
+        <code>/admin/*</code> в matcher,
+        <code>app/admin/layout.tsx</code> перенаправляет не-админов, мёртвые
+        ссылки убраны.
+      </li>
+      <li>
+        Выровнен тайминг логина (bcrypt против placeholder-хеша), email
+        нормализуется, пароль ≤ 128.
+      </li>
+      <li>Таймауты на Gemini, ≤ 5 файлов и 20 МБ, имя темы ≤ 120 символов.</li>
+      <li>
+        Валидация ответа Gemini по каждому полю, <code>REJECTED</code> при сбое
+        сохранения, поштучный пропуск дублей <code>textHash</code>.
+      </li>
+      <li>
+        400 на невалидный JSON в регистрации и профиле, <code>P2002</code> →
+        409.
+      </li>
+      <li>
+        Поле количества вопросов с текстовым draft; <code>catch</code> в
+        RegisterForm; <code>res.ok</code> в проверках ключа.
+      </li>
+      <li>Тесты: нормализация email, типы полей опций.</li>
+    </ul>
+    <p>
+      <b>Остаётся:</b> rate limiting; группы из <code>StudyGroup</code> вместо
+      константы; отдельный <code>BYOK_KEY</code>; дашборд и профиль на реальные
+      данные; бэкенд заданий и материалов; единый справочник предметов;
+      дизайн-долг из раздела 6; обновить таблицу модулей в README (строки
+      «Расписание», «Средний балл», «AI Exam Coach», «Инфраструктура» устарели,
+      нет строк для профиля и админки); донести дашборд с API из сервисного
+      <code>main</code> в <code>develop</code>; ограничить интегратор ветками
+      <code>develop</code> без <code>feature/*</code>.
+    </p>
+    <h2 id="s8">8. Приоритеты на неделю</h2>
+    <ol>
+      <li>Влить PR #63.</li>
+      <li>
+        Валидировать группу по таблице <code>StudyGroup</code> в регистрации и
+        профиле.
+      </li>
+      <li>
+        Перевести дашборд и профиль на реальные источники: расписание по
+        <code>groupId</code>, GPA из <code>GpaProfile</code>.
+      </li>
+      <li>
+        Задания и материалы: модели, API, замена констант. Самый большой вклад в
+        процент готовности.
+      </li>
+      <li>Один справочник предметов вместо пяти представлений.</li>
+      <li>
+        Rate limiting на логин, регистрацию, генерацию; отдельный ключ
+        шифрования BYOK.
+      </li>
+      <li>
+        Дизайн: skip-link, <code>CustomSelect</code> на <code>ui/select</code>,
+        вкладки и квиз с ролями, глобальный <code>focus-visible</code>, единый
+        бренд.
+      </li>
+      <li>
+        README и интегратор: обновить таблицу модулей, интегрировать только
+        <code>develop</code>.
+      </li>
+    </ol>
+  </main>
+</div>

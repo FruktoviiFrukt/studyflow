@@ -1,0 +1,1431 @@
+<title>StudyFlow A11y</title>
+<link
+  rel="stylesheet"
+  href="https://fonts.googleapis.com/css2?family=Manrope:wght@600;700;800&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap"
+/>
+<style>
+  :root {
+    --ground: #f5f7fb;
+    --surface: #ffffff;
+    --surface-2: #eef2f9;
+    --line: #d9dfeb;
+    --ink: #151a2d;
+    --ink-2: #3a4257;
+    --muted: #5f6880;
+    --accent: #1e4ed8;
+    --accent-ink: #ffffff;
+    --accent-soft: #e4ebfb;
+    --accent-line: #b9c9f3;
+    --ok: #137a5b;
+    --ok-soft: #dff3ea;
+    --warn: #9a6700;
+    --warn-soft: #fbf0d3;
+    --crit: #b42318;
+    --crit-soft: #fbe3df;
+    --code-bg: #eef1f7;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground: #0f1320;
+      --surface: #161b2b;
+      --surface-2: #1d2335;
+      --line: #2a3247;
+      --ink: #e8ebf4;
+      --ink-2: #c3c9d8;
+      --muted: #98a1b8;
+      --accent: #7ea1ff;
+      --accent-ink: #0b1430;
+      --accent-soft: #1c2a52;
+      --accent-line: #33509a;
+      --ok: #4fc79a;
+      --ok-soft: #123528;
+      --warn: #e2b04a;
+      --warn-soft: #3a2d0c;
+      --crit: #f08a7e;
+      --crit-soft: #3f1713;
+      --code-bg: #111626;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground: #0f1320;
+    --surface: #161b2b;
+    --surface-2: #1d2335;
+    --line: #2a3247;
+    --ink: #e8ebf4;
+    --ink-2: #c3c9d8;
+    --muted: #98a1b8;
+    --accent: #7ea1ff;
+    --accent-ink: #0b1430;
+    --accent-soft: #1c2a52;
+    --accent-line: #33509a;
+    --ok: #4fc79a;
+    --ok-soft: #123528;
+    --warn: #e2b04a;
+    --warn-soft: #3a2d0c;
+    --crit: #f08a7e;
+    --crit-soft: #3f1713;
+    --code-bg: #111626;
+  }
+  * {
+    box-sizing: border-box;
+  }
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font:
+      16px/1.55 "IBM Plex Sans",
+      system-ui,
+      -apple-system,
+      "Segoe UI",
+      sans-serif;
+    padding-block: 40px 80px;
+    padding-inline: clamp(16px, 4vw, 48px);
+  }
+  .wrap {
+    max-width: 960px;
+    margin: 0 auto;
+    display: grid;
+    gap: 40px;
+  }
+  h1,
+  h2,
+  h3 {
+    font-family: Manrope, "IBM Plex Sans", sans-serif;
+    text-wrap: balance;
+    line-height: 1.15;
+    margin: 0;
+  }
+  h1 {
+    font-size: clamp(30px, 4.5vw, 44px);
+    font-weight: 800;
+    letter-spacing: -0.02em;
+  }
+  h2 {
+    font-size: 24px;
+    font-weight: 700;
+    margin-block: 0 12px;
+    padding-top: 8px;
+    border-top: 2px solid var(--line);
+    padding-top: 20px;
+  }
+  h3 {
+    font-size: 17px;
+    font-weight: 700;
+    margin-block: 18px 6px;
+  }
+  p {
+    margin: 0 0 12px;
+    max-width: 72ch;
+  }
+  .eyebrow {
+    font-family: Manrope, sans-serif;
+    font-size: 12px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    font-weight: 700;
+    margin-bottom: 10px;
+  }
+  .lede {
+    font-size: 18px;
+    color: var(--ink-2);
+    max-width: 68ch;
+  }
+  .meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 20px;
+    color: var(--muted);
+    font-size: 14px;
+    margin-top: 16px;
+  }
+  code,
+  pre {
+    font-family:
+      "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 0.88em;
+  }
+  code {
+    background: var(--code-bg);
+    padding: 1px 5px;
+    border-radius: 4px;
+  }
+  pre {
+    background: var(--code-bg);
+    padding: 14px 16px;
+    border-radius: 8px;
+    overflow-x: auto;
+    line-height: 1.5;
+    margin: 12px 0;
+  }
+  pre code {
+    background: none;
+    padding: 0;
+  }
+  .scores {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+    gap: 12px;
+    margin-top: 8px;
+  }
+  .score {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 14px 16px;
+    display: grid;
+    gap: 6px;
+  }
+  .score b {
+    font-family: Manrope, sans-serif;
+    font-size: 15px;
+  }
+  .score small {
+    color: var(--muted);
+    font-size: 13px;
+    line-height: 1.4;
+  }
+  .pill {
+    display: inline-block;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 2px 9px;
+    border-radius: 999px;
+    letter-spacing: 0.02em;
+    width: fit-content;
+  }
+  .pill.ok {
+    background: var(--ok-soft);
+    color: var(--ok);
+  }
+  .pill.warn {
+    background: var(--warn-soft);
+    color: var(--warn);
+  }
+  .pill.crit {
+    background: var(--crit-soft);
+    color: var(--crit);
+  }
+  .pill.none {
+    background: var(--surface-2);
+    color: var(--muted);
+  }
+  .kpis {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 12px;
+  }
+  .kpi {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 14px 16px;
+  }
+  .kpi .n {
+    font-family: Manrope, sans-serif;
+    font-size: 32px;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+  }
+  .kpi .l {
+    color: var(--muted);
+    font-size: 13px;
+    margin-top: 6px;
+  }
+  .kpi.crit .n {
+    color: var(--crit);
+  }
+  .kpi.warn .n {
+    color: var(--warn);
+  }
+  .kpi.ok .n {
+    color: var(--ok);
+  }
+  .tablewrap {
+    overflow-x: auto;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: var(--surface);
+  }
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    font-size: 14.5px;
+  }
+  th,
+  td {
+    text-align: left;
+    padding: 9px 12px;
+    border-top: 1px solid var(--line);
+    vertical-align: top;
+  }
+  thead th {
+    border-top: 0;
+    background: var(--surface-2);
+    font-family: Manrope, sans-serif;
+    font-size: 12.5px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--ink-2);
+  }
+  td.num {
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+    white-space: nowrap;
+  }
+  .swatch {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border-radius: 3px;
+    vertical-align: -2px;
+    margin-right: 6px;
+    border: 1px solid rgba(0, 0, 0, 0.15);
+  }
+  .versions {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(270px, 1fr));
+    gap: 14px;
+  }
+  .ver {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 18px 20px;
+    display: grid;
+    gap: 8px;
+    align-content: start;
+  }
+  .ver.lead {
+    border-color: var(--accent-line);
+    box-shadow: 0 0 0 3px var(--accent-soft);
+  }
+  .ver .tag {
+    font-family: Manrope, sans-serif;
+    font-size: 12px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--accent);
+    font-weight: 700;
+  }
+  .ver h3 {
+    margin: 0;
+    font-size: 20px;
+  }
+  .ver .when {
+    color: var(--muted);
+    font-size: 13.5px;
+  }
+  .ver ul {
+    margin: 6px 0 0;
+    padding-left: 18px;
+    font-size: 14.5px;
+    display: grid;
+    gap: 5px;
+  }
+  .ver li::marker {
+    color: var(--accent);
+  }
+  .callout {
+    background: var(--accent-soft);
+    border-left: 4px solid var(--accent);
+    padding: 12px 16px;
+    border-radius: 0 8px 8px 0;
+    max-width: none;
+  }
+  .good {
+    background: var(--ok-soft);
+    border-left: 4px solid var(--ok);
+    padding: 12px 16px;
+    border-radius: 0 8px 8px 0;
+  }
+  .good ul,
+  .plain ul {
+    margin: 6px 0 0;
+    padding-left: 18px;
+    display: grid;
+    gap: 4px;
+    font-size: 14.5px;
+  }
+  details {
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: var(--surface);
+    margin-top: 10px;
+  }
+  summary {
+    cursor: pointer;
+    padding: 12px 16px;
+    font-family: Manrope, sans-serif;
+    font-weight: 700;
+    list-style: none;
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  summary::-webkit-details-marker {
+    display: none;
+  }
+  summary::after {
+    content: "+";
+    color: var(--muted);
+    font-weight: 600;
+  }
+  details[open] summary::after {
+    content: "–";
+  }
+  details .body {
+    padding: 0 16px 14px;
+  }
+  details ul {
+    margin: 0;
+    padding-left: 18px;
+    font-size: 14px;
+    display: grid;
+    gap: 6px;
+  }
+  .sev {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 11.5px;
+    font-weight: 600;
+    padding: 1px 6px;
+    border-radius: 4px;
+    margin-right: 4px;
+  }
+  .sev.K {
+    background: var(--crit);
+    color: #fff;
+  }
+  .sev.S {
+    background: var(--crit-soft);
+    color: var(--crit);
+  }
+  .sev.M {
+    background: var(--warn-soft);
+    color: var(--warn);
+  }
+  .sev.m {
+    background: var(--surface-2);
+    color: var(--muted);
+  }
+  a {
+    color: var(--accent);
+  }
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    * {
+      transition: none !important;
+      animation: none !important;
+    }
+  }
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="eyebrow">StudyFlow · аудит доступности · WCAG 2.2 AA</div>
+    <h1>
+      Что мешает пользоваться StudyFlow без мыши и с плохим зрением, и три
+      версии дизайна, которые это исправят
+    </h1>
+    <p class="lede">
+      Основание крепкое: семантические таблицы, Radix-диалоги,
+      <code>aria-live</code> в оценках. Проблемы сидят в четырёх местах:
+      палитра, индикатор фокуса, самодельные виджеты и отсутствие настроек
+      восприятия.
+    </p>
+    <div class="meta">
+      <span>Срез: <code>imurd @ 2f78d6a</code>, 11 сентября 2026</span>
+      <span>10 маршрутов · 60 файлов</span>
+      <span>axe-core 4 через Playwright на собранном приложении</span>
+      <span>Полный список: <code>docs/a11y-audit-2026-09-11.md</code></span>
+    </div>
+  </header>
+
+  <section>
+    <div class="kpis">
+      <div class="kpi crit">
+        <div class="n">2</div>
+        <div class="l">критических</div>
+      </div>
+      <div class="kpi crit">
+        <div class="n">24</div>
+        <div class="l">серьёзных</div>
+      </div>
+      <div class="kpi warn">
+        <div class="n">30</div>
+        <div class="l">средних</div>
+      </div>
+      <div class="kpi">
+        <div class="n">14</div>
+        <div class="l">мелких</div>
+      </div>
+      <div class="kpi crit">
+        <div class="n">62</div>
+        <div class="l">узла контраста в axe</div>
+      </div>
+      <div class="kpi ok">
+        <div class="n">1</div>
+        <div class="l">тип нарушений axe кроме контраста</div>
+      </div>
+    </div>
+    <div class="scores">
+      <div class="score">
+        <span class="pill ok">хорошо</span><b>Структура и ориентиры</b
+        ><small
+          >header/nav/main на месте. Нет skip-link, два h1 на /tasks, 4 маршрута
+          без title.</small
+        >
+      </div>
+      <div class="score">
+        <span class="pill warn">средне</span><b>Клавиатура и фокус</b
+        ><small
+          >Radix спасает диалоги. Кольца фокуса blue-100 ≈ 1,2:1 в 12 контролах
+          невидимы.</small
+        >
+      </div>
+      <div class="score">
+        <span class="pill crit">слабо</span><b>Семантика виджетов</b
+        ><small
+          >Селект задач, вкладки входа, ответы квиза, дата-пикер без ролей и
+          клавиш.</small
+        >
+      </div>
+      <div class="score">
+        <span class="pill crit">слабо</span><b>Контраст</b
+        ><small
+          >gray-400, emerald-500, amber-500/600, red-500 на белом. Правила
+          «оттенок для роли» нет.</small
+        >
+      </div>
+      <div class="score">
+        <span class="pill ok">хорошо</span><b>Формы</b
+        ><small
+          >Лучшие места проекта. Серверные ошибки авторизации не
+          объявляются.</small
+        >
+      </div>
+      <div class="score">
+        <span class="pill warn">средне</span><b>Динамика</b
+        ><small
+          >10 aria-live, но нет анонсов генерации и загрузки. motion-reduce
+          встречается один раз.</small
+        >
+      </div>
+      <div class="score">
+        <span class="pill none">нет</span><b>Настройки восприятия</b
+        ><small
+          >Тёмной темы нет (dark: без токенов не работает), контраста и масштаба
+          нет.</small
+        >
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>1. Контраст: измеренные пары</h2>
+    <p>
+      Все пары взяты из реально используемых классов. Порог AA: 4,5:1 для
+      текста, 3:1 для крупного текста и интерактивной графики.
+    </p>
+    <div class="tablewrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Пара</th>
+            <th>Ratio</th>
+            <th>Вердикт</th>
+            <th>Где</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>
+              <span class="swatch" style="background: #9ca3af"></span>gray-400 /
+              white
+            </td>
+            <td class="num">2,54</td>
+            <td><span class="pill crit">провал</span></td>
+            <td>
+              week-grid «Время», 09:30, «N пара»; date-picker; «/ 10» в оценках
+            </td>
+          </tr>
+          <tr>
+            <td>
+              <span class="swatch" style="background: #94a3b8"></span>slate-400
+              / white
+            </td>
+            <td class="num">2,56</td>
+            <td><span class="pill crit">провал</span></td>
+            <td>иконки показать/скрыть пароль</td>
+          </tr>
+          <tr>
+            <td>
+              <span class="swatch" style="background: #10b981"></span
+              >emerald-500 / white
+            </td>
+            <td class="num">2,54</td>
+            <td><span class="pill crit">провал</span></td>
+            <td>QuizScreen, ResultsScreen, прогресс оценок ≥ 9</td>
+          </tr>
+          <tr>
+            <td>
+              <span class="swatch" style="background: #059669"></span
+              >emerald-600 / white
+            </td>
+            <td class="num">3,77</td>
+            <td><span class="pill warn">только UI</span></td>
+            <td>ResultsScreen, 8 мест текста</td>
+          </tr>
+          <tr>
+            <td>
+              <span class="swatch" style="background: #f59e0b"></span>amber-500
+              / white
+            </td>
+            <td class="num">2,15</td>
+            <td><span class="pill crit">провал</span></td>
+            <td>ResultsScreen «+XP», прогресс оценок &lt; 5</td>
+          </tr>
+          <tr>
+            <td>
+              <span class="swatch" style="background: #d97706"></span>amber-600
+              / white
+            </td>
+            <td class="num">3,30</td>
+            <td><span class="pill warn">только UI</span></td>
+            <td>подсказки generate-button, paste-notes</td>
+          </tr>
+          <tr>
+            <td>
+              <span class="swatch" style="background: #ef4444"></span>red-500 /
+              white
+            </td>
+            <td class="num">3,76</td>
+            <td><span class="pill warn">только UI</span></td>
+            <td>тексты ошибок LoginForm, RegisterForm</td>
+          </tr>
+          <tr>
+            <td>
+              <span class="swatch" style="background: #64748b"></span>slate-500
+              / slate-100
+            </td>
+            <td class="num">4,30</td>
+            <td><span class="pill crit">провал</span></td>
+            <td>неактивная вкладка /auth</td>
+          </tr>
+          <tr>
+            <td>
+              <span class="swatch" style="background: #2563eb"></span>blue-600 /
+              blue-100, 10px
+            </td>
+            <td class="num">—</td>
+            <td><span class="pill crit">axe</span></td>
+            <td>бейдж «AI» в навигации, все 10 страниц</td>
+          </tr>
+          <tr>
+            <td>
+              <span class="swatch" style="background: #6b7280"></span>gray-500 /
+              white
+            </td>
+            <td class="num">4,83</td>
+            <td><span class="pill ok">AA</span></td>
+            <td>55 мест, на пределе при 12px</td>
+          </tr>
+          <tr>
+            <td>
+              <span class="swatch" style="background: #e5e7eb"></span>gray-200
+              граница / white
+            </td>
+            <td class="num">1,24</td>
+            <td><span class="pill warn">границы карточек</span></td>
+            <td>51 место, невидимы при слабом зрении</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <h2>2. Самодельные виджеты без семантики</h2>
+    <div class="tablewrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Компонент</th>
+            <th>Что не так</th>
+            <th>Чем заменить</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>CustomSelect</code>, tasks/page.tsx:89</td>
+            <td>
+              Кнопка + div из кнопок. Нет combobox, aria-expanded, стрелок,
+              Escape, имени. <b>Критично.</b>
+            </td>
+            <td>Уже существующий <code>ui/select.tsx</code> (Radix)</td>
+          </tr>
+          <tr>
+            <td><code>AuthTabs</code></td>
+            <td>
+              Две кнопки без tablist/tab/aria-selected, состояние только цветом
+            </td>
+            <td>tablist + tab + tabpanel</td>
+          </tr>
+          <tr>
+            <td>Ответы квиза, <code>QuizScreen</code></td>
+            <td>
+              Кнопки без radio/aria-checked; верно/неверно цветом; ветка
+              <code>isSubmitted</code> никогда не включается
+            </td>
+            <td>radiogroup по образцу <code>subject-card.tsx</code></td>
+          </tr>
+          <tr>
+            <td>Дата-пикер</td>
+            <td>42 кнопки в tab-порядке, дни недели не привязаны</td>
+            <td>role="grid" с roving tabindex</td>
+          </tr>
+          <tr>
+            <td>Статус задачи</td>
+            <td>Имя описывает следующее действие, не текущее состояние</td>
+            <td>aria-pressed или чекбокс</td>
+          </tr>
+          <tr>
+            <td>Кнопка закрытия диалогов</td>
+            <td>16×16, во всех диалогах</td>
+            <td>size-9 (2.5.8)</td>
+          </tr>
+          <tr>
+            <td>«Забыли пароль?»</td>
+            <td>Фокусируемая кнопка без обработчика</td>
+            <td>Link или удалить</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <h2>3. Три версии дизайна</h2>
+    <p>
+      Это ступени, а не альтернативы. Каждая следующая строится на токенах
+      предыдущей.
+    </p>
+    <div class="versions">
+      <div class="ver lead">
+        <div class="tag">Версия A · ≈ 24 ч</div>
+        <h3>AA без редизайна</h3>
+        <div class="when">
+          До октябрьского дедлайна. Пользователь визуально почти ничего не
+          заметит.
+        </div>
+        <ul>
+          <li>
+            Токены с ролями: текст не светлее <code>-600</code>, иконки не
+            светлее <code>-500</code>, статусы <code>-700</code>. Семантические
+            <code>--success/--warning/--danger</code>.
+          </li>
+          <li>
+            Один глобальный <code>:focus-visible</code> 2px с offset вместо 27
+            вариантов <code>outline-none</code>.
+            <code>scroll-margin-top</code> под липкую шапку.
+          </li>
+          <li>
+            Skip-link, <code>main#main</code>, title для 4 маршрутов, один
+            владелец h1, проп <code>as</code> у CardTitle/EmptyState.
+          </li>
+          <li>
+            CustomSelect → Radix, AuthTabs → tablist, квиз → radiogroup,
+            DialogClose 36px.
+          </li>
+          <li>
+            <code>role="status"</code> в LoadingIndicator,
+            <code>role="alert"</code> в ErrorState, анонс генерации, фокус на
+            новый экран.
+          </li>
+          <li>
+            Глобальный <code>prefers-reduced-motion</code>; axe в Playwright как
+            гейт CI.
+          </li>
+        </ul>
+      </div>
+      <div class="ver">
+        <div class="tag">Версия B · ≈ 26 ч</div>
+        <h3>Режимы восприятия</h3>
+        <div class="when">
+          1–2 недели после A. Компоненты не переписываются, меняются только
+          токены.
+        </div>
+        <ul>
+          <li>
+            Тёмная тема: 15 классов <code>dark:</code> сейчас мёртвые, токенов
+            нет. <code>[data-theme]</code> + <code>prefers-color-scheme</code>.
+          </li>
+          <li>
+            Высокий контраст: границы <code>gray-700</code>, чёрный на белом,
+            фокус 3px, <code>prefers-contrast: more</code>.
+          </li>
+          <li>
+            Масштаб текста 100/112/125 %. Убрать <code>text-[10px]</code> и
+            <code>text-xs</code> из смыслового текста (76 мест). Reflow на 320px
+            и 200 %.
+          </li>
+          <li>Диалоги с <code>max-h-[85dvh] overflow-y-auto</code>.</li>
+          <li>
+            Страница «Настройки → Доступность»: тема, контраст, размер,
+            анимация. localStorage, потом профиль.
+          </li>
+        </ul>
+      </div>
+      <div class="ver">
+        <div class="tag">Версия C · семестр</div>
+        <h3>Инклюзивный редизайн</h3>
+        <div class="when">
+          Глава диплома: доступность как исследуемое свойство.
+        </div>
+        <ul>
+          <li>
+            Дашборд как упорядоченный список приоритетов, карточки как
+            <code>article</code> с <code>dl</code>.
+          </li>
+          <li>
+            Расписание в трёх представлениях: таблица, список по дням, «только
+            сегодня» крупно.
+          </li>
+          <li>
+            Квиз без гонки: один вопрос на экран, текстовая обратная связь,
+            «Объяснить», без таймера как принцип.
+          </li>
+          <li>
+            Цели 44×44 на мобильном, шрифт с открытыми формами вместо Arial
+            (Geist объявлен, но не подключён), режим «дислексия».
+          </li>
+          <li>
+            Язык частей: <code>lang="en"</code> для английских строк, подготовка
+            RO/EN.
+          </li>
+          <li>
+            Тест с 5–8 студентами: клавиатура, NVDA/VoiceOver, зум 200 %.
+            Метрики: время, ошибки, SUS.
+          </li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>4. Порядок работ для Версии A</h2>
+    <div class="tablewrap">
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Работа</th>
+            <th>Часы</th>
+            <th>Закрывает</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>1</td>
+            <td>Токены цвета, замена <code>-400/-500</code> в тексте</td>
+            <td class="num">4</td>
+            <td>62 узла axe, 1.4.3, 1.4.11</td>
+          </tr>
+          <tr>
+            <td>2</td>
+            <td>
+              Глобальный <code>focus-visible</code>, убрать
+              <code>blue-100</code>
+            </td>
+            <td class="num">2</td>
+            <td>2.4.7, 2.4.11, 2.4.13</td>
+          </tr>
+          <tr>
+            <td>3</td>
+            <td>Skip-link, <code>main id</code>, titles, один h1</td>
+            <td class="num">2</td>
+            <td>2.4.1, 2.4.2, 1.3.1</td>
+          </tr>
+          <tr>
+            <td>4</td>
+            <td>CustomSelect → Radix Select</td>
+            <td class="num">2</td>
+            <td>4.1.2, 2.1.1</td>
+          </tr>
+          <tr>
+            <td>5</td>
+            <td>
+              AuthTabs → tablist, квиз → radiogroup, <code>isSubmitted</code>
+            </td>
+            <td class="num">3</td>
+            <td>4.1.2, 1.4.1, 3.3.1</td>
+          </tr>
+          <tr>
+            <td>6</td>
+            <td>DialogClose 36px, статус задачи <code>aria-pressed</code></td>
+            <td class="num">1</td>
+            <td>2.5.8, 4.1.2</td>
+          </tr>
+          <tr>
+            <td>7</td>
+            <td>
+              Live-регионы: загрузка, ошибки, генерация; фокус между экранами
+            </td>
+            <td class="num">3</td>
+            <td>4.1.3, 3.3.1, 2.4.3</td>
+          </tr>
+          <tr>
+            <td>8</td>
+            <td>
+              <code>prefers-reduced-motion</code>, статичная иконка «в работе»
+            </td>
+            <td class="num">1</td>
+            <td>2.2.2, 2.3.3</td>
+          </tr>
+          <tr>
+            <td>9</td>
+            <td>axe в Playwright как гейт CI</td>
+            <td class="num">2</td>
+            <td>регресс</td>
+          </tr>
+          <tr>
+            <td>10</td>
+            <td>Дата-пикер как grid с roving tabindex</td>
+            <td class="num">4</td>
+            <td>1.3.1, 2.4.3</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <h3>Фрагменты для globals.css</h3>
+    <pre><code>:root {
+  --fg-muted: #4b5563;   /* gray-600, 7.6:1 */
+  --fg-subtle: #6b7280;  /* gray-500, 4.8:1, только ≥ 14px */
+  --success: #047857;    /* emerald-700 */
+  --warning: #b45309;    /* amber-700 */
+  --danger:  #b91c1c;    /* red-700 */
+  --focus:   #1d4ed8;    /* blue-700 */
+}
+:where(a, button, input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid var(--focus); outline-offset: 2px;
+}
+main :where(h1, h2, h3, [tabindex]) { scroll-margin-top: 5rem; }
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+}</code></pre>
+  </section>
+
+  <section>
+    <h2>5. Что сделано хорошо и должно остаться эталоном</h2>
+    <div class="good">
+      <ul>
+        <li>
+          <code>week-grid.tsx</code>, <code>global-schedule.tsx</code>:
+          настоящая таблица, <code>th scope</code>,
+          <code>aria-current="date"</code>, прокручиваемая область с именем.
+        </li>
+        <li>
+          <code>task-dialog.tsx</code>: <code>htmlFor</code>/<code>id</code>,
+          <code>aria-invalid</code>,
+          <code>aria-describedby → role="alert"</code>, фокус на первое
+          невалидное поле.
+        </li>
+        <li>
+          <code>subject-cards.tsx</code>: полный progressbar с
+          <code>aria-valuetext</code> «8,5 из 10» и единственный
+          <code>motion-reduce</code>.
+        </li>
+        <li>
+          <code>subject-card.tsx</code> в AI Coach: правильный radiogroup,
+          образец для квиза.
+        </li>
+        <li>
+          <code>lesson-card.tsx</code>: карточка-кнопка с полным
+          <code>aria-label</code> и явным кольцом фокуса.
+        </li>
+        <li>
+          Ни один статус в задачах, оценках и расписании не передаётся только
+          цветом.
+        </li>
+        <li>
+          Навигация: <code>aria-current</code>, <code>aria-expanded</code>/<code
+            >aria-controls</code
+          >
+          через <code>useId</code>.
+        </li>
+      </ul>
+    </div>
+  </section>
+
+  <section>
+    <h2>6. Полный список по файлам</h2>
+    <p>
+      Серьёзность: <span class="sev K">K</span>критично,
+      <span class="sev S">S</span>серьёзно, <span class="sev M">M</span>средне,
+      <span class="sev m">m</span>мелко. Полные формулировки и исправления в
+      Markdown-версии.
+    </p>
+
+    <details>
+      <summary>Каркас и навигация <span>11</span></summary>
+      <div class="body">
+        <ul>
+          <li>
+            <span class="sev S">S</span><code>app/(main)/layout.tsx:9</code> нет
+            skip-link · 2.4.1
+          </li>
+          <li>
+            <span class="sev M">M</span><code>Header.tsx:33</code> +
+            <code>tasks/page.tsx:621</code> два h1 · 1.3.1
+          </li>
+          <li>
+            <span class="sev M">M</span>dashboard, tasks, gpa, auth без
+            <code>metadata.title</code> · 2.4.2
+          </li>
+          <li>
+            <span class="sev M">M</span><code>Navigation.tsx:37</code> подменю
+            свёрнуто на /schedule/* · 1.3.1
+          </li>
+          <li>
+            <span class="sev M">M</span><code>Header.tsx:41</code> точка
+            уведомлений только цветом · 1.4.1
+          </li>
+          <li>
+            <span class="sev M">M</span><code>Header.tsx:28</code> sticky
+            перекрывает фокус · 2.4.11
+          </li>
+          <li>
+            <span class="sev m">m</span><code>Navigation.tsx:23,28</code>,
+            <code>AuthHero.tsx:36</code> английские строки без lang · 3.1.2
+          </li>
+          <li>
+            <span class="sev m">m</span><code>Sidebar.tsx:54</code>,
+            <code>MobileSidebar.tsx:40</code> LogOut без aria-hidden
+          </li>
+          <li>
+            <span class="sev m">m</span><code>Sidebar.tsx:15</code> nav внутри
+            aside
+          </li>
+          <li>
+            <span class="sev m">m</span><code>Header.tsx:55</code> имя скрыто на
+            мобильном
+          </li>
+          <li>
+            <span class="sev m">m</span><code>Navigation.tsx:94</code> бейдж
+            «AI» 10px, axe на всех страницах
+          </li>
+        </ul>
+      </div>
+    </details>
+
+    <details>
+      <summary>UI-примитивы <span>12</span></summary>
+      <div class="body">
+        <ul>
+          <li>
+            <span class="sev S">S</span><code>ui/dialog.tsx:47</code> кнопка
+            закрытия 16×16 · 2.5.8
+          </li>
+          <li>
+            <span class="sev S">S</span
+            ><code>ui/progress.tsx:12</code> progressbar без имени · 4.1.2
+          </li>
+          <li>
+            <span class="sev S">S</span
+            ><code>ui/loading-indicator.tsx:14</code> нет role="status" · 4.1.3
+          </li>
+          <li>
+            <span class="sev M">M</span><code>ui/error-state.tsx:20</code> нет
+            role="alert" · 4.1.3
+          </li>
+          <li>
+            <span class="sev M">M</span><code>empty-state.tsx:35</code>,
+            <code>error-state.tsx:31</code> жёсткий h4 · 1.3.1
+          </li>
+          <li>
+            <span class="sev M">M</span><code>ui/card.tsx:32</code> CardTitle
+            рендерит div · 1.3.1
+          </li>
+          <li>
+            <span class="sev M">M</span><code>ui/dialog.tsx:38</code> нет
+            max-h/overflow · 1.4.10
+          </li>
+          <li>
+            <span class="sev M">M</span><code>ui/button.tsx:8</code>,
+            <code>textarea.tsx:12</code> кольцо 1px без offset · 2.4.7
+          </li>
+          <li>
+            <span class="sev M">M</span
+            ><code>ui/segmented-control.tsx:29</code> group+aria-pressed без
+            стрелок · 4.1.2
+          </li>
+          <li>
+            <span class="sev m">m</span><code>ui/badge.tsx:17</code> outline
+            1,24:1 · 1.4.11
+          </li>
+          <li>
+            <span class="sev m">m</span><code>dialog.tsx:24,41</code> мёртвые
+            классы animate-in
+          </li>
+          <li>
+            <span class="sev m">m</span><code>textarea.tsx:20</code> displayName
+            не даёт имени
+          </li>
+        </ul>
+      </div>
+    </details>
+
+    <details>
+      <summary>Вход и регистрация <span>12</span></summary>
+      <div class="body">
+        <ul>
+          <li>
+            <span class="sev S">S</span><code>LoginForm.tsx:93,132</code>,
+            <code>RegisterForm.tsx:130,167,206,260</code> фокус ring-blue-100 ·
+            2.4.7
+          </li>
+          <li>
+            <span class="sev S">S</span><code>LoginForm.tsx:191</code>,
+            <code>RegisterForm.tsx:292</code> кнопки ring-blue-200 · 2.4.7
+          </li>
+          <li>
+            <span class="sev S">S</span><code>LoginForm.tsx:171</code> чекбокс
+            ring-blue-100 · 2.4.7
+          </li>
+          <li>
+            <span class="sev S">S</span><code>LoginForm.tsx:98,150</code>,
+            <code>RegisterForm.tsx:135,172,224,282</code> ошибки red-500 · 1.4.3
+          </li>
+          <li>
+            <span class="sev S">S</span><code>LoginForm.tsx:138</code>,
+            <code>RegisterForm.tsx:212,266</code> иконка slate-400 · 1.4.11
+          </li>
+          <li>
+            <span class="sev S">S</span><code>AuthTabs.tsx:11</code> вкладки без
+            ролей · 4.1.2, 1.4.1
+          </li>
+          <li>
+            <span class="sev S">S</span
+            ><code>AuthTabs.tsx:17,29</code> slate-500 на slate-100 · 1.4.3
+          </li>
+          <li>
+            <span class="sev S">S</span><code>LoginForm.tsx:180</code> «Забыли
+            пароль?» без обработчика · 4.1.2
+          </li>
+          <li>
+            <span class="sev M">M</span><code>LoginForm.tsx:54</code>,
+            <code>RegisterForm.tsx:70</code> серверная ошибка не объявляется ·
+            3.3.1
+          </li>
+          <li>
+            <span class="sev M">M</span><code>app/auth/page.tsx:47</code> смена
+            вкладки без анонса · 4.1.3
+          </li>
+          <li>
+            <span class="sev M">M</span><code>AuthHero.tsx:5</code> текст на
+            фото, alpha 0,55 · 1.4.3
+          </li>
+          <li>
+            <span class="sev M">M</span
+            ><code>RegisterForm.tsx:201</code> правило пароля только в
+            placeholder · 3.3.2
+          </li>
+        </ul>
+      </div>
+    </details>
+
+    <details>
+      <summary>Задания и дашборд <span>13</span></summary>
+      <div class="body">
+        <ul>
+          <li>
+            <span class="sev K">K</span
+            ><code>tasks/page.tsx:89</code> CustomSelect без ролей и клавиатуры
+            · 4.1.2, 2.1.1
+          </li>
+          <li>
+            <span class="sev K">K</span><code>tasks/page.tsx:698</code> селект
+            без имени · 4.1.2
+          </li>
+          <li>
+            <span class="sev S">S</span><code>tasks/page.tsx:443</code> поле
+            только с placeholder · 3.3.2
+          </li>
+          <li>
+            <span class="sev S">S</span><code>tasks/page.tsx:298</code> вечный
+            animate-spin как статус · 2.2.2
+          </li>
+          <li>
+            <span class="sev M">M</span><code>tasks/page.tsx:286</code> статус
+            без текущего состояния · 4.1.2
+          </li>
+          <li>
+            <span class="sev M">M</span><code>tasks/page.tsx:289,475</code> цели
+            24px на границе · 2.5.8
+          </li>
+          <li>
+            <span class="sev M">M</span
+            ><code>tasks/page.tsx:475,705</code> иконки только с title · 4.1.2
+          </li>
+          <li>
+            <span class="sev M">M</span><code>tasks/page.tsx:721</code> фильтр
+            не объявляется · 4.1.3
+          </li>
+          <li>
+            <span class="sev M">M</span
+            ><code>task-dialog.tsx:659</code> подтверждение удаления теряет
+            фокус · 2.4.3
+          </li>
+          <li>
+            <span class="sev M">M</span><code>tasks/page.tsx:621,358</code> h1 →
+            h3 без h2 · 1.3.1
+          </li>
+          <li>
+            <span class="sev M">M</span
+            ><code>dashboard/page.tsx:269</code> прогресс-бары голые div · 1.3.1
+          </li>
+          <li>
+            <span class="sev m">m</span
+            ><code>dashboard/page.tsx:213</code> ссылка «Все» без контекста ·
+            2.4.4
+          </li>
+          <li>
+            <span class="sev m">m</span
+            ><code>dashboard/page.tsx:172,221</code> списки как div · 1.3.1
+          </li>
+        </ul>
+      </div>
+    </details>
+
+    <details>
+      <summary>Расписание <span>8</span></summary>
+      <div class="body">
+        <ul>
+          <li>
+            <span class="sev S">S</span><code>date-picker.tsx:104</code> дни
+            соседних месяцев gray-400 · 1.4.3
+          </li>
+          <li>
+            <span class="sev S">S</span><code>date-picker.tsx:77</code> 42
+            кнопки, нет grid · 1.3.1, 2.4.3
+          </li>
+          <li>
+            <span class="sev S">S</span
+            ><code>week-grid.tsx:31,84,87</code> gray-400 10–12px, 24 узла axe ·
+            1.4.3
+          </li>
+          <li>
+            <span class="sev S">S</span
+            ><code>global-schedule.tsx:159,189</code> gray-400, gray-300 · 1.4.3
+          </li>
+          <li>
+            <span class="sev M">M</span
+            ><code>global-schedule.tsx:188</code> aria-label на голом span ·
+            1.3.1
+          </li>
+          <li>
+            <span class="sev M">M</span><code>assessments.tsx:63</code> два
+            live-региона на событие · 4.1.3
+          </li>
+          <li>
+            <span class="sev m">m</span><code>schedule.tsx:176</code> «Нажмите
+            на занятие»
+          </li>
+          <li>
+            <span class="sev m">m</span><code>global-schedule.tsx:214</code> PDF
+            в новой вкладке без предупреждения · 3.2.5
+          </li>
+        </ul>
+      </div>
+    </details>
+
+    <details>
+      <summary>Оценки <span>7</span></summary>
+      <div class="body">
+        <ul>
+          <li>
+            <span class="sev S">S</span><code>subject-cards.tsx:83</code>,
+            <code>grade-calculator.tsx:178,293</code> «/ 10» gray-400 · 1.4.3
+          </li>
+          <li>
+            <span class="sev S">S</span
+            ><code>subject-cards.tsx:103</code> заливка amber-500/emerald-500 ·
+            1.4.11
+          </li>
+          <li>
+            <span class="sev M">M</span
+            ><code>grade-calculator.tsx:338</code> предупреждение внутри label ·
+            4.1.2
+          </li>
+          <li>
+            <span class="sev M">M</span
+            ><code>grade-calculator.tsx:382</code> empty:hidden на live-регионе
+            · 4.1.3
+          </li>
+          <li>
+            <span class="sev M">M</span
+            ><code>grade-calculator.tsx:321</code> нет aria-invalid · 3.3.1
+          </li>
+          <li>
+            <span class="sev M">M</span
+            ><code>subject-cards.tsx:75</code> aria-live на каждой карточке ·
+            4.1.3
+          </li>
+          <li>
+            <span class="sev m">m</span
+            ><code>grade-calculator.tsx:324</code> диапазон только в placeholder
+            · 3.3.2
+          </li>
+        </ul>
+      </div>
+    </details>
+
+    <details>
+      <summary>AI Coach <span>14</span></summary>
+      <div class="body">
+        <ul>
+          <li>
+            <span class="sev S">S</span><code>QuizScreen.tsx:88</code> ответы
+            без radio · 4.1.2
+          </li>
+          <li>
+            <span class="sev S">S</span
+            ><code>QuizScreen.tsx:74</code> верно/неверно только цветом · 1.4.1
+          </li>
+          <li>
+            <span class="sev S">S</span><code>QuizScreen.tsx:23</code> +
+            <code>ai-coach.tsx:115</code> isSubmitted никогда не передаётся ·
+            3.3.1
+          </li>
+          <li>
+            <span class="sev S">S</span><code>ai-coach.tsx:113</code> смена
+            экранов теряет фокус · 2.4.3
+          </li>
+          <li>
+            <span class="sev S">S</span><code>ai-coach.tsx:54</code>,
+            <code>generate-button.tsx:40</code> генерация не объявляется · 4.1.3
+          </li>
+          <li>
+            <span class="sev S">S</span><code>ResultsScreen.tsx:41</code> плитки
+            без связи метка/значение · 1.3.1
+          </li>
+          <li>
+            <span class="sev S">S</span><code>QuizScreen.tsx:48</code> прогресс
+            без роли · 1.3.1
+          </li>
+          <li>
+            <span class="sev S">S</span
+            ><code>upload-notes.tsx:62,98</code> input скрыт от AT, div без
+            фокус-стиля · 2.4.7
+          </li>
+          <li>
+            <span class="sev S">S</span
+            ><code>upload-notes.tsx:26,138</code> ошибки не объявляются · 4.1.3
+          </li>
+          <li>
+            <span class="sev S">S</span><code>ResultsScreen.tsx</code>,
+            <code>generate-button.tsx:54</code>,
+            <code>paste-notes.tsx:34</code> emerald/rose/amber-600 · 1.4.3
+          </li>
+          <li>
+            <span class="sev M">M</span
+            ><code>QuizScreen.tsx:132,139</code> disabled без объяснения · 3.3.1
+          </li>
+          <li>
+            <span class="sev M">M</span><code>paste-notes.tsx:31</code> счётчик
+            не связан с textarea · 1.3.1
+          </li>
+          <li>
+            <span class="sev M">M</span><code>ResultsScreen.tsx:34</code> второй
+            h1 · 1.3.1
+          </li>
+          <li>
+            <span class="sev m">m</span><code>generate-button.tsx:42</code>,
+            <code>QuizScreen.tsx:50,92</code> анимации без motion-reduce
+          </li>
+        </ul>
+      </div>
+    </details>
+
+    <details>
+      <summary>Материалы <span>9</span></summary>
+      <div class="body">
+        <ul>
+          <li>
+            <span class="sev S">S</span><code>materials.tsx:66</code>,
+            <code>upload-material-dialog.tsx:30</code> фокус ring-blue-100 ·
+            2.4.7
+          </li>
+          <li>
+            <span class="sev S">S</span
+            ><code>upload-material-dialog.tsx:139</code> sr-only input без
+            видимого фокуса · 2.4.7
+          </li>
+          <li>
+            <span class="sev S">S</span
+            ><code>upload-material-dialog.tsx:68,195</code> общая ошибка без
+            связи, не объявляется · 3.3.1
+          </li>
+          <li>
+            <span class="sev M">M</span><code>materials.tsx:104,204</code> тост
+            2,5 с без role="status" · 2.2.1
+          </li>
+          <li>
+            <span class="sev M">M</span
+            ><code>material-card.tsx:79</code> «Открыть»/«Скачать» без контекста
+            · 2.4.6
+          </li>
+          <li>
+            <span class="sev M">M</span><code>material-card.tsx:57</code> иконка
+            без aria-hidden · 1.1.1
+          </li>
+          <li>
+            <span class="sev M">M</span
+            ><code>materials.tsx:159,275</code> уровни заголовков · 1.3.1
+          </li>
+          <li>
+            <span class="sev m">m</span
+            ><code>materials.tsx:127</code> window.open без предупреждения ·
+            3.2.5
+          </li>
+          <li>
+            <span class="sev m">m</span><code>materials.tsx:178</code>,
+            <code>upload-notes.tsx:126</code> иконки gray-400 · 1.4.11
+          </li>
+        </ul>
+      </div>
+    </details>
+  </section>
+
+  <section>
+    <h2>7. Как воспроизвести axe</h2>
+    <p>
+      Добавить <code>@axe-core/playwright</code> в devDependencies и спек в
+      <code>tests/e2e/</code>. Он встанет в существующий job браузерных тестов.
+    </p>
+    <pre><code>import { test, expect } from "@playwright/test";
+import AxeBuilder from "@axe-core/playwright";
+
+const routes = ["/dashboard", "/tasks", "/schedule", "/schedule/global",
+  "/schedule/assessments", "/gpa", "/gpa/calculator", "/materials", "/ai-coach"];
+
+for (const route of routes) {
+  test(`a11y ${route}`, async ({ page }) => {
+    await page.goto(route);
+    const { violations } = await new AxeBuilder({ page })
+      .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"])
+      .analyze();
+    expect(violations, JSON.stringify(violations, null, 2)).toEqual([]);
+  });
+}</code></pre>
+    <p class="callout">
+      axe не видит клавиатуру, фокус и живые регионы. Раздел 6 остаётся ручным
+      чек-листом при ревью PR.
+    </p>
+  </section>
+</div>

@@ -1,0 +1,2318 @@
+<title>StudyFlow Audit</title>
+<link
+  rel="stylesheet"
+  href="https://fonts.googleapis.com/css2?family=Manrope:wght@600;700;800&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap"
+/>
+<style>
+  :root {
+    --ground: #f5f7fb;
+    --surface: #ffffff;
+    --surface-2: #eef2f9;
+    --line: #d9dfeb;
+    --ink: #151a2d;
+    --ink-2: #3a4257;
+    --muted: #5f6880;
+    --accent: #1e4ed8;
+    --accent-ink: #ffffff;
+    --accent-soft: #e4ebfb;
+    --accent-line: #b9c9f3;
+    --ok: #137a5b;
+    --ok-soft: #dff3ea;
+    --warn: #9a6700;
+    --warn-soft: #fbf0d3;
+    --crit: #b42318;
+    --crit-soft: #fbe3df;
+    --code-bg: #eef1f7;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground: #0f1320;
+      --surface: #161b2b;
+      --surface-2: #1d2335;
+      --line: #2a3247;
+      --ink: #e8ebf4;
+      --ink-2: #c3c9d8;
+      --muted: #98a1b8;
+      --accent: #7ea1ff;
+      --accent-ink: #0b1430;
+      --accent-soft: #1c2a52;
+      --accent-line: #33509a;
+      --ok: #4fc79a;
+      --ok-soft: #123528;
+      --warn: #e2b04a;
+      --warn-soft: #3a2d0c;
+      --crit: #f08a7e;
+      --crit-soft: #3f1713;
+      --code-bg: #111626;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground: #0f1320;
+    --surface: #161b2b;
+    --surface-2: #1d2335;
+    --line: #2a3247;
+    --ink: #e8ebf4;
+    --ink-2: #c3c9d8;
+    --muted: #98a1b8;
+    --accent: #7ea1ff;
+    --accent-ink: #0b1430;
+    --accent-soft: #1c2a52;
+    --accent-line: #33509a;
+    --ok: #4fc79a;
+    --ok-soft: #123528;
+    --warn: #e2b04a;
+    --warn-soft: #3a2d0c;
+    --crit: #f08a7e;
+    --crit-soft: #3f1713;
+    --code-bg: #111626;
+  }
+  * {
+    box-sizing: border-box;
+  }
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font:
+      16px/1.6 "IBM Plex Sans",
+      system-ui,
+      -apple-system,
+      "Segoe UI",
+      Roboto,
+      sans-serif;
+    padding-inline: 16px;
+    padding-block: 0 64px;
+  }
+  .wrap {
+    max-width: 1180px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: 220px minmax(0, 1fr);
+    gap: 40px;
+    align-items: start;
+  }
+  @media (max-width: 900px) {
+    .wrap {
+      grid-template-columns: minmax(0, 1fr);
+    }
+  }
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: Manrope, "IBM Plex Sans", system-ui, sans-serif;
+    text-wrap: balance;
+    margin: 0;
+    color: var(--ink);
+  }
+  h1 {
+    font-size: clamp(30px, 4.2vw, 44px);
+    font-weight: 800;
+    line-height: 1.1;
+    letter-spacing: -0.01em;
+  }
+  h2 {
+    font-size: 26px;
+    font-weight: 800;
+    letter-spacing: -0.01em;
+    margin-top: 56px;
+    padding-top: 24px;
+    border-top: 1px solid var(--line);
+  }
+  h3 {
+    font-size: 19px;
+    font-weight: 700;
+    margin-top: 32px;
+  }
+  h4 {
+    font-size: 16px;
+    font-weight: 700;
+    margin-top: 20px;
+  }
+  p {
+    margin: 12px 0;
+    max-width: 72ch;
+  }
+  ul,
+  ol {
+    max-width: 72ch;
+    padding-left: 22px;
+    margin: 10px 0;
+  }
+  li {
+    margin: 5px 0;
+  }
+  li > ul {
+    margin-top: 4px;
+  }
+  a {
+    color: var(--accent);
+  }
+  code,
+  pre,
+  .mono {
+    font-family:
+      "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  code {
+    font-size: 0.9em;
+    background: var(--code-bg);
+    padding: 1px 6px;
+    border-radius: 5px;
+    color: var(--ink-2);
+  }
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 14px 16px;
+    overflow-x: auto;
+    font-size: 13.5px;
+    line-height: 1.55;
+    margin: 14px 0;
+  }
+  pre code {
+    background: none;
+    padding: 0;
+    font-size: inherit;
+  }
+  .eyebrow {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 12px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  header.hero {
+    padding-block: 48px 8px;
+  }
+  header.hero .lead {
+    font-size: 18px;
+    color: var(--ink-2);
+    max-width: 66ch;
+  }
+  .meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 20px;
+    margin-top: 18px;
+    font-size: 14px;
+    color: var(--muted);
+  }
+  .meta b {
+    color: var(--ink);
+    font-weight: 600;
+  }
+  nav.toc {
+    position: sticky;
+    top: 24px;
+    font-size: 14px;
+    line-height: 1.5;
+    padding-top: 56px;
+  }
+  @media (max-width: 900px) {
+    nav.toc {
+      position: static;
+      padding-top: 16px;
+      border-bottom: 1px solid var(--line);
+      padding-bottom: 16px;
+    }
+  }
+  nav.toc ol {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    max-width: none;
+  }
+  nav.toc li {
+    margin: 0;
+  }
+  nav.toc a {
+    display: block;
+    padding: 5px 10px;
+    border-left: 2px solid var(--line);
+    color: var(--muted);
+    text-decoration: none;
+  }
+  nav.toc a:hover,
+  nav.toc a:focus-visible {
+    color: var(--ink);
+    border-color: var(--accent);
+    outline: none;
+  }
+  nav.toc .n {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 12px;
+    color: var(--accent);
+    margin-right: 8px;
+  }
+  .verdict {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 12px;
+    margin: 22px 0;
+  }
+  .tile {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 14px 16px;
+  }
+  .tile .k {
+    font-size: 12px;
+    color: var(--muted);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+  .tile .v {
+    font-family: Manrope, sans-serif;
+    font-weight: 800;
+    font-size: 26px;
+    line-height: 1.15;
+    margin-top: 6px;
+    font-variant-numeric: tabular-nums;
+  }
+  .tile .s {
+    font-size: 13px;
+    color: var(--muted);
+    margin-top: 4px;
+  }
+  .chip {
+    display: inline-block;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 2px 9px;
+    border-radius: 999px;
+    border: 1px solid transparent;
+    white-space: nowrap;
+    vertical-align: middle;
+  }
+  .chip.ok {
+    background: var(--ok-soft);
+    color: var(--ok);
+  }
+  .chip.warn {
+    background: var(--warn-soft);
+    color: var(--warn);
+  }
+  .chip.crit {
+    background: var(--crit-soft);
+    color: var(--crit);
+  }
+  .chip.info {
+    background: var(--accent-soft);
+    color: var(--accent);
+  }
+  .chip.mute {
+    background: var(--surface-2);
+    color: var(--muted);
+  }
+  .tablewrap {
+    overflow-x: auto;
+    margin: 16px 0;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: var(--surface);
+  }
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    font-size: 14px;
+    min-width: 640px;
+  }
+  th,
+  td {
+    padding: 9px 12px;
+    text-align: left;
+    vertical-align: top;
+    border-bottom: 1px solid var(--line);
+  }
+  th {
+    font-size: 12px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--muted);
+    font-weight: 600;
+    background: var(--surface-2);
+  }
+  tr:last-child td {
+    border-bottom: none;
+  }
+  td.num {
+    font-variant-numeric: tabular-nums;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 13px;
+  }
+  .callout {
+    border-left: 3px solid var(--accent);
+    background: var(--accent-soft);
+    padding: 12px 16px;
+    border-radius: 0 10px 10px 0;
+    margin: 18px 0;
+    max-width: 76ch;
+  }
+  .callout.warn {
+    border-color: var(--warn);
+    background: var(--warn-soft);
+  }
+  .callout.crit {
+    border-color: var(--crit);
+    background: var(--crit-soft);
+  }
+  .callout p {
+    margin: 6px 0;
+  }
+  .finding {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 14px 18px;
+    margin: 12px 0;
+    max-width: 80ch;
+  }
+  .finding .t {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+    font-weight: 600;
+  }
+  .finding .t .id {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .finding p {
+    margin: 8px 0 0;
+  }
+  .finding .fix {
+    margin-top: 8px;
+    font-size: 14px;
+    color: var(--ink-2);
+  }
+  .finding .fix b {
+    color: var(--ink);
+  }
+  .grid2 {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 14px;
+    margin: 16px 0;
+  }
+  .phase {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 18px 20px;
+  }
+  .phase h3 {
+    margin-top: 0;
+  }
+  .phase .when {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 12.5px;
+    color: var(--accent);
+    letter-spacing: 0.04em;
+  }
+  .phase .goal {
+    color: var(--ink-2);
+    font-style: italic;
+  }
+  .phase ul {
+    max-width: none;
+  }
+  .gate {
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px dashed var(--line);
+    font-size: 14px;
+  }
+  .gate b {
+    color: var(--ok);
+  }
+  pre.mermaid {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 12px;
+    overflow-x: auto;
+    text-align: center;
+  }
+  figcaption {
+    font-size: 13px;
+    color: var(--muted);
+    margin-top: 6px;
+  }
+  figure {
+    margin: 18px 0;
+  }
+  .small {
+    font-size: 14px;
+    color: var(--muted);
+  }
+  .kv {
+    display: grid;
+    grid-template-columns: max-content 1fr;
+    gap: 6px 18px;
+    font-size: 14.5px;
+    max-width: 76ch;
+  }
+  .kv dt {
+    color: var(--muted);
+  }
+  .kv dd {
+    margin: 0;
+  }
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    * {
+      scroll-behavior: auto !important;
+    }
+  }
+  html {
+    scroll-behavior: smooth;
+  }
+</style>
+
+<div class="wrap">
+  <nav class="toc" aria-label="Содержание">
+    <ol>
+      <li>
+        <a href="#s0"><span class="n">0</span>Резюме</a>
+      </li>
+      <li>
+        <a href="#s1"><span class="n">1</span>Паспорт проекта</a>
+      </li>
+      <li>
+        <a href="#s2"><span class="n">2</span>Ветки и процесс</a>
+      </li>
+      <li>
+        <a href="#s3"><span class="n">3</span>Архитектура сейчас</a>
+      </li>
+      <li>
+        <a href="#s4"><span class="n">4</span>Разбор модулей</a>
+      </li>
+      <li>
+        <a href="#s5"><span class="n">5</span>Качество и инженерия</a>
+      </li>
+      <li>
+        <a href="#s6"><span class="n">6</span>Реестр находок</a>
+      </li>
+      <li>
+        <a href="#s7"><span class="n">7</span>Целевая архитектура</a>
+      </li>
+      <li>
+        <a href="#s8"><span class="n">8</span>Модель данных</a>
+      </li>
+      <li>
+        <a href="#s9"><span class="n">9</span>Дорожная карта</a>
+      </li>
+      <li>
+        <a href="#s10"><span class="n">10</span>Исследовательская часть</a>
+      </li>
+      <li>
+        <a href="#s11"><span class="n">11</span>Риски</a>
+      </li>
+      <li>
+        <a href="#s12"><span class="n">12</span>Структура диплома</a>
+      </li>
+      <li>
+        <a href="#s13"><span class="n">13</span>Первые две недели</a>
+      </li>
+    </ol>
+  </nav>
+
+  <main>
+    <header class="hero">
+      <div class="eyebrow">Технический аудит и план развития</div>
+      <h1 style="margin-top: 10px">StudyFlow: студенческий ассистент UTM</h1>
+      <p class="lead">
+        Глубокий разбор репозитория
+        <span class="mono">FruktoviiFrukt/studyflow</span> и всех 17 удалённых
+        веток, состояние на 10 сентября 2026, и план доведения проекта до уровня
+        дипломной работы.
+      </p>
+      <div class="meta">
+        <span>Срез: <b>origin/develop @ 98732c4</b></span>
+        <span
+          >Стек:
+          <b
+            >Next.js 16 · React 19 · Tailwind 4 · Prisma 7 · PostgreSQL 16</b
+          ></span
+        >
+        <span>Проверено локально: <b>lint, tsc, build, 11 юнит-тестов</b></span>
+      </div>
+    </header>
+
+    <!-- ============================ 0 ============================ -->
+    <h2 id="s0">0. Резюме</h2>
+    <p>
+      За семь дней (4–10 сентября 2026) команда из семи человек собрала
+      <b>полный фронтенд-прототип</b> студенческого кабинета: дашборд, задания,
+      расписание в трёх видах, калькулятор оценок, материалы, AI Exam Coach и
+      страницу входа. Код опрятный, типизирован, проходит lint и сборку. Но это
+      <b>витрина без сервера</b>: все данные захардкожены или живут в памяти
+      вкладки, база данных подключена, но ни одна страница к ней не обращается,
+      а «AI» выбирает вопросы из банка на 15 штук с искусственной задержкой 2,2
+      секунды.
+    </p>
+
+    <div class="verdict">
+      <div class="tile">
+        <div class="k">Фронтенд</div>
+        <div class="v"><span class="chip ok">готов</span></div>
+        <div class="s">12 маршрутов, 5 850 строк TS/TSX</div>
+      </div>
+      <div class="tile">
+        <div class="k">Бэкенд</div>
+        <div class="v"><span class="chip crit">отсутствует</span></div>
+        <div class="s">0 API-роутов в develop, Prisma не используется</div>
+      </div>
+      <div class="tile">
+        <div class="k">Аутентификация</div>
+        <div class="v"><span class="chip warn">в ветке</span></div>
+        <div class="s">
+          feature/backend/auth не влита, отстаёт на 10 коммитов
+        </div>
+      </div>
+      <div class="tile">
+        <div class="k">Тесты в CI</div>
+        <div class="v"><span class="chip crit">не запускаются</span></div>
+        <div class="s">нет скрипта test, CI на Node 20 их бы и не выполнил</div>
+      </div>
+      <div class="tile">
+        <div class="k">Релиз</div>
+        <div class="v"><span class="chip crit">нет</span></div>
+        <div class="s">main содержит один коммит и отстаёт на 51</div>
+      </div>
+      <div class="tile">
+        <div class="k">Гигиена веток</div>
+        <div class="v"><span class="chip warn">12 мёртвых</span></div>
+        <div class="s">полностью влиты, подлежат удалению</div>
+      </div>
+    </div>
+
+    <p>
+      <b>Главный вывод.</b> Для дипломной работы проекту не хватает не экранов,
+      а <em>системы</em>: доменной модели, персистентности, реальной
+      аутентификации, настоящего AI-контура и измеримого исследовательского
+      вопроса. Всё это достижимо за один учебный год при дисциплине процесса,
+      которая уже частично заложена в ветке
+      <span class="mono">imurd</span> (строгий CI, интеграционный тест БД,
+      Playwright, деплой-гейт).
+    </p>
+
+    <div class="callout">
+      <p>
+        <b>Рекомендуемая тема диплома:</b> «Веб-платформа персонального
+        планирования учёбы с генерацией контрольных вопросов на основе больших
+        языковых моделей (на примере Технического университета Молдовы)».
+        Исследовательское ядро: качество и педагогическая валидность
+        автоматически сгенерированных вопросов, и влияние интервального
+        повторения на результаты самопроверки.
+      </p>
+    </div>
+
+    <!-- ============================ 1 ============================ -->
+    <h2 id="s1">1. Паспорт проекта</h2>
+    <dl class="kv">
+      <dt>Назначение</dt>
+      <dd>
+        Личный кабинет студента Политехнического (Технического) университета
+        Молдовы: расписание, дедлайны, оценки, материалы, подготовка к
+        экзаменам.
+      </dd>
+      <dt>Язык интерфейса</dt>
+      <dd>Русский. Румынский и английский отсутствуют, хотя UTM двуязычный.</dd>
+      <dt>Название</dt>
+      <dd>
+        Не согласовано: <code>StudyHub</code> в метаданных и шапке (7 файлов),
+        <code>StudyFlow</code> на странице входа и в имени пакета (2 файла).
+      </dd>
+      <dt>История</dt>
+      <dd>
+        56 коммитов, 14 pull request'ов влито в develop (#13–#36), первый коммит
+        4 сентября, последний 10 сентября 2026.
+      </dd>
+      <dt>Команда</dt>
+      <dd>
+        7 человек: AlinaKernus (20 коммитов: расписание, оценки, задания),
+        hellomumu (11: AI Coach), Persik/FruktoviiFrukt (14: каркас, дашборд,
+        auth-страница, CI), Anatolii Kretsu (4: инфраструктура БД, Auth.js),
+        vlr404 (3: дизайн-система), Alshok27 (2: материалы), Anatoli D./Imurd
+        (2: CI, автоматизация, тесты).
+      </dd>
+      <dt>Размер</dt>
+      <dd>
+        92 файла в develop; TS/TSX: app 1 277 строк, components 3 846, lib 724.
+      </dd>
+      <dt>Зависимости</dt>
+      <dd>
+        next 16.3.4, react 19.2.8, tailwindcss 4, @prisma/client 7.10,
+        lucide-react, Radix UI (dialog, progress, slot и монолитный
+        <code>radix-ui</code>), class-variance-authority, clsx, tailwind-merge.
+        В ветке auth добавлены next-auth 5.0.0-beta.32 и bcryptjs.
+      </dd>
+      <dt>Инструменты</dt>
+      <dd>
+        ESLint 9 (next/core-web-vitals + typescript), Prettier, Husky +
+        lint-staged, Docker Compose с PostgreSQL 16 на порту 5433.
+      </dd>
+    </dl>
+
+    <h3>Что проверено вручную</h3>
+    <div class="tablewrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Проверка</th>
+            <th>Результат</th>
+            <th>Комментарий</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>npm ci</code> (Node 20.19)</td>
+            <td><span class="chip ok">ок</span></td>
+            <td>598 пакетов, <code>prisma generate</code> отработал.</td>
+          </tr>
+          <tr>
+            <td><code>npm run lint</code></td>
+            <td><span class="chip ok">0 ошибок</span></td>
+            <td></td>
+          </tr>
+          <tr>
+            <td><code>tsc --noEmit</code></td>
+            <td><span class="chip ok">чисто</span></td>
+            <td></td>
+          </tr>
+          <tr>
+            <td><code>node --test tests/*.test.mjs</code></td>
+            <td><span class="chip crit">2/2 падают</span></td>
+            <td>
+              Тесты импортируют <code>.ts</code> напрямую; Node 20 не умеет
+              type-stripping. Нужен Node ≥ 22.6 или загрузчик tsx.
+            </td>
+          </tr>
+          <tr>
+            <td><code>tsx --test tests/*.test.mjs</code></td>
+            <td><span class="chip ok">11/11</span></td>
+            <td>Логика тестов корректна, проблема только в окружении.</td>
+          </tr>
+          <tr>
+            <td><code>next build</code></td>
+            <td><span class="chip ok">ок</span></td>
+            <td>12 маршрутов, 10 статических, 2 динамических (расписание).</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- ============================ 2 ============================ -->
+    <h2 id="s2">2. Ветки и процесс разработки</h2>
+    <p>
+      Модель ветвления: <span class="mono">feature/* → develop</span> через PR с
+      одним обязательным CI-джобом (lint + build). Ветка
+      <span class="mono">main</span> ни разу не получала релиз. Ниже полный
+      инвентарь на 10 сентября.
+    </p>
+
+    <div class="tablewrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Ветка</th>
+            <th>Впереди / позади develop</th>
+            <th>Последний автор</th>
+            <th>Статус</th>
+            <th>Рекомендация</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="mono">develop</td>
+            <td class="num">0 / 0</td>
+            <td>FruktoviiFrukt</td>
+            <td><span class="chip info">интеграционная</span></td>
+            <td>Источник правды. Защитить правилами ветки.</td>
+          </tr>
+          <tr>
+            <td class="mono">main</td>
+            <td class="num">0 / 51</td>
+            <td>FruktoviiFrukt</td>
+            <td><span class="chip crit">пустая</span></td>
+            <td>
+              Сделать первый релиз-merge из develop и тег <code>v0.1.0</code>.
+            </td>
+          </tr>
+          <tr>
+            <td class="mono">feature/backend/auth</td>
+            <td class="num">1 / 10</td>
+            <td>Anatolii Kretsu</td>
+            <td><span class="chip warn">не влита, ценная</span></td>
+            <td>
+              Ребейз на develop, ревью, влить первой. Единственная ветка с
+              реальным сервером.
+            </td>
+          </tr>
+          <tr>
+            <td class="mono">feature/ui-design-system</td>
+            <td class="num">1 / 34</td>
+            <td>vlr404</td>
+            <td><span class="chip warn">конфликтует</span></td>
+            <td>
+              Дублирует Dialog/Progress/Select, которые уже есть в
+              <code>components/ui</code>. Забрать <code>empty-state</code>,
+              <code>error-state</code>, <code>loading-indicator</code>,
+              остальное закрыть.
+            </td>
+          </tr>
+          <tr>
+            <td class="mono">imurd</td>
+            <td class="num">2 / 12</td>
+            <td>Anatoli D.</td>
+            <td><span class="chip warn">параллельный контур</span></td>
+            <td>
+              Перенести в develop: строгий CI, тесты schedule/ai-coach,
+              интеграционный тест БД, Playwright, PR-шаблон. Авто-интеграцию и
+              Vercel-деплой включать только после защиты веток.
+            </td>
+          </tr>
+          <tr>
+            <td class="mono">feat/auth-page</td>
+            <td class="num">0 / 17</td>
+            <td>Persik</td>
+            <td><span class="chip mute">влита</span></td>
+            <td>Удалить.</td>
+          </tr>
+          <tr>
+            <td class="mono">feature/ai-coach-page</td>
+            <td class="num">0 / 28</td>
+            <td>hellomumu</td>
+            <td><span class="chip mute">влита</span></td>
+            <td>Удалить.</td>
+          </tr>
+          <tr>
+            <td class="mono">feature/ai-exam-coach</td>
+            <td class="num">0 / 16</td>
+            <td>hellomumu</td>
+            <td><span class="chip mute">влита</span></td>
+            <td>Удалить.</td>
+          </tr>
+          <tr>
+            <td class="mono">feature/app-layout</td>
+            <td class="num">0 / 49</td>
+            <td>Persik</td>
+            <td><span class="chip mute">влита</span></td>
+            <td>Удалить.</td>
+          </tr>
+          <tr>
+            <td class="mono">feature/dashboard</td>
+            <td class="num">0 / 48</td>
+            <td>Persik</td>
+            <td><span class="chip mute">влита</span></td>
+            <td>Удалить.</td>
+          </tr>
+          <tr>
+            <td class="mono">feature/grades-page</td>
+            <td class="num">0 / 38</td>
+            <td>AlinaKernus</td>
+            <td><span class="chip mute">влита</span></td>
+            <td>Удалить.</td>
+          </tr>
+          <tr>
+            <td class="mono">feature/materials-page</td>
+            <td class="num">0 / 8</td>
+            <td>Alshok27</td>
+            <td><span class="chip mute">влита</span></td>
+            <td>Удалить.</td>
+          </tr>
+          <tr>
+            <td class="mono">feature/schedule-page</td>
+            <td class="num">0 / 43</td>
+            <td>AlinaKernus</td>
+            <td><span class="chip mute">влита</span></td>
+            <td>Удалить.</td>
+          </tr>
+          <tr>
+            <td class="mono">feature/tasks-page</td>
+            <td class="num">0 / 8</td>
+            <td>AlinaKernus</td>
+            <td><span class="chip mute">влита</span></td>
+            <td>Удалить.</td>
+          </tr>
+          <tr>
+            <td class="mono">feature/tasks-add/edit</td>
+            <td class="num">0 / 4</td>
+            <td>AlinaKernus</td>
+            <td><span class="chip mute">влита</span></td>
+            <td>
+              Удалить. Имя со слэшем внутри ломает некоторые инструменты; в
+              будущем избегать.
+            </td>
+          </tr>
+          <tr>
+            <td class="mono">chore/code-quality</td>
+            <td class="num">0 / 38</td>
+            <td>Persik</td>
+            <td><span class="chip mute">влита</span></td>
+            <td>Удалить.</td>
+          </tr>
+          <tr>
+            <td class="mono">chore/github-actions-ci</td>
+            <td class="num">0 / 36</td>
+            <td>Persik</td>
+            <td><span class="chip mute">влита</span></td>
+            <td>Удалить.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Наблюдения по процессу</h3>
+    <ul>
+      <li>
+        <b>Скорость высокая, интеграция частая.</b> 14 PR за 7 дней, конфликтов
+        почти нет, потому что каждый работает в своей папке. Это перестанет
+        работать, как только появится общая модель данных.
+      </li>
+      <li>
+        <b>Три несогласованных требования к Node.</b> CI на develop: Node 20.
+        README: «Prisma 7 требует Node 22 LTS». Ветка imurd:
+        <code>.node-version</code> = 24.14.0 и <code>engines: 24.x</code>. Нужен
+        один файл <code>.node-version</code>, на который смотрят и CI, и README.
+      </li>
+      <li>
+        <b>Два контура аутентификации.</b> Страница входа (влита) только пишет
+        данные в <code>console.log</code>. Реальная реализация с Auth.js лежит в
+        отдельной ветке и уже отстаёт. Чем дольше она вне develop, тем дороже
+        слияние.
+      </li>
+      <li>
+        <b>Нет владельца релиза.</b> main пуст, тегов нет, CHANGELOG нет. Для
+        диплома важна воспроизводимая история версий.
+      </li>
+      <li>
+        <b>Ветка imurd как «второй develop».</b> Там свой CI с тремя
+        обязательными джобами, скрипт автосбора всех веток в imurd и деплой на
+        Vercel по SHA. Идея правильная, но применена к личной ветке; её место в
+        develop и в настройках защиты ветки, иначе команда живёт с двумя
+        источниками правды.
+      </li>
+    </ul>
+
+    <!-- ============================ 3 ============================ -->
+    <h2 id="s3">3. Архитектура текущего состояния</h2>
+    <p>
+      Приложение целиком клиентское поверх Next.js App Router. Серверный код
+      исполняется только для рендера страниц. Слой <code>lib/</code> содержит
+      чистые функции и демо-фикстуры, а не доступ к данным.
+    </p>
+
+    <figure>
+      <pre class="mermaid">
+flowchart LR
+  subgraph Browser["Браузер"]
+    D[Dashboard]:::page
+    T[Tasks]:::page
+    S[Schedule ×3]:::page
+    G[GPA]:::page
+    M[Materials]:::page
+    A[AI Coach]:::page
+    AU[Auth page]:::page
+  end
+  subgraph Lib["lib/ (чистые функции + фикстуры)"]
+    LT[tasks.ts валидация]
+    LG[grades.ts парсер формул]
+    LS[schedule.ts даты, demoWeek]
+    LA[ai-coach.ts, mockQuiz.ts]
+  end
+  subgraph Server["Сервер Next.js"]
+    R[RSC-рендер страниц]
+    P[lib/prisma.ts]:::dead
+  end
+  DB[(PostgreSQL 16<br/>таблица User)]:::dead
+  T --> LT
+  G --> LG
+  S --> LS
+  A --> LA
+  D -. хардкод .-> D
+  AU -. console.log .-> AU
+  R --> Browser
+  P -. никто не импортирует .-> DB
+  classDef page fill:#e4ebfb,stroke:#1e4ed8,color:#151a2d
+  classDef dead fill:#fbe3df,stroke:#b42318,color:#151a2d,stroke-dasharray:4 3
+</pre>
+      <figcaption>
+        Красным пунктиром отмечены компоненты, которые существуют в репозитории,
+        но не участвуют в работе приложения.
+      </figcaption>
+    </figure>
+
+    <h3>Что сделано хорошо</h3>
+    <ul>
+      <li>
+        <b>Чистое разделение UI и логики</b> в тех модулях, где логика есть:
+        валидация заданий, парсер формул оценок и утилиты дат живут в
+        <code>lib/</code> и покрыты тестами.
+      </li>
+      <li>
+        <b>Безопасный парсер формул</b> в
+        <span class="mono">lib/grades.ts</span>: рекурсивный спуск с поддержкой
+        процентов, скобок и приоритета, без <code>eval</code>, с ограничением
+        длины и диапазона результата. Это готовый материал для главы диплома про
+        обработку пользовательского ввода.
+      </li>
+      <li>
+        <b>Корректная работа с датами расписания</b>: часовой пояс
+        Europe/Chisinau, date-only арифметика в UTC, чтобы переход на летнее
+        время не сдвигал неделю, <code>force-dynamic</code> для «сегодня».
+      </li>
+      <li>
+        <b>Доступность</b>: aria-атрибуты, фокус на первой ошибке формы,
+        <code>aria-live</code> для статуса формулы, клавиатурная навигация в
+        мобильном меню, проверенная e2e-тестом в ветке imurd.
+      </li>
+      <li>
+        <b>Компонентная база</b> на Radix + CVA (button, card, dialog, badge,
+        progress, segmented-control) с токенами shadcn в
+        <span class="mono">globals.css</span>.
+      </li>
+    </ul>
+
+    <h3>Что архитектурно отсутствует</h3>
+    <ul>
+      <li>
+        Слой доступа к данным: ни одного Route Handler, Server Action или
+        репозитория.
+      </li>
+      <li>
+        Доменная модель: единственная сущность в Prisma это <code>User</code>.
+        Предметы, группы, занятия, задания, материалы, оценки, тесты не
+        смоделированы.
+      </li>
+      <li>
+        Идентичность пользователя: все страницы показывают «Student /
+        student@utm.md».
+      </li>
+      <li>
+        Хранилище файлов: материалы держатся в памяти как объекты
+        <code>File</code> и исчезают при перезагрузке.
+      </li>
+      <li>
+        AI-контур: нет вызова модели, нет извлечения текста из PDF/DOCX, нет
+        хранения истории попыток.
+      </li>
+      <li>
+        Наблюдаемость и безопасность: нет логирования, rate-limit,
+        security-заголовков, CSP.
+      </li>
+    </ul>
+
+    <!-- ============================ 4 ============================ -->
+    <h2 id="s4">4. Разбор модулей</h2>
+
+    <h3>4.1 Dashboard</h3>
+    <p>
+      Серверный компонент со статическими массивами: три занятия, три дедлайна,
+      четыре предмета с процентами, четыре быстрых действия. Числа в карточках
+      («12 выполнено», «18 файлов») не связаны ни с чем. Компонент
+      <code>SummaryCard</code> хорош, страницу нужно перевести на агрегаты из
+      БД: занятия на сегодня по группе, ближайшие дедлайны пользователя, доля
+      выполненных заданий за семестр.
+    </p>
+
+    <h3>4.2 Задания (Tasks)</h3>
+    <p>
+      Самый зрелый модуль по UX: три статуса с циклическим переключением,
+      приоритеты, фильтры, прогресс по предмету, диалог создания/редактирования
+      с валидацией, подтверждение удаления, управление списком предметов.
+      Валидация календарных дат (29 февраля, 31 апреля) вынесена и
+      протестирована.
+    </p>
+    <ul>
+      <li>
+        Файл страницы 765 строк: в нём собственный <code>CustomSelect</code>,
+        хотя <code>components/ui/select.tsx</code> на Radix уже существует.
+        Нужно разнести на компоненты и убрать дубль.
+      </li>
+      <li>
+        Идентификаторы <code>number</code> с <code>Math.max + 1</code>; при
+        переходе на БД станут <code>cuid</code>.
+      </li>
+      <li>
+        Список предметов дублируется в 6 файлах (dashboard, tasks, materials ×2,
+        grades, schedule). Это первый кандидат на общую сущность
+        <code>Subject</code>.
+      </li>
+      <li>
+        Признак «Просрочено» считается по локальному времени браузера, а
+        расписание по времени университета. После появления сервера правило
+        нужно одно.
+      </li>
+    </ul>
+
+    <h3>4.3 Расписание (Schedule)</h3>
+    <p>
+      Три представления: личное (неделя/день с date picker), аттестации и
+      экзамены, глобальное по курсам и группам. Утилиты дат корректны и
+      протестированы. Данные: <code>demoWeek</code> из 14 шаблонных занятий,
+      повторяющихся каждую неделю; глобальное расписание генерируется процедурно
+      из списка групп 3-го курса, взятого из PDF
+      <span class="mono">public/schedules/year-3-semester-5.pdf</span>.
+    </p>
+    <ul>
+      <li>
+        Комментарии в коде честно говорят: «Replace this provider with dated API
+        records». Это правильный контракт для будущего сервера.
+      </li>
+      <li>
+        Реальный источник расписания UTM это PDF на сайте факультета. Импорт
+        расписания (парсер PDF → структурированные записи с проверкой человеком)
+        может стать самостоятельным инженерным разделом диплома.
+      </li>
+      <li>
+        Нужны понятия: семестр, неделя чётная/нечётная, подгруппа, исключения
+        (перенос, отмена), которых в типе <code>Lesson</code> нет.
+      </li>
+    </ul>
+
+    <h3>4.4 Средний балл (GPA)</h3>
+    <p>
+      Пять этапов по умолчанию (аттестация 1 и 2, лабораторные, индивидуальная
+      работа, экзамен) с весами 15/15/15/15/40 и редактируемой формулой на
+      предмет. Фильтр по семестрам, предупреждение об оценках ниже 5, общий
+      средний балл. Хорошая тестовая обвязка: границы, деление на ноль,
+      инъекции, неполные данные.
+    </p>
+    <ul>
+      <li>Хранение только в состоянии компонента.</li>
+      <li>
+        Роль преподавателя упоминается в истории коммитов («read-only teacher
+        grades page»), но в Prisma есть только <code>STUDENT</code> и
+        <code>ADMIN</code>.
+      </li>
+      <li>
+        Для UTM стоит уточнить формулу итоговой оценки по регламенту (часто 60%
+        текущая + 40% экзамен, вариативно по кафедрам) и зашить её как пресет,
+        оставив редактор.
+      </li>
+    </ul>
+
+    <h3>4.5 Материалы (Materials)</h3>
+    <p>
+      Загрузка через drag-and-drop до 50 МБ, группировка по предметам, поиск,
+      оглавление, открытие и скачивание через <code>URL.createObjectURL</code>,
+      удаление с подтверждением. Кнопка «Подготовить с ИИ» ведёт на
+      <code>/ai-coach?material=…</code>, но параметр никто не читает.
+    </p>
+    <ul>
+      <li>
+        Нужно объектное хранилище (S3-совместимое, локально MinIO) и таблица
+        <code>Material</code> с владельцем, предметом, MIME, размером, хэшем.
+      </li>
+      <li>
+        Есть вторая копия <code>formatFileSize</code> (первая в
+        <span class="mono">lib/ai-coach.ts</span>) с другой логикой округления.
+      </li>
+      <li>
+        Материалы это естественный вход для AI Coach: загруженный конспект
+        должен становиться источником вопросов.
+      </li>
+    </ul>
+
+    <h3>4.6 AI Exam Coach</h3>
+    <p>
+      Трёхшаговый сценарий: настройка (заметки файлом или текстом, предмет,
+      количество 5–20, сложность, тип вопроса) → тест с прогрессом → результаты
+      с сильными и слабыми темами и «XP». Экранная логика аккуратная; проблема в
+      содержимом.
+    </p>
+    <ul>
+      <li>
+        <code>handleGenerate</code> ждёт 2,2 секунды и берёт вопросы из банка на
+        15 штук (по 3 на предмет); при запросе 20 вопросов дублирует их с
+        суффиксом <code>-r1</code>. Загруженный файл никак не читается.
+      </li>
+      <li>
+        Типы <code>QuestionType</code> определены дважды с разными значениями
+        (<code>single | true-false</code> в lib и
+        <code>multiple-choice | true-false</code> в types) и конвертируются
+        вручную.
+      </li>
+      <li>
+        Нет хранения попыток, поэтому «Проработать слабые темы» просто
+        перезапускает тот же тест.
+      </li>
+      <li>
+        Это тот модуль, который делает работу дипломной, а не курсовой: ниже он
+        расписан отдельно.
+      </li>
+    </ul>
+
+    <h3>4.7 Аутентификация</h3>
+    <p>
+      <b>В develop:</b> красивая страница с табами, показом пароля, «запомнить
+      меня» и «забыли пароль» без обработчиков; сабмит пишет в консоль. Кнопка
+      «Выйти» это ссылка на <code>/auth</code>.
+    </p>
+    <p>
+      <b>В feature/backend/auth:</b> Auth.js v5 (beta) с
+      Credentials-провайдером, bcrypt, JWT-сессии, роут регистрации,
+      <span class="mono">proxy.ts</span> с редиректами для защищённых путей, сид
+      администратора, типизация сессии с ролью. Формы подключены к
+      <code>signIn</code>, шапка и сайдбар показывают реальное имя.
+    </p>
+    <ul>
+      <li>
+        Замечания к ветке: email не нормализуется (регистр, пробелы), нет
+        ограничения частоты запросов, невалидный JSON даст 500, пароль
+        администратора по умолчанию <code>admin123</code> допустим только в dev
+        и должен падать в production без переменной окружения. Нет
+        восстановления пароля и подтверждения email.
+      </li>
+      <li>
+        next-auth 5 всё ещё beta. Альтернатива для диплома: Better Auth или
+        собственный минимальный слой на <code>jose</code>. Решение стоит
+        зафиксировать в ADR.
+      </li>
+    </ul>
+
+    <h3>4.8 Инфраструктура и CI</h3>
+    <ul>
+      <li>
+        Docker Compose с PostgreSQL на 5433, Prisma 7 с драйвер-адаптером
+        <code>@prisma/adapter-pg</code>, миграция <code>init</code> с таблицей
+        User. README подробно описывает установку под Windows/WSL2.
+      </li>
+      <li>
+        CI на develop: один джоб, lint + build, без тестов, без typecheck, без
+        Prisma. Ветка imurd содержит целевой вариант: Quality (format, lint,
+        typecheck, unit, build), Database (реальный Postgres, migrate deploy,
+        интеграционный тест), Browser (Playwright, 4 сценария), артефакты
+        отчётов, деплой-гейт по SHA.
+      </li>
+    </ul>
+
+    <!-- ============================ 5 ============================ -->
+    <h2 id="s5">5. Качество и инженерия</h2>
+
+    <h3>Тестирование</h3>
+    <div class="tablewrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Уровень</th>
+            <th>develop</th>
+            <th>imurd</th>
+            <th>Цель</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Юнит (node:test)</td>
+            <td>
+              2 файла, 11 тестов: grades, tasks. Скрипта <code>test</code> нет.
+            </td>
+            <td>+ schedule (4), ai-coach (1); скрипт есть, Node 24.</td>
+            <td>
+              Покрытие всего <code>lib/</code> и серверных сервисов; порог
+              покрытия 80% по строкам в CI.
+            </td>
+          </tr>
+          <tr>
+            <td>Интеграция БД</td>
+            <td>нет</td>
+            <td>1 тест: создание, дефолты, уникальность email.</td>
+            <td>
+              Тест на каждую миграцию и репозиторий; testcontainers или сервис в
+              CI.
+            </td>
+          </tr>
+          <tr>
+            <td>E2E (Playwright)</td>
+            <td>нет</td>
+            <td>
+              4 сценария: date picker и фокус, мобильное меню, формула, кнопка
+              генерации.
+            </td>
+            <td>
+              Смоук на каждый маршрут + критические потоки: вход, создание
+              задания, загрузка материала, прохождение теста.
+            </td>
+          </tr>
+          <tr>
+            <td>Контракты API</td>
+            <td>нет</td>
+            <td>нет</td>
+            <td>Схемы zod, из них OpenAPI; проверка в тестах.</td>
+          </tr>
+          <tr>
+            <td>AI-качество</td>
+            <td>нет</td>
+            <td>нет</td>
+            <td>
+              Golden-набор конспектов, метрики валидности вопросов (см. раздел
+              10).
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Стиль и консистентность</h3>
+    <ul>
+      <li>
+        Два стиля форматирования: часть файлов (schedule, grades) в плотном
+        однострочном стиле, часть в стандартном Prettier. lint-staged настроен,
+        но глобального <code>prettier --check</code> в CI нет.
+      </li>
+      <li>
+        Стили инпутов (<code>inputClass</code>) скопированы в четырёх файлах
+        вместо компонента <code>Input</code>.
+      </li>
+      <li>
+        Цветовая система смешивает токены shadcn (<code>bg-primary</code>,
+        <code>text-muted-foreground</code>) и прямые классы Tailwind
+        (<code>text-blue-600</code>, <code>bg-gray-50</code>). Тёмная тема не
+        реализована, хотя в QuizScreen есть классы <code>dark:</code>.
+      </li>
+      <li>
+        Шрифт: <code>globals.css</code> ссылается на переменные Geist, но макет
+        их не подключает, тело набрано Arial.
+      </li>
+    </ul>
+
+    <h3>Безопасность (в текущем состоянии)</h3>
+    <ul>
+      <li>
+        Пока нет сервера, поверхность атаки минимальна. Парсер формул и
+        валидация заданий сделаны с оглядкой на инъекции.
+      </li>
+      <li>
+        После слияния auth: нужны rate-limit на <code>/api/auth/*</code>,
+        нормализация email, единая zod-валидация тела запроса,
+        security-заголовки (CSP, HSTS, frame-ancestors), проверка владельца на
+        каждом запросе к данным, аудит зависимостей в CI (<code
+          >npm audit --omit=dev</code
+        >
+        или OSV-scanner).
+      </li>
+      <li>
+        Секреты: <code>.env*</code> в gitignore, пример без значений, в imurd
+        есть <code>.vercelignore</code>. Хорошо.
+      </li>
+    </ul>
+
+    <!-- ============================ 6 ============================ -->
+    <h2 id="s6">6. Реестр находок</h2>
+    <p class="small">
+      Приоритет: <span class="chip crit">P1</span> блокирует развитие или ломает
+      поведение · <span class="chip warn">P2</span> технический долг, который
+      дорожает · <span class="chip info">P3</span> гигиена.
+    </p>
+
+    <div class="finding">
+      <div class="t">
+        <span class="id">F-01</span><span class="chip crit">P1</span> Неверный
+        импорт <code>cn</code> из npm-пакета «cn»
+      </div>
+      <p>
+        В <span class="mono">components/ui/input.tsx</span> и
+        <span class="mono">components/ui/select.tsx</span> написано
+        <code>import { cn } from "cn"</code>. Это сторонний пакет
+        <code>cn@0.2.6</code>, а не утилита проекта из
+        <span class="mono">lib/utils.ts</span>. Сейчас сборка проходит, потому
+        что эти компоненты нигде не используются, но первый же импорт даст
+        неверную склейку классов.
+      </p>
+      <div class="fix">
+        <b>Исправление:</b> заменить на <code>@/lib/utils</code>, удалить пакет
+        <code>cn</code> из зависимостей, добавить правило ESLint
+        <code>no-restricted-imports</code>.
+      </div>
+    </div>
+
+    <div class="finding">
+      <div class="t">
+        <span class="id">F-02</span><span class="chip crit">P1</span> Тесты не
+        входят в CI и не запускаются на Node 20
+      </div>
+      <p>
+        В <span class="mono">package.json</span> develop нет скрипта
+        <code>test</code>; workflow ставит Node 20; тесты импортируют
+        <code>.ts</code>. Реальная проверка кода в CI отсутствует.
+      </p>
+      <div class="fix">
+        <b>Исправление:</b> перенести из imurd: <code>.node-version</code>,
+        скрипты <code>test</code>, <code>typecheck</code>,
+        <code>format:check</code>, три CI-джоба.
+      </div>
+    </div>
+
+    <div class="finding">
+      <div class="t">
+        <span class="id">F-03</span
+        ><span class="chip crit">P1</span> Аутентификация расщеплена на две
+        ветки
+      </div>
+      <p>
+        Страница влита без логики, логика лежит в ветке, отстающей на 10
+        коммитов. Все дальнейшие серверные фичи зависят от идентичности
+        пользователя.
+      </p>
+      <div class="fix">
+        <b>Исправление:</b> ребейз feature/backend/auth, ревью по замечаниям
+        4.7, слияние в первую неделю.
+      </div>
+    </div>
+
+    <div class="finding">
+      <div class="t">
+        <span class="id">F-04</span><span class="chip crit">P1</span> Нет релиза
+        и защиты веток
+      </div>
+      <p>
+        main пустой, нет тегов, нет обязательных проверок и ревью на develop.
+      </p>
+      <div class="fix">
+        <b>Исправление:</b> branch protection на develop и main (1 ревью,
+        зелёный CI, линейная история или squash), release-merge в main с тегом
+        <code>v0.1.0</code>, CHANGELOG.
+      </div>
+    </div>
+
+    <div class="finding">
+      <div class="t">
+        <span class="id">F-05</span><span class="chip warn">P2</span> Prisma
+        подключена, но мертва
+      </div>
+      <p>
+        <span class="mono">lib/prisma.ts</span> никто не импортирует, схема
+        содержит одну таблицу.
+      </p>
+      <div class="fix">
+        <b>Исправление:</b> раздел 8, полная доменная схема и первые репозитории
+        для Task и Subject.
+      </div>
+    </div>
+
+    <div class="finding">
+      <div class="t">
+        <span class="id">F-06</span><span class="chip warn">P2</span> Предметы
+        захардкожены в шести местах
+      </div>
+      <p>
+        Списки расходятся: в AI Coach «Объектно-ориентированное
+        программирование» и «Математический анализ», в остальных
+        «Программирование» и «Высшая математика».
+      </p>
+      <div class="fix">
+        <b>Исправление:</b> сущность Subject в БД, единый хук/лоадер, цвет
+        предмета как поле.
+      </div>
+    </div>
+
+    <div class="finding">
+      <div class="t">
+        <span class="id">F-07</span><span class="chip warn">P2</span> Название
+        продукта не согласовано
+      </div>
+      <p>
+        StudyHub против StudyFlow. Для диплома и деплоя нужно одно имя, один
+        логотип, один домен.
+      </p>
+      <div class="fix">
+        <b>Исправление:</b> решить командой, заменить 9 вхождений, обновить
+        метаданные и favicon.
+      </div>
+    </div>
+
+    <div class="finding">
+      <div class="t">
+        <span class="id">F-08</span
+        ><span class="chip warn">P2</span> Дублирование утилит и типов
+      </div>
+      <p>
+        Две <code>formatFileSize</code>, два <code>QuestionType</code>, четыре
+        копии <code>inputClass</code>, собственный <code>CustomSelect</code> при
+        наличии Radix Select, дублирующие компоненты в feature/ui-design-system.
+      </p>
+      <div class="fix">
+        <b>Исправление:</b> вынести в <code>lib/format.ts</code> и
+        <code>components/ui</code>; закрыть ветку дизайн-системы после переноса
+        трёх полезных компонентов.
+      </div>
+    </div>
+
+    <div class="finding">
+      <div class="t">
+        <span class="id">F-09</span><span class="chip warn">P2</span> Мёртвая
+        связь Materials → AI Coach
+      </div>
+      <p>Параметр <code>?material=</code> формируется, но не читается.</p>
+      <div class="fix">
+        <b>Исправление:</b> в фазе 2 материал становится источником для
+        генерации; до этого убрать кнопку или показать «скоро».
+      </div>
+    </div>
+
+    <div class="finding">
+      <div class="t">
+        <span class="id">F-10</span><span class="chip warn">P2</span> Три версии
+        требований к Node
+      </div>
+      <p>20 в CI, 22 в README, 24 в imurd.</p>
+      <div class="fix">
+        <b>Исправление:</b> один <code>.node-version</code> (рекомендация: 22
+        LTS для стабильности Prisma и Next), <code>engines</code> в
+        package.json, CI через <code>node-version-file</code>.
+      </div>
+    </div>
+
+    <div class="finding">
+      <div class="t">
+        <span class="id">F-11</span><span class="chip info">P3</span> 12
+        полностью влитых веток не удалены
+      </div>
+      <div class="fix">
+        <b>Исправление:</b> удалить, включить «Automatically delete head
+        branches» в настройках репозитория.
+      </div>
+    </div>
+
+    <div class="finding">
+      <div class="t">
+        <span class="id">F-12</span><span class="chip info">P3</span> Монолитный
+        пакет <code>radix-ui</code> рядом с точечными <code>@radix-ui/*</code>
+      </div>
+      <div class="fix">
+        <b>Исправление:</b> оставить один способ импорта; предпочтительно
+        точечные пакеты для размера бандла.
+      </div>
+    </div>
+
+    <div class="finding">
+      <div class="t">
+        <span class="id">F-13</span><span class="chip info">P3</span> Шрифт и
+        токены темы объявлены, но не применены
+      </div>
+      <div class="fix">
+        <b>Исправление:</b> подключить <code>next/font</code> (Geist или
+        другой), решить, нужна ли тёмная тема; если нет, убрать классы
+        <code>dark:</code>.
+      </div>
+    </div>
+
+    <!-- ============================ 7 ============================ -->
+    <h2 id="s7">7. Целевая архитектура</h2>
+    <p>
+      Принцип: остаться в одном репозитории и одном рантайме Next.js, но ввести
+      явные слои. Отдельный микросервис оправдан только для тяжёлой обработки
+      документов и вызовов модели, и то во второй фазе.
+    </p>
+
+    <figure>
+      <pre class="mermaid">
+flowchart TB
+  subgraph Client["Клиент (React 19, RSC)"]
+    UI[Страницы и компоненты]
+    Q[TanStack Query / Server Actions]
+  end
+  subgraph App["Next.js сервер"]
+    MW[proxy.ts: сессия, роли, rate-limit]
+    SA[Server Actions + Route Handlers<br/>zod-валидация]
+    SVC[Сервисы домена<br/>tasks · schedule · grades · materials · quiz]
+    REPO[Репозитории Prisma]
+    AUTH[Auth.js / Better Auth]
+  end
+  subgraph Infra["Инфраструктура"]
+    PG[(PostgreSQL 16)]
+    S3[(S3 / MinIO<br/>файлы материалов)]
+    JOBS[Очередь задач<br/>pg-boss]
+  end
+  subgraph AI["AI-контур"]
+    ING[Ингест: PDF/DOCX → текст → чанки]
+    GEN[Генерация вопросов<br/>LLM API, structured output]
+    EVAL[Валидатор вопросов<br/>схема + второй проход модели]
+  end
+  UI --> Q --> SA
+  MW --> SA
+  SA --> SVC --> REPO --> PG
+  SVC --> S3
+  SVC --> JOBS --> ING --> GEN --> EVAL --> PG
+  AUTH --> PG
+  IMP[Импорт расписания UTM<br/>PDF → записи + ручная проверка] --> PG
+  classDef ai fill:#e4ebfb,stroke:#1e4ed8,color:#151a2d
+  class ING,GEN,EVAL ai
+</pre>
+      <figcaption>
+        Целевая структура. Пунктирных «мёртвых» узлов больше нет: каждый блок
+        участвует в потоке данных.
+      </figcaption>
+    </figure>
+
+    <h3>Ключевые решения (кандидаты в ADR)</h3>
+    <div class="tablewrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Решение</th>
+            <th>Рекомендация</th>
+            <th>Почему</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Транспорт клиент–сервер</td>
+            <td>
+              Server Actions для мутаций, Route Handlers для файлов и внешних
+              клиентов
+            </td>
+            <td>
+              Минимум кода, типобезопасность end-to-end; REST остаётся там, где
+              нужен стриминг или загрузка.
+            </td>
+          </tr>
+          <tr>
+            <td>Валидация</td>
+            <td>
+              zod-схемы в <code>lib/schemas</code>, общие для клиента и сервера
+            </td>
+            <td>Убирает дубли валидации, даёт OpenAPI бесплатно.</td>
+          </tr>
+          <tr>
+            <td>Аутентификация</td>
+            <td>
+              Auth.js v5 (уже написано) с планом миграции на Better Auth, если
+              beta не стабилизируется к декабрю
+            </td>
+            <td>Не переписывать готовое; зафиксировать риск.</td>
+          </tr>
+          <tr>
+            <td>Файлы</td>
+            <td>
+              S3-совместимое хранилище, presigned URL, локально MinIO в
+              docker-compose
+            </td>
+            <td>
+              Не держать байты в Postgres и в памяти; одинаково работает
+              локально и в облаке.
+            </td>
+          </tr>
+          <tr>
+            <td>Фоновые задачи</td>
+            <td>pg-boss поверх той же PostgreSQL</td>
+            <td>
+              Генерация вопросов занимает секунды и должна идти вне
+              HTTP-запроса; без Redis.
+            </td>
+          </tr>
+          <tr>
+            <td>Модель</td>
+            <td>
+              Сильная модель для генерации, компактная и дешёвая для валидации и
+              классификации тем; structured output по JSON-схеме вопроса;
+              провайдер за адаптером
+            </td>
+            <td>
+              Качество генерации против стоимости проверки; схема исключает
+              «сломанный» JSON.
+            </td>
+          </tr>
+          <tr>
+            <td>Хостинг</td>
+            <td>
+              Vercel для приложения (уже подготовлено в imurd), Neon или
+              Supabase для Postgres, Cloudflare R2 для файлов
+            </td>
+            <td>Бесплатные тарифы покрывают дипломный масштаб.</td>
+          </tr>
+          <tr>
+            <td>Локализация</td>
+            <td>next-intl, ru/ro/en, начиная с фазы 3</td>
+            <td>UTM двуязычен; для защиты на румынском важно.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- ============================ 8 ============================ -->
+    <h2 id="s8">8. Модель данных</h2>
+    <p>
+      Схема ниже покрывает все существующие экраны и AI-контур. Рекомендация:
+      ввести её одной миграцией во фазе 1, но заполнять сервисы поэтапно.
+    </p>
+
+    <figure>
+      <pre class="mermaid">
+erDiagram
+  User ||--o{ Enrollment : has
+  User ||--o{ Task : owns
+  User ||--o{ Material : uploads
+  User ||--o{ GradeEntry : records
+  User ||--o{ QuizAttempt : takes
+  Group ||--o{ Enrollment : includes
+  Group ||--o{ TimetableEntry : follows
+  Subject ||--o{ TimetableEntry : taught_in
+  Subject ||--o{ Task : for
+  Subject ||--o{ Material : about
+  Subject ||--o{ GradeScheme : graded_by
+  GradeScheme ||--o{ GradeStage : consists_of
+  GradeStage ||--o{ GradeEntry : filled_as
+  Material ||--o{ DocumentChunk : split_into
+  Material ||--o{ Quiz : source_of
+  Quiz ||--o{ Question : contains
+  Quiz ||--o{ QuizAttempt : attempted
+  QuizAttempt ||--o{ Answer : has
+  Question ||--o{ Answer : answered
+  Question ||--o{ ReviewCard : scheduled_as
+  User {
+    string id PK
+    string email UK
+    string passwordHash
+    string name
+    enum role "STUDENT ADMIN TEACHER"
+    string locale
+  }
+  Group {
+    string id PK
+    string code "TI-241"
+    int year
+    string faculty
+  }
+  Subject {
+    string id PK
+    string name
+    string color
+    int semester
+  }
+  TimetableEntry {
+    string id PK
+    int weekday
+    int slot
+    enum weekParity "ALL ODD EVEN"
+    enum kind "LECTURE LAB SEMINAR EXAM"
+    string room
+    string teacher
+    date validFrom
+    date validTo
+  }
+  Task {
+    string id PK
+    string title
+    enum status
+    enum priority
+    date dueDate
+    text notes
+  }
+  Material {
+    string id PK
+    string title
+    string storageKey
+    string mime
+    int size
+    string sha256
+    enum ingestStatus
+  }
+  DocumentChunk {
+    string id PK
+    int ordinal
+    text content
+    vector embedding "optional pgvector"
+  }
+  GradeScheme {
+    string id PK
+    string formula "g1*15%+...+g5*40%"
+  }
+  GradeStage {
+    string id PK
+    string variable
+    string name
+  }
+  GradeEntry {
+    string id PK
+    decimal value
+  }
+  Quiz {
+    string id PK
+    enum difficulty
+    enum questionType
+    string model
+    string promptVersion
+  }
+  Question {
+    string id PK
+    text stem
+    json options
+    string correctOptionId
+    string topic
+    text explanation
+    text sourceExcerpt
+    float validatorScore
+  }
+  QuizAttempt {
+    string id PK
+    datetime startedAt
+    datetime finishedAt
+    int score
+  }
+  Answer {
+    string id PK
+    string selectedOptionId
+    bool isCorrect
+    int timeMs
+  }
+  ReviewCard {
+    string id PK
+    date dueOn
+    float easiness
+    int interval
+    int repetitions
+  }
+</pre>
+      <figcaption>
+        ER-модель. Поля <code>model</code>, <code>promptVersion</code>,
+        <code>sourceExcerpt</code> и <code>validatorScore</code> нужны для
+        исследовательской части: без них нельзя воспроизвести эксперимент.
+      </figcaption>
+    </figure>
+
+    <h3>Замечания к модели</h3>
+    <ul>
+      <li>
+        <b>Enrollment</b> связывает студента с группой по семестру; расписание
+        берётся через группу, а не хранится у пользователя.
+      </li>
+      <li>
+        <b>TimetableEntry</b> с <code>validFrom/validTo</code> и чётностью
+        недели заменяет процедурный <code>demoWeek</code>. Исключения (перенос
+        пары) моделируются отдельной таблицей <code>TimetableException</code> во
+        фазе 3.
+      </li>
+      <li>
+        <b>GradeScheme</b> хранит формулу на предмет, как сейчас в UI; парсер из
+        <span class="mono">lib/grades.ts</span> переиспользуется на сервере без
+        изменений.
+      </li>
+      <li>
+        <b>DocumentChunk.embedding</b> опционален: если объём конспекта
+        помещается в контекст модели, RAG не нужен; pgvector включать только
+        если эксперимент покажет выигрыш.
+      </li>
+      <li>
+        <b>ReviewCard</b> реализует SM-2 для интервального повторения: это
+        дешёвый способ добавить в диплом второй измеримый эффект.
+      </li>
+    </ul>
+
+    <!-- ============================ 9 ============================ -->
+    <h2 id="s9">9. Дорожная карта</h2>
+    <div class="callout warn">
+      <p>
+        <b>Допущение о сроках.</b> План рассчитан на учебный год 2026/27 с
+        защитой в июне 2027. Если защита в январе, фазы 3 и 4 сжимаются до
+        одной, а локализация и PWA уходят в «дальнейшее развитие».
+      </p>
+    </div>
+
+    <figure>
+      <pre class="mermaid">
+gantt
+  title StudyFlow: план на учебный год
+  dateFormat YYYY-MM-DD
+  axisFormat %b
+  section 0 Стабилизация
+  Слияние auth, CI, релиз v0.1       :done, p0, 2026-09-14, 2026-09-27
+  section 1 Данные и домен
+  Схема, репозитории, Tasks/Subjects  :p1a, 2026-09-28, 2026-10-18
+  Materials + S3, Grades, Dashboard   :p1b, 2026-10-19, 2026-11-08
+  Импорт расписания UTM               :p1c, 2026-11-09, 2026-11-29
+  section 2 AI Exam Coach
+  Ингест документов, очередь          :p2a, 2026-11-30, 2026-12-20
+  Генерация + валидация вопросов      :p2b, 2026-12-21, 2027-01-24
+  История попыток, SM-2, аналитика    :p2c, 2027-01-25, 2027-02-14
+  section 3 Зрелость
+  Уведомления, ICS, PWA, i18n         :p3a, 2027-02-15, 2027-03-14
+  Безопасность, наблюдаемость, нагрузка :p3b, 2027-03-15, 2027-04-04
+  section 4 Исследование и защита
+  Эксперимент с пользователями        :p4a, 2027-04-05, 2027-04-30
+  Текст диплома, презентация          :p4b, 2027-05-01, 2027-06-06
+</pre>
+      <figcaption>
+        Календарный план. Каждая фаза заканчивается проверяемым критерием
+        выхода.
+      </figcaption>
+    </figure>
+
+    <div class="grid2">
+      <div class="phase">
+        <div class="when">Фаза 0 · 14–27 сентября 2026 · 2 недели</div>
+        <h3>Стабилизация</h3>
+        <p class="goal">Один источник правды, зелёный CI, первый релиз.</p>
+        <ul>
+          <li>Влить feature/backend/auth после ребейза и правок из 4.7.</li>
+          <li>
+            Перенести из imurd: <code>.node-version</code>, скрипты, три
+            CI-джоба, PR-шаблон, тесты schedule/ai-coach/database, Playwright.
+          </li>
+          <li>
+            Исправить F-01, F-06 (общая константа как временная мера), F-07,
+            F-08.
+          </li>
+          <li>Удалить 12 мёртвых веток, включить защиту develop и main.</li>
+          <li>
+            Release-merge в main, тег v0.1.0, CHANGELOG, ADR-001
+            (аутентификация), ADR-002 (Node/CI).
+          </li>
+        </ul>
+        <div class="gate">
+          <b>Критерий выхода:</b> вход и регистрация работают на деплое; CI с
+          тестами обязателен для merge; main = develop.
+        </div>
+      </div>
+
+      <div class="phase">
+        <div class="when">Фаза 1 · 28 сентября – 29 ноября 2026 · 9 недель</div>
+        <h3>Данные и домен</h3>
+        <p class="goal">
+          Каждый экран читает и пишет в PostgreSQL от имени пользователя.
+        </p>
+        <ul>
+          <li>
+            Миграция полной схемы (раздел 8), сид с реальными предметами и
+            группами FCIM.
+          </li>
+          <li>
+            Subject и Task: server actions, оптимистичные обновления, удаление
+            хардкода в 6 файлах.
+          </li>
+          <li>
+            Materials: MinIO локально, presigned upload, метаданные в БД,
+            ограничение по типам и размеру на сервере.
+          </li>
+          <li>
+            Grades: GradeScheme/GradeEntry, серверный расчёт тем же парсером,
+            история изменений.
+          </li>
+          <li>
+            Dashboard: агрегаты (занятия сегодня, дедлайны на 7 дней, прогресс).
+          </li>
+          <li>
+            Расписание: TimetableEntry по группе; импортёр PDF UTM (pdf.js или
+            pdfplumber) с экраном ручной проверки для администратора.
+          </li>
+          <li>
+            Роли TEACHER и ADMIN: минимальная админка для расписания и
+            предметов.
+          </li>
+        </ul>
+        <div class="gate">
+          <b>Критерий выхода:</b> ни одного <code>INITIAL_*</code> и
+          <code>demo*</code> в коде страниц; интеграционные тесты на каждый
+          репозиторий; e2e на вход → задание → материал.
+        </div>
+      </div>
+
+      <div class="phase">
+        <div class="when">
+          Фаза 2 · 30 ноября 2026 – 14 февраля 2027 · 11 недель
+        </div>
+        <h3>Настоящий AI Exam Coach</h3>
+        <p class="goal">
+          Из загруженного конспекта получаются валидные вопросы, результаты
+          сохраняются и влияют на следующий тест.
+        </p>
+        <ul>
+          <li>
+            Ингест: извлечение текста из PDF/DOCX, нормализация, чанки по 1–2
+            тыс. токенов, статус <code>ingestStatus</code>, очередь pg-boss.
+          </li>
+          <li>
+            Генерация: промпт с педагогической рамкой (таксономия Блума по
+            уровням сложности), structured output по схеме Question,
+            обязательные <code>explanation</code> и <code>sourceExcerpt</code>.
+          </li>
+          <li>
+            Валидация: второй проход моделью (правильность ответа по источнику,
+            единственность правильного варианта, качество дистракторов),
+            отсечение ниже порога, лог отклонённых для анализа.
+          </li>
+          <li>
+            Попытки и ответы в БД; экран результатов на реальных данных;
+            «Проработать слабые темы» генерирует по слабым темам.
+          </li>
+          <li>SM-2 карточки повторения и раздел «На сегодня» на дашборде.</li>
+          <li>
+            Стоимость: кэширование по sha256 материала + параметрам, лимит
+            генераций на пользователя в день, учёт токенов.
+          </li>
+        </ul>
+        <div class="gate">
+          <b>Критерий выхода:</b> на golden-наборе из 10 конспектов ≥ 85%
+          вопросов проходят валидатор и ≥ 80% признаются корректными двумя
+          преподавателями; p95 времени генерации 10 вопросов ≤ 30 с.
+        </div>
+      </div>
+
+      <div class="phase">
+        <div class="when">Фаза 3 · 15 февраля – 4 апреля 2027 · 7 недель</div>
+        <h3>Зрелость продукта</h3>
+        <p class="goal">
+          Приложением можно пользоваться каждый день на телефоне.
+        </p>
+        <ul>
+          <li>
+            Уведомления о дедлайнах: email (Resend) и Web Push; настройки
+            пользователя.
+          </li>
+          <li>Экспорт расписания и дедлайнов в ICS, подписка календаря.</li>
+          <li>PWA: манифест, офлайн-кэш расписания, установка на телефон.</li>
+          <li>
+            Локализация ru/ro/en через next-intl; тёмная тема через токены.
+          </li>
+          <li>
+            Безопасность: rate-limit, CSP, аудит зависимостей, проверка
+            владельца во всех запросах, OWASP ASVS L1 чеклист.
+          </li>
+          <li>
+            Наблюдаемость: структурные логи, Sentry, метрики генерации;
+            нагрузочный тест k6 на 200 одновременных пользователей.
+          </li>
+          <li>Доступность: аудит axe на всех страницах, WCAG 2.1 AA.</li>
+        </ul>
+        <div class="gate">
+          <b>Критерий выхода:</b> Lighthouse ≥ 90 по всем категориям на
+          мобильном; 0 критических находок axe; отчёт по безопасности приложен к
+          диплому.
+        </div>
+      </div>
+
+      <div class="phase">
+        <div class="when">Фаза 4 · 5 апреля – 6 июня 2027 · 9 недель</div>
+        <h3>Исследование и защита</h3>
+        <p class="goal">Измерить эффект и оформить.</p>
+        <ul>
+          <li>
+            Пилот с одной–двумя группами (20–40 студентов) в течение 3 недель;
+            согласие на обработку данных.
+          </li>
+          <li>Сбор метрик (раздел 10), опросник SUS, интервью.</li>
+          <li>
+            Заморозка функциональности, релиз v1.0, документация для
+            пользователя и администратора.
+          </li>
+          <li>Текст диплома, презентация, демо-стенд, репетиция защиты.</li>
+        </ul>
+        <div class="gate">
+          <b>Критерий выхода:</b> диплом сдан, приложение развёрнуто,
+          репозиторий с тегом v1.0 и воспроизводимой инструкцией.
+        </div>
+      </div>
+    </div>
+
+    <!-- ============================ 10 ============================ -->
+    <h2 id="s10">10. Исследовательская часть диплома</h2>
+    <p>
+      Инженерная работа без измеримого вопроса остаётся курсовым проектом. Ниже
+      две связанные гипотезы, которые проект способен проверить на собственных
+      данных.
+    </p>
+
+    <h3>Гипотеза A. Качество автоматически сгенерированных вопросов</h3>
+    <ul>
+      <li>
+        <b>Вопрос:</b> какая стратегия генерации даёт больше педагогически
+        валидных вопросов при одинаковом бюджете: (1) полный конспект в
+        контекст, (2) RAG по чанкам, (3) генерация + отдельный валидатор.
+      </li>
+      <li>
+        <b>Данные:</b> golden-набор из 10 конспектов по 5 предметам FCIM, по 20
+        вопросов на конспект и стратегию, итого около 600 вопросов.
+      </li>
+      <li>
+        <b>Метрики:</b> доля вопросов, прошедших валидатор; доля корректных по
+        оценке двух преподавателей (каппа Коэна для согласия); распределение по
+        уровням Блума; доля «утечки ответа» в формулировке; стоимость и
+        латентность на вопрос.
+      </li>
+      <li>
+        <b>Метод:</b> слепая экспертная оценка по рубрике из 5 критериев;
+        статистика: тест хи-квадрат по долям, доверительные интервалы.
+      </li>
+    </ul>
+
+    <h3>Гипотеза B. Эффект интервального повторения</h3>
+    <ul>
+      <li>
+        <b>Вопрос:</b> повышает ли SM-2 расписание повторений точность ответов
+        на отложенном тесте через 2 недели по сравнению со свободной
+        самопроверкой.
+      </li>
+      <li>
+        <b>Дизайн:</b> две группы студентов (внутри пилота), одинаковый
+        материал, контроль через 14 дней; сравнение долей правильных ответов
+        (t-критерий или Манна–Уитни), размер эффекта Коэна.
+      </li>
+      <li>
+        <b>Ограничения:</b> малая выборка, самоотбор; честно описать в главе об
+        ограничениях.
+      </li>
+    </ul>
+
+    <h3>Продуктовые метрики пилота</h3>
+    <div class="tablewrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Метрика</th>
+            <th>Как измеряется</th>
+            <th>Цель для пилота</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Удержание WAU/зарегистрированные</td>
+            <td>События входа</td>
+            <td>≥ 50% за 3 недели</td>
+          </tr>
+          <tr>
+            <td>Доля заданий, закрытых до дедлайна</td>
+            <td>Task.status и dueDate</td>
+            <td>рост против первой недели</td>
+          </tr>
+          <tr>
+            <td>Тестов пройдено на пользователя</td>
+            <td>QuizAttempt</td>
+            <td>≥ 3</td>
+          </tr>
+          <tr>
+            <td>SUS</td>
+            <td>Опросник из 10 пунктов</td>
+            <td>≥ 70</td>
+          </tr>
+          <tr>
+            <td>Стоимость генерации</td>
+            <td>Токены × тариф</td>
+            <td>≤ 0,05 $ на тест из 10 вопросов</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- ============================ 11 ============================ -->
+    <h2 id="s11">11. Риски и меры</h2>
+    <div class="tablewrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Риск</th>
+            <th>Вероятность</th>
+            <th>Влияние</th>
+            <th>Мера</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>next-auth 5 остаётся в beta, ломающие изменения</td>
+            <td>средняя</td>
+            <td>среднее</td>
+            <td>
+              Изолировать за собственным модулем <code>lib/auth</code>; ADR с
+              планом миграции на Better Auth; проверка в декабре.
+            </td>
+          </tr>
+          <tr>
+            <td>Команда из 7 человек разойдётся после первого семестра</td>
+            <td>высокая</td>
+            <td>высокое</td>
+            <td>
+              Фазы 0–1 делать всей командой, фазы 2–4 рассчитаны на 1–2 человек;
+              владелец каждого модуля назначен и записан в CODEOWNERS.
+            </td>
+          </tr>
+          <tr>
+            <td>Расписание UTM в PDF меняет формат</td>
+            <td>высокая</td>
+            <td>среднее</td>
+            <td>
+              Импортёр с ручной проверкой, а не полностью автоматический;
+              хранить исходный PDF рядом с записями.
+            </td>
+          </tr>
+          <tr>
+            <td>Стоимость и лимиты API модели</td>
+            <td>средняя</td>
+            <td>среднее</td>
+            <td>
+              Кэш по хэшу материала, дневной лимит, компактная модель для
+              валидации, учёт токенов с первой недели фазы 2.
+            </td>
+          </tr>
+          <tr>
+            <td>Персональные данные студентов (оценки)</td>
+            <td>средняя</td>
+            <td>высокое</td>
+            <td>
+              Минимизация: оценки вводит сам студент; шифрование at rest на
+              хостинге; политика удаления аккаунта; согласие в пилоте.
+            </td>
+          </tr>
+          <tr>
+            <td>Next.js 16 / React 19 быстро обновляются</td>
+            <td>средняя</td>
+            <td>низкое</td>
+            <td>
+              Renovate с еженедельным окном, обновления только при зелёном CI.
+            </td>
+          </tr>
+          <tr>
+            <td>Галлюцинации модели в вопросах</td>
+            <td>высокая</td>
+            <td>высокое</td>
+            <td>
+              Обязательный <code>sourceExcerpt</code>, валидатор, кнопка
+              «пожаловаться на вопрос», отчёт о доле отклонённых в дипломе.
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- ============================ 12 ============================ -->
+    <h2 id="s12">12. Отображение на структуру диплома</h2>
+    <div class="tablewrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Глава</th>
+            <th>Содержание</th>
+            <th>Источник в проекте</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>1. Анализ предметной области</td>
+            <td>
+              Проблемы студента UTM, обзор аналогов (Moodle, Notion, Google
+              Classroom, Anki), требования
+            </td>
+            <td>Этот аудит, интервью в пилоте</td>
+          </tr>
+          <tr>
+            <td>2. Проектирование</td>
+            <td>
+              Архитектура, ADR, ER-модель, API-контракты, UI-система,
+              безопасность
+            </td>
+            <td>Разделы 7–8, <code>docs/adr/*</code>, zod-схемы</td>
+          </tr>
+          <tr>
+            <td>3. Реализация</td>
+            <td>
+              Стек, слои, парсер формул, импорт расписания, ингест документов,
+              генерация и валидация вопросов, SM-2
+            </td>
+            <td>Код фаз 1–2</td>
+          </tr>
+          <tr>
+            <td>4. Тестирование и качество</td>
+            <td>
+              Пирамида тестов, CI, метрики покрытия, нагрузка, доступность,
+              безопасность
+            </td>
+            <td>Раздел 5, отчёты CI и Playwright, k6, axe</td>
+          </tr>
+          <tr>
+            <td>5. Исследование</td>
+            <td>
+              Методика, golden-набор, экспертная оценка, пилот, статистика,
+              ограничения
+            </td>
+            <td>Раздел 10, таблицы Quiz/Question/Attempt</td>
+          </tr>
+          <tr>
+            <td>6. Экономическая часть</td>
+            <td>
+              Стоимость хостинга и API, трудозатраты, сравнение с покупкой
+              готового решения
+            </td>
+            <td>Учёт токенов, тарифы Vercel/Neon</td>
+          </tr>
+          <tr>
+            <td>Заключение и развитие</td>
+            <td>
+              Итоги, что не вошло: TimetableException, мобильное приложение,
+              интеграция с ИС университета
+            </td>
+            <td></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- ============================ 13 ============================ -->
+    <h2 id="s13">13. Что сделать в первые две недели</h2>
+    <p>
+      Конкретный список PR в порядке слияния. Каждый помещается в один день
+      работы одного человека.
+    </p>
+    <ol>
+      <li>
+        <b>chore: node and scripts.</b> <code>.node-version</code> = 22,
+        <code>engines</code>, скрипты <code>test</code>, <code>typecheck</code>,
+        <code>format:check</code>. Перенос тестов schedule и ai-coach из imurd.
+      </li>
+      <li>
+        <b>ci: quality, database, browser.</b> Три джоба из imurd с триггером на
+        develop и main; Playwright и интеграционный тест БД. Включить branch
+        protection.
+      </li>
+      <li>
+        <b>fix: cn import and dead deps.</b> F-01, удаление пакетов
+        <code>cn</code> и <code>radix-ui</code>, правило
+        <code>no-restricted-imports</code>.
+      </li>
+      <li>
+        <b>feat: auth (rebase of feature/backend/auth).</b> Плюс нормализация
+        email, zod, обработка невалидного JSON, запрет дефолтного пароля
+        администратора в production.
+      </li>
+      <li>
+        <b>refactor: shared subjects and formatters.</b>
+        <code>lib/subjects.ts</code> как временный единый список,
+        <code>lib/format.ts</code>, удаление дублей
+        <code>inputClass</code> через <code>components/ui/input.tsx</code>.
+      </li>
+      <li>
+        <b>chore: product name.</b> Замена StudyHub/StudyFlow на выбранное имя,
+        метаданные, favicon, README с описанием продукта, а не шаблон
+        create-next-app.
+      </li>
+      <li>
+        <b>docs: ADR-001 auth, ADR-002 toolchain, CONTRIBUTING, CODEOWNERS.</b>
+      </li>
+      <li>
+        <b>release: v0.1.0.</b> Merge develop → main, тег, CHANGELOG, деплой на
+        Vercel по подготовленному workflow.
+      </li>
+      <li>
+        <b>chore: delete merged branches</b> и закрыть feature/ui-design-system
+        после переноса empty-state, error-state, loading-indicator.
+      </li>
+      <li>
+        <b>feat: prisma schema v1.</b> Полная схема из раздела 8 одной миграцией
+        и сид; открывает фазу 1.
+      </li>
+    </ol>
+
+    <p class="small" style="margin-top: 40px">
+      Аудит выполнен по состоянию репозитория на 10 сентября 2026:
+      origin/develop 98732c4, 17 удалённых веток, 56 коммитов. Локальные
+      проверки выполнены на Node 20.19.2 в изолированном worktree.
+    </p>
+  </main>
+</div>
