@@ -75,6 +75,7 @@ model AcademicYear {
   name               String     @unique
   startsOn           DateTime   @db.Date
   endsOn             DateTime   @db.Date
+  // Monday starting the first odd week. Holidays do not reset the count.
   firstOddWeekMonday DateTime   @db.Date
   semesters          Semester[]
 }
@@ -114,6 +115,7 @@ model Subgroup {
 model Subject {
   id       String   @id @default(cuid())
   name     String   @unique
+  // Palette key; CSS classes belong to the frontend.
   colorKey String   @default("blue")
   lessons  Lesson[]
 }
@@ -145,6 +147,7 @@ model Lesson {
   id           String           @id @default(cuid())
   scheduleId   String
   subjectId    String
+  // Monday = 0, Sunday = 6.
   weekday      Int
   startMinutes Int
   endMinutes   Int
@@ -167,6 +170,7 @@ model LessonAudience {
   id         String     @id @default(cuid())
   lessonId   String
   groupId    String
+  // Null means the entire group, not an unknown subgroup.
   subgroupId String?
   lesson     Lesson     @relation(fields: [lessonId], references: [id], onDelete: Cascade)
   group      StudyGroup @relation(fields: [groupId], references: [id], onDelete: Restrict)
@@ -279,9 +283,9 @@ model Document {
   errorMessage String?
   createdAt    DateTime       @default(now())
 
-  user    User            @relation(fields: [userId], references: [id])
-  subject FacultySubject? @relation(fields: [subjectId], references: [id])
-  topic   Topic?          @relation(fields: [topicId], references: [id])
+  user    User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subject FacultySubject? @relation(fields: [subjectId], references: [id], onDelete: SetNull)
+  topic   Topic?          @relation(fields: [topicId], references: [id], onDelete: SetNull)
 }
 
 model QuizSession {
@@ -291,7 +295,7 @@ model QuizSession {
   completedAt DateTime?
   createdAt   DateTime  @default(now())
 
-  user      User                  @relation(fields: [userId], references: [id])
+  user      User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
   questions QuizSessionQuestion[]
   answers   QuizAnswer[]
 }

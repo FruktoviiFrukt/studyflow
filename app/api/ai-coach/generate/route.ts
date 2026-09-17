@@ -8,10 +8,7 @@ import {
   writeTopicQuestions,
   type StoredQuestion,
 } from "@/lib/questions-file";
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const mammoth = require("mammoth") as {
-  extractRawText: (opts: { buffer: Buffer }) => Promise<{ value: string }>;
-};
+import mammoth from "mammoth";
 
 // ---------------------------------------------------------------------------
 // Gemini types
@@ -77,9 +74,9 @@ async function callGemini(
   apiKey: string,
   parts: GeminiPart[],
 ): Promise<string> {
-  const res = await fetch(`${GEMINI_URL}?key=${apiKey}`, {
+  const res = await fetch(GEMINI_URL, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
     body: JSON.stringify({
       contents: [{ parts }],
       generationConfig: {
@@ -103,10 +100,17 @@ async function callGemini(
   if (!res.ok) {
     const body = await res.text();
     console.error(`[Gemini] ${res.status} ${GEMINI_URL}\n${body}`);
-    const err = new Error(`Gemini error ${res.status}: ${body}`) as Error & {
+    const err = new Error(`Gemini error ${res.status}`) as Error & {
       geminiStatus: number;
+      invalidKey: boolean;
     };
     err.geminiStatus = res.status;
+    // Gemini answers 400 both for a bad key and for a malformed request
+    // (e.g. an oversized attachment); tell them apart by the error reason.
+    err.invalidKey =
+      res.status === 401 ||
+      res.status === 403 ||
+      (res.status === 400 && /API[_ ]KEY/i.test(body));
     throw err;
   }
 
@@ -550,6 +554,7 @@ function handleGeminiError(err: unknown): NextResponse {
     status?: number;
     retryAfter?: number;
     geminiStatus?: number;
+    invalidKey?: boolean;
   };
   if (e.status === 429) {
     return NextResponse.json(
@@ -557,12 +562,17 @@ function handleGeminiError(err: unknown): NextResponse {
       { status: 503 },
     );
   }
-  if (
-    e.geminiStatus === 400 ||
-    e.geminiStatus === 401 ||
-    e.geminiStatus === 403
-  ) {
+  if (e.invalidKey) {
     return NextResponse.json({ message: "INVALID_API_KEY" }, { status: 502 });
+  }
+  if (e.geminiStatus === 400) {
+    return NextResponse.json(
+      {
+        message:
+          "Gemini отклонил запрос — уменьшите объём материала или вложений",
+      },
+      { status: 502 },
+    );
   }
   if (e.geminiStatus === 404) {
     return NextResponse.json(

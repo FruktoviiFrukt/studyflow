@@ -12,6 +12,8 @@ function shuffle<T>(arr: T[]): T[] {
   return a;
 }
 
+const MAX_TOPICS = 50;
+
 const DIFFICULTY_MAP: Record<string, StoredQuestion["difficulty"]> = {
   easy: "EASY",
   medium: "MEDIUM",
@@ -33,7 +35,12 @@ export async function POST(request: Request) {
 
   const { topicIds, difficulty, count } = body;
 
-  if (!Array.isArray(topicIds) || topicIds.length === 0) {
+  if (
+    !Array.isArray(topicIds) ||
+    topicIds.length === 0 ||
+    topicIds.length > MAX_TOPICS ||
+    !topicIds.every((id) => typeof id === "string" && id.length <= 64)
+  ) {
     return NextResponse.json(
       { message: "Выберите хотя бы одну тему" },
       { status: 400 },

@@ -4,13 +4,16 @@ import { prisma } from "@/lib/prisma";
 import { encryptApiKey } from "@/lib/byok";
 
 const GEMINI_VALIDATE_URL =
-  "https://generativelanguage.googleapis.com/v1beta/models?key=";
+  "https://generativelanguage.googleapis.com/v1beta/models";
 
 async function validateGeminiKey(
   key: string,
 ): Promise<{ ok: true } | { ok: false; message: string }> {
   try {
-    const res = await fetch(`${GEMINI_VALIDATE_URL}${key}`);
+    // The key travels in a header, not in the URL, so it never lands in access logs.
+    const res = await fetch(GEMINI_VALIDATE_URL, {
+      headers: { "x-goog-api-key": key },
+    });
     if (res.ok) return { ok: true };
 
     let hint = "Проверьте ключ в Google AI Studio";
