@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
@@ -6,9 +7,11 @@ import {
   addTopicQuestions,
   DIFFICULTY_BY_LEVEL,
   listTopicQuestions,
+  questionTextHash,
   shuffle,
   toClientQuestion,
   type NewQuestion,
+  type StoredQuestion,
 } from "@/lib/server/question-bank";
 import mammoth from "mammoth";
 
@@ -213,11 +216,11 @@ Rules:
 function buildStoredQuestion(
   q: GeminiQuestion,
   difficulty: StoredQuestion["difficulty"],
-): StoredQuestion {
+): Omit<StoredQuestion, "topicId" | "topicName"> {
   return {
     id: randomUUID(),
     text: q.text,
-    textHash: textHash(q.text),
+    textHash: questionTextHash(q.text),
     type: q.type,
     difficulty,
     options: q.options.map((o) => ({

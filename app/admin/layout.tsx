@@ -6,7 +6,7 @@ const adminSections = [
   { href: "/admin/users", label: "Пользователи" },
   { href: "/admin/subjects", label: "Дисциплины" },
   { href: "/admin/schedule", label: "Расписание" },
-  { href: "/admin/ai-coach", label: "AI Coach" },
+  { href: "/admin/materials", label: "Материалы" },
 ];
 
 type AdminLayoutProps = {
@@ -27,7 +27,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
           </h1>
 
           <p className="mt-2 text-sm text-gray-500">
-            Управление пользователями, дисциплинами и расписанием
+            Управление пользователями, расписанием и учебными материалами
           </p>
         </header>
 
