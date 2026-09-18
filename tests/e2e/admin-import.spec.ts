@@ -222,6 +222,100 @@ test("real PDF draft, access control, edit, holiday, publication and student API
   }
 });
 
+test("one PDF creates both schedule drafts and remains available until both are deleted", async ({
+  playwright,
+}) => {
+  const db = new PrismaClient({
+    adapter: new PrismaPg({
+      connectionString: process.env.IMPORT_TEST_DATABASE_URL,
+    }),
+  });
+  const adminId = `paired-import-${randomUUID()}`;
+  const token = await encode({
+    secret: "import-test-secret-only",
+    salt: "authjs.session-token",
+    token: { id: adminId, sub: adminId, role: "ADMIN" },
+  });
+  const admin = await playwright.request.newContext({
+    baseURL: "http://127.0.0.1:3103",
+    extraHTTPHeaders: { Cookie: `authjs.session-token=${token}` },
+  });
+  const ids: string[] = [];
+  try {
+    await db.user.create({
+      data: {
+        id: adminId,
+        role: "ADMIN",
+        email: `${adminId}@example.invalid`,
+        name: adminId,
+        password: "test-unused",
+      },
+    });
+    const upload = await admin.post("/api/admin/schedule", {
+      multipart: {
+        kind: "GLOBAL",
+        createOther: "true",
+        year: "2028/2029",
+        course: "1",
+        semester: "1",
+        from: "2028-09-01",
+        to: "2028-12-20",
+        first: "2028-08-28",
+        file: {
+          name: "paired.pdf",
+          mimeType: "application/pdf",
+          buffer: await readFile(process.env.IMPORT_TEST_PDF!),
+        },
+      },
+      timeout: 180000,
+    });
+    expect(upload.ok(), await upload.text()).toBe(true);
+    const primary = await upload.json();
+    ids.push(primary.id);
+    expect(primary.kind).toBe("GLOBAL");
+    expect(primary.validFrom).toBe("2028-09-01");
+    expect(primary.validTo).toBe("2028-12-20");
+    const source = await db.scheduleImport.findUniqueOrThrow({
+      where: { id: primary.id },
+    });
+    const pair = await db.scheduleImport.findFirstOrThrow({
+      where: { sourceFileKey: source.sourceFileKey, id: { not: primary.id } },
+      include: { lessons: true },
+    });
+    ids.push(pair.id);
+    expect(pair.kind).toBe("STUDENT");
+    expect(pair.lessons).toHaveLength(primary.lessons.length);
+    expect(pair.validFrom).toEqual(source.validFrom);
+    expect(pair.validTo).toEqual(source.validTo);
+
+    const deleted = await admin.patch(`/api/admin/schedule/${primary.id}`, {
+      data: { action: "delete", version: primary.version },
+    });
+    expect(deleted.ok(), await deleted.text()).toBe(true);
+    ids.shift();
+    expect(
+      (await admin.get(`/api/admin/schedule/${pair.id}/source`)).ok(),
+    ).toBe(true);
+
+    const remaining = await admin.get("/api/admin/schedule");
+    const records = await remaining.json();
+    const paired = records.find(
+      (record: { id: string }) => record.id === pair.id,
+    );
+    const lastDeleted = await admin.patch(`/api/admin/schedule/${pair.id}`, {
+      data: { action: "delete", version: paired.version },
+    });
+    expect(lastDeleted.ok(), await lastDeleted.text()).toBe(true);
+    ids.shift();
+  } finally {
+    if (ids.length)
+      await db.scheduleImport.deleteMany({ where: { id: { in: ids } } });
+    await db.user.deleteMany({ where: { id: adminId } });
+    await db.$disconnect();
+    await admin.dispose();
+  }
+});
+
 test("global publication is visible only in the global API and rejects overlaps", async ({
   playwright,
 }) => {

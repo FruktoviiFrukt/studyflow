@@ -366,11 +366,7 @@ export default function ScheduleManager() {
             />
             <div className="flex flex-wrap gap-2 p-5">
               <Button variant="outline" onClick={() => setPreview(!preview)}>
-                {preview
-                  ? "Все занятия"
-                  : draft.kind === "GLOBAL"
-                    ? "Как в PDF"
-                    : "Как у студента"}
+                {preview ? "Все занятия" : "Как у студента"}
               </Button>
               {editable && (
                 <Button
@@ -625,8 +621,13 @@ export default function ScheduleManager() {
                 const body = await r.json();
                 if (!r.ok) throw new Error(body.message);
                 accept(body);
+                if (form.has("createOther")) void load();
                 setUpload(false);
-                setNotice("PDF обработан. Замечания к занятиям сохранены.");
+                setNotice(
+                  form.has("createOther")
+                    ? "PDF обработан. Созданы два черновика из одного файла. Замечания к занятиям сохранены."
+                    : "PDF обработан. Замечания к занятиям сохранены.",
+                );
               } catch (e) {
                 setError(e instanceof Error ? e.message : "Ошибка импорта");
               } finally {
@@ -650,6 +651,19 @@ export default function ScheduleManager() {
                   </option>
                 ))}
               </SelectField>
+              {(uploadKind === "STUDENT" || uploadKind === "GLOBAL") && (
+                <label className="flex cursor-pointer items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    name="createOther"
+                    value="true"
+                    className="h-4 w-4 accent-blue-600"
+                  />
+                  {uploadKind === "STUDENT"
+                    ? "Создать глобальное расписание"
+                    : "Создать расписание студента"}
+                </label>
+              )}
               <div className="grid grid-cols-3 gap-3">
                 <Field label="Учебный год">
                   <input
@@ -676,39 +690,31 @@ export default function ScheduleManager() {
                   <option value="2">2</option>
                 </SelectField>
               </div>
-              {uploadKind === "GLOBAL" ? (
-                <p className="rounded-lg bg-blue-50 p-3 text-sm text-blue-800">
-                  Для глобального расписания даты определяются выбранным
-                  семестром автоматически. После загрузки проверьте пары всех
-                  групп в режиме «Как в PDF».
-                </p>
-              ) : (
-                [
-                  ["Начало периода", from, setFrom],
-                  ["Конец периода", to, setTo],
-                  ["Первая нечётная неделя (понедельник)", first, setFirst],
-                ].map(([label, value, change]) => (
-                  <div key={label as string}>
-                    <p className="mb-1 text-sm">{label as string}</p>
-                    <DatePicker
-                      label={label as string}
-                      value={value as string}
-                      today={universityToday()}
-                      showValue
-                      mondaysOnly={change === setFirst}
-                      onSelect={change as (value: string) => void}
-                    />
-                    {change === setFirst && (
-                      <p className="mt-1 text-xs text-gray-500">
-                        Понедельник первой учебной недели года — от него
-                        считаются чётные и нечётные недели. Начало периода
-                        задаёт только срок действия этого расписания и не
-                        сбрасывает отсчёт недель.
-                      </p>
-                    )}
-                  </div>
-                ))
-              )}
+              {[
+                ["Начало периода", from, setFrom],
+                ["Конец периода", to, setTo],
+                ["Первая нечётная неделя (понедельник)", first, setFirst],
+              ].map(([label, value, change]) => (
+                <div key={label as string}>
+                  <p className="mb-1 text-sm">{label as string}</p>
+                  <DatePicker
+                    label={label as string}
+                    value={value as string}
+                    today={universityToday()}
+                    showValue
+                    mondaysOnly={change === setFirst}
+                    onSelect={change as (value: string) => void}
+                  />
+                  {change === setFirst && (
+                    <p className="mt-1 text-xs text-gray-500">
+                      Понедельник первой учебной недели года — от него считаются
+                      чётные и нечётные недели. Начало периода задаёт только
+                      срок действия этого расписания и не сбрасывает отсчёт
+                      недель.
+                    </p>
+                  )}
+                </div>
+              ))}
               {error && (
                 <p role="alert" className="text-sm text-red-600">
                   {error}

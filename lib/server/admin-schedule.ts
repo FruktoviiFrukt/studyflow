@@ -13,7 +13,6 @@ import {
   type ScheduleHoliday,
 } from "@/lib/admin-schedule";
 import { validateScheduleRange, academicWeek } from "./student-schedule";
-import { mondayOf } from "../schedule";
 
 const execute = promisify(execFile);
 const root = path.resolve(
@@ -268,7 +267,14 @@ export async function importSchedule(request: Request) {
   const kind = form.get("kind") ?? "STUDENT";
   if (typeof kind !== "string" || !Object.hasOwn(SCHEDULE_KIND_LABELS, kind))
     fail("Выберите тип расписания.");
-  let from = String(form.get("from") || ""),
+  const createOther = form.get("createOther");
+  if (createOther !== null && createOther !== "true")
+    fail("Некорректный выбор дополнительного расписания.");
+  if (createOther === "true" && kind !== "STUDENT" && kind !== "GLOBAL")
+    fail(
+      "Дополнительное расписание доступно только для студенческого и глобального типов.",
+    );
+  const from = String(form.get("from") || ""),
     to = String(form.get("to") || ""),
     first = String(form.get("first") || "");
   const course = Number(form.get("course")),
@@ -284,26 +290,6 @@ export async function importSchedule(request: Request) {
     fail("Проверьте год, курс и семестр.");
   const yearFrom = `${year.slice(0, 4)}-09-01`,
     yearTo = `${year.slice(5)}-08-31`;
-  if (kind === "GLOBAL") {
-    const existingYear = await prisma.academicYear.findUnique({
-      where: { name: year },
-      include: { semesters: { where: { number } } },
-    });
-    const existingSemester = existingYear?.semesters[0];
-    from = existingSemester
-      ? iso(existingSemester.startsOn)
-      : number === 1
-        ? yearFrom
-        : `${year.slice(5)}-01-01`;
-    to = existingSemester
-      ? iso(existingSemester.endsOn)
-      : number === 1
-        ? `${year.slice(0, 4)}-12-31`
-        : yearTo;
-    first = existingYear
-      ? iso(existingYear.firstOddWeekMonday)
-      : mondayOf(yearFrom);
-  }
   validateScheduleRange(from, to);
   academicWeek(from, first);
   if (
@@ -369,26 +355,35 @@ export async function importSchedule(request: Request) {
         });
         if (from < iso(semester.startsOn) || to > iso(semester.endsOn))
           fail("Период выходит за существующие границы семестра.");
-        const record = await tx.scheduleImport.create({
-          data: {
-            semesterId: semester.id,
-            course,
-            kind: kind as keyof typeof SCHEDULE_KIND_LABELS,
-            title: file.name,
-            sourceFilename: file.name,
-            sourceFileKey: key,
-            validFrom: date(from),
-            validTo: date(to),
-            importWarnings: extracted.warnings,
-          },
-        });
-        await saveLessons(tx, record.id, lessons);
-        return serializeSchedule(
-          await tx.scheduleImport.findUniqueOrThrow({
-            where: { id: record.id },
-            include,
-          }),
-        );
+        const kinds =
+          createOther === "true"
+            ? [kind, kind === "STUDENT" ? "GLOBAL" : "STUDENT"]
+            : [kind];
+        let primary: ReturnType<typeof serializeSchedule> | undefined;
+        for (const recordKind of kinds) {
+          const record = await tx.scheduleImport.create({
+            data: {
+              semesterId: semester.id,
+              course,
+              kind: recordKind as keyof typeof SCHEDULE_KIND_LABELS,
+              title: file.name,
+              sourceFilename: file.name,
+              sourceFileKey: key,
+              validFrom: date(from),
+              validTo: date(to),
+              importWarnings: extracted.warnings,
+            },
+          });
+          await saveLessons(tx, record.id, lessons);
+          const serialized = serializeSchedule(
+            await tx.scheduleImport.findUniqueOrThrow({
+              where: { id: record.id },
+              include,
+            }),
+          );
+          if (!primary) primary = serialized;
+        }
+        return primary!;
       },
       { timeout: 120000 },
     );
@@ -431,7 +426,13 @@ export async function changeSchedule(request: Request, id: string) {
           throw new HttpError(409, "Сначала верните расписание в черновик.");
         if (body.action === "delete") {
           await tx.scheduleImport.delete({ where: { id } });
-          removedFile = record.sourceFileKey;
+          if (
+            record.sourceFileKey &&
+            !(await tx.scheduleImport.count({
+              where: { sourceFileKey: record.sourceFileKey },
+            }))
+          )
+            removedFile = record.sourceFileKey;
           return { deleted: true };
         }
         if (body.action === "save") {
