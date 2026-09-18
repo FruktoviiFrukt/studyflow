@@ -23,6 +23,8 @@ import { Field, fieldClass, SelectField } from "./schedule-fields";
 import LessonEditor from "./schedule-lesson-editor";
 import Holidays from "./schedule-holidays";
 import Preview from "./schedule-student-preview";
+import GlobalTimetable from "@/components/schedule/global-timetable";
+import { adminGlobalTemplate, streamOf } from "@/lib/global-template-view";
 import DatePicker from "@/components/schedule/date-picker";
 import { universityToday } from "@/lib/schedule";
 
@@ -76,12 +78,14 @@ export default function ScheduleManager() {
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [upload, setUpload] = useState(false);
+  const [uploadKind, setUploadKind] = useState<ScheduleKind>("STUDENT");
   const [confirmation, setConfirmation] = useState<
     "publish" | "unpublish" | "delete" | null
   >(null);
   const [editing, setEditing] = useState<AdminLesson | null>(null);
   const [preview, setPreview] = useState(false);
   const [group, setGroup] = useState("");
+  const [stream, setStream] = useState("all");
   const [search, setSearch] = useState("");
   const [parity, setParity] = useState("odd");
   const [from, setFrom] = useState("");
@@ -164,7 +168,9 @@ export default function ScheduleManager() {
         name === "publish"
           ? draft.kind === "STUDENT"
             ? "Расписание опубликовано и доступно студентам."
-            : "Расписание опубликовано. Страница для выбранного типа ещё не подключена."
+            : draft.kind === "GLOBAL"
+              ? "Глобальное расписание опубликовано и доступно всем группам."
+              : "Расписание опубликовано. Страница для аттестаций ещё не подключена."
           : name === "delete"
             ? "Черновик удалён."
             : "Изменения сохранены в БД.",
@@ -182,6 +188,13 @@ export default function ScheduleManager() {
     ),
   ].sort();
   const selectedGroup = groups.includes(group) ? group : groups[0] || "";
+  const globalData =
+    draft?.kind === "GLOBAL" ? adminGlobalTemplate(draft.lessons) : null;
+  const streams = [
+    ...new Set(globalData?.groups.map((item) => streamOf(item.name)) || []),
+  ];
+  const selectedStream =
+    stream === "all" || streams.includes(stream) ? stream : "all";
   const issues = draft ? scheduleIssues(draft.lessons) : [];
   const editable = draft?.status === "draft";
   const filteredRecords = records.filter(
@@ -383,15 +396,30 @@ export default function ScheduleManager() {
             {preview ? (
               <>
                 <div className="grid gap-3 px-5 pb-5 sm:grid-cols-2">
-                  <SelectField
-                    label="Группа"
-                    value={selectedGroup}
-                    onChange={(e) => setGroup(e.target.value)}
-                  >
-                    {groups.map((g) => (
-                      <option key={g}>{g}</option>
-                    ))}
-                  </SelectField>
+                  {globalData ? (
+                    <SelectField
+                      label="Поток"
+                      value={selectedStream}
+                      onChange={(event) => setStream(event.target.value)}
+                    >
+                      <option value="all">Все потоки</option>
+                      {streams.map((item) => (
+                        <option key={item} value={item}>
+                          {item}
+                        </option>
+                      ))}
+                    </SelectField>
+                  ) : (
+                    <SelectField
+                      label="Группа"
+                      value={selectedGroup}
+                      onChange={(e) => setGroup(e.target.value)}
+                    >
+                      {groups.map((g) => (
+                        <option key={g}>{g}</option>
+                      ))}
+                    </SelectField>
+                  )}
                   <SelectField
                     label="Чётность"
                     value={parity}
@@ -401,16 +429,39 @@ export default function ScheduleManager() {
                     <option value="even">Чётная</option>
                   </SelectField>
                 </div>
-                <Preview
-                  lessons={draft.lessons.filter((l) =>
-                    matchesStudent(l, selectedGroup, parity),
-                  )}
-                  holidays={draft.holidays || []}
-                  day=""
-                  editable={editable}
-                  issueIds={new Set(issues.map((i) => i.id))}
-                  onEdit={setEditing}
-                />
+                {globalData ? (
+                  <GlobalTimetable
+                    data={globalData}
+                    groups={globalData.groups.filter(
+                      (item) =>
+                        selectedStream === "all" ||
+                        streamOf(item.name) === selectedStream,
+                    )}
+                    parity={parity === "even" ? "EVEN" : "ODD"}
+                    issueIds={new Set(issues.map((issue) => issue.id))}
+                    onEdit={
+                      editable
+                        ? (id) => {
+                            const lesson = draft.lessons.find(
+                              (item) => item.id === id,
+                            );
+                            if (lesson) setEditing(lesson);
+                          }
+                        : undefined
+                    }
+                  />
+                ) : (
+                  <Preview
+                    lessons={draft.lessons.filter((l) =>
+                      matchesStudent(l, selectedGroup, parity),
+                    )}
+                    holidays={draft.holidays || []}
+                    day=""
+                    editable={editable}
+                    issueIds={new Set(issues.map((i) => i.id))}
+                    onEdit={setEditing}
+                  />
+                )}
               </>
             ) : (
               <div className="max-h-[65vh] overflow-auto">
@@ -570,8 +621,13 @@ export default function ScheduleManager() {
                 const body = await r.json();
                 if (!r.ok) throw new Error(body.message);
                 accept(body);
+                if (form.has("createOther")) void load();
                 setUpload(false);
-                setNotice("PDF обработан. Замечания к занятиям сохранены.");
+                setNotice(
+                  form.has("createOther")
+                    ? "PDF обработан. Созданы два черновика из одного файла. Замечания к занятиям сохранены."
+                    : "PDF обработан. Замечания к занятиям сохранены.",
+                );
               } catch (e) {
                 setError(e instanceof Error ? e.message : "Ошибка импорта");
               } finally {
@@ -584,7 +640,10 @@ export default function ScheduleManager() {
               <SelectField
                 label="Тип расписания"
                 name="kind"
-                defaultValue="STUDENT"
+                value={uploadKind}
+                onChange={(event) =>
+                  setUploadKind(event.target.value as ScheduleKind)
+                }
               >
                 {Object.entries(SCHEDULE_KIND_LABELS).map(([value, label]) => (
                   <option key={value} value={value}>
@@ -592,6 +651,19 @@ export default function ScheduleManager() {
                   </option>
                 ))}
               </SelectField>
+              {(uploadKind === "STUDENT" || uploadKind === "GLOBAL") && (
+                <label className="flex cursor-pointer items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    name="createOther"
+                    value="true"
+                    className="h-4 w-4 accent-blue-600"
+                  />
+                  {uploadKind === "STUDENT"
+                    ? "Создать глобальное расписание"
+                    : "Создать расписание студента"}
+                </label>
+              )}
               <div className="grid grid-cols-3 gap-3">
                 <Field label="Учебный год">
                   <input
@@ -668,7 +740,9 @@ export default function ScheduleManager() {
               {confirmation === "publish"
                 ? draft?.kind === "STUDENT"
                   ? "Расписание станет доступно студентам."
-                  : "Расписание получит статус опубликованного. Страница для выбранного типа ещё не подключена."
+                  : draft?.kind === "GLOBAL"
+                    ? "Глобальное расписание станет доступно на странице всех групп."
+                    : "Расписание получит статус опубликованного. Страница аттестаций ещё не подключена."
                 : confirmation === "unpublish"
                   ? "Расписание будет скрыто от студентов до повторной публикации."
                   : "Черновик и его занятия будут удалены из БД."}

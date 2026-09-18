@@ -76,6 +76,113 @@ async function reply(route: Route, kind = "READY", name?: string) {
   await route.fulfill({ json: payload(route.request().url(), kind, name) });
 }
 
+test("global page switches course and semester without a date picker", async ({
+  page,
+}) => {
+  const requests: string[] = [];
+  await page.route("**/api/schedule/global/template?*", async (route) => {
+    const url = new URL(route.request().url());
+    requests.push(url.search);
+    const course = Number(url.searchParams.get("course"));
+    const semester = Number(url.searchParams.get("semester"));
+    const groups =
+      course === 1 && semester === 1
+        ? [
+            { id: "sd", name: "SD-241" },
+            { id: "ti1", name: "TI-241" },
+            { id: "ti2", name: "TI-242" },
+          ]
+        : [{ id: "other", name: `OTHER-${course}${semester}` }];
+    await route.fulfill({
+      json: {
+        course,
+        academicYear: "2026/2027",
+        semester,
+        groups,
+        days: Array.from({ length: 7 }, (_, weekday) => ({
+          weekday,
+          lessons:
+            weekday === 0
+              ? [
+                  {
+                    id: "shared",
+                    weekday,
+                    weekPattern: "ODD",
+                    groupIds: ["ti1", "ti2"],
+                    startMinutes: 585,
+                    endMinutes: 675,
+                    subject: {
+                      id: "math",
+                      name: "Математика",
+                      colorKey: "blue",
+                    },
+                    type: "LECTURE",
+                    teacher: "Преподаватель",
+                    classroom: "301",
+                    topic: null,
+                  },
+                  {
+                    id: "even",
+                    weekday,
+                    weekPattern: "EVEN",
+                    groupIds: ["ti1"],
+                    startMinutes: 585,
+                    endMinutes: 675,
+                    subject: {
+                      id: "physics",
+                      name: "Физика",
+                      colorKey: "blue",
+                    },
+                    type: "LECTURE",
+                    teacher: null,
+                    classroom: null,
+                    topic: null,
+                  },
+                ]
+              : [],
+        })),
+      },
+    });
+  });
+  await page.goto("/schedule/global");
+  await expect(
+    page.getByRole("columnheader", { name: "TI-241" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("columnheader", { name: "SD-241" }),
+  ).toBeVisible();
+  await expect(page.getByText("Математика", { exact: true })).toHaveCount(1);
+  await expect(page.getByText("Физика", { exact: true })).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: "Выбрать неделю" }),
+  ).toHaveCount(0);
+  const initialRequests = requests.length;
+  await page.getByRole("combobox", { name: "Направление" }).click();
+  await page.getByRole("option", { name: "TI" }).click();
+  await expect(page.getByRole("columnheader", { name: "SD-241" })).toHaveCount(
+    0,
+  );
+  await page.getByRole("button", { name: "Чётная", exact: true }).click();
+  await expect(page.getByText("Физика", { exact: true })).toBeVisible();
+  await expect(page.getByText("Математика", { exact: true })).toHaveCount(0);
+  expect(requests.length).toBe(initialRequests);
+  await page.getByRole("button", { name: "2 курс" }).click();
+  await expect(
+    page.getByRole("columnheader", { name: "OTHER-21" }),
+  ).toBeVisible();
+  expect(requests.some((value) => value.includes("course=2&semester=1"))).toBe(
+    true,
+  );
+  await page.getByRole("combobox", { name: "Семестр" }).click();
+  await page.getByRole("option", { name: "2 семестр" }).click();
+  await expect(
+    page.getByRole("columnheader", { name: "OTHER-22" }),
+  ).toBeVisible();
+  expect(requests.some((value) => value.includes("course=2&semester=2"))).toBe(
+    true,
+  );
+});
+
 test("API data, seven slots, holidays, nullable topic and day navigation", async ({
   page,
 }) => {
