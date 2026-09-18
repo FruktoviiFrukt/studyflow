@@ -2,7 +2,7 @@ export type TaskStatus = "todo" | "in_progress" | "done";
 export type TaskPriority = "high" | "medium" | "low";
 
 export interface Task {
-  id: number;
+  id: string;
   title: string;
   subject: string;
   type: string;
@@ -36,89 +36,6 @@ export const TASK_PRIORITIES: { value: TaskPriority; label: string }[] = [
   { value: "high", label: "Высокий" },
   { value: "medium", label: "Средний" },
   { value: "low", label: "Низкий" },
-];
-
-export const INITIAL_TASKS: Task[] = [
-  {
-    id: 1,
-    title: "Лабораторная работа №4",
-    subject: "Программирование",
-    type: "Лабораторная",
-    priority: "high",
-    dueDate: "2026-09-09",
-    status: "todo",
-    notes: "",
-  },
-  {
-    id: 2,
-    title: "Практическая работа",
-    subject: "Базы данных",
-    type: "Практика",
-    priority: "medium",
-    dueDate: "2026-09-11",
-    status: "in_progress",
-    notes: "",
-  },
-  {
-    id: 3,
-    title: "Отчёт по лабораторной",
-    subject: "Компьютерные сети",
-    type: "Отчёт",
-    priority: "medium",
-    dueDate: "2026-09-13",
-    status: "todo",
-    notes: "",
-  },
-  {
-    id: 4,
-    title: "Контрольная работа №2",
-    subject: "Высшая математика",
-    type: "Контрольная",
-    priority: "high",
-    dueDate: "2026-09-10",
-    status: "in_progress",
-    notes: "",
-  },
-  {
-    id: 5,
-    title: "Домашнее задание: указатели",
-    subject: "Программирование",
-    type: "Домашнее задание",
-    priority: "low",
-    dueDate: "2026-09-15",
-    status: "done",
-    notes: "",
-  },
-  {
-    id: 6,
-    title: "Курсовой проект: этап 1",
-    subject: "Базы данных",
-    type: "Курсовой проект",
-    priority: "high",
-    dueDate: "2026-09-20",
-    status: "todo",
-    notes: "",
-  },
-  {
-    id: 7,
-    title: "Реферат по сетевым протоколам",
-    subject: "Компьютерные сети",
-    type: "Реферат",
-    priority: "low",
-    dueDate: "2026-09-05",
-    status: "done",
-    notes: "",
-  },
-  {
-    id: 8,
-    title: "Практическая работа №3",
-    subject: "Высшая математика",
-    type: "Практика",
-    priority: "medium",
-    dueDate: "2026-09-08",
-    status: "done",
-    notes: "",
-  },
 ];
 
 export function localToday(): string {
