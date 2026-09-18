@@ -14,7 +14,7 @@ test("global and student APIs read only their published kind from PostgreSQL", a
   assert.ok(connectionString);
   assert.match(
     new URL(connectionString).pathname,
-    /^\/studyflow_import_test_[a-zA-Z0-9_]+$/,
+    /^\/(?:studyflow_test|studyflow_import_test_[a-zA-Z0-9_]+)$/,
   );
   const db = new PrismaClient({ adapter: new PrismaPg({ connectionString }) });
   const prefix = `global-test-${randomUUID()}`;
