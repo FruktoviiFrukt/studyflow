@@ -25,3 +25,17 @@ model User {
   role      Role     @default(STUDENT)
   createdAt DateTime @default(now())
 }
+
+model Material {
+  id           String   @id @default(cuid())
+  title        String
+  subject      String
+  type         String
+  size         Int
+  originalName String
+  storageKey   String   @unique
+  mimeType     String
+  uploadedAt   DateTime @default(now())
+
+  @@index([uploadedAt])
+}

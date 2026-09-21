@@ -40,7 +40,7 @@ export type NewMaterialPayload = {
 type UploadMaterialDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSubmit: (payload: NewMaterialPayload) => void;
+  onSubmit: (payload: NewMaterialPayload) => Promise<void> | void;
 };
 
 export default function UploadMaterialDialog({
@@ -53,6 +53,7 @@ export default function UploadMaterialDialog({
   const [file, setFile] = useState<File | null>(null);
   const [dragging, setDragging] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
 
   function reset() {
     setTitle("");
@@ -60,6 +61,7 @@ export default function UploadMaterialDialog({
     setFile(null);
     setError(null);
     setDragging(false);
+    setSubmitting(false);
   }
 
   function applyFile(candidate: File | undefined) {
@@ -73,8 +75,12 @@ export default function UploadMaterialDialog({
     setTitle((current) => current || candidate.name.replace(/\.[^.]+$/, ""));
   }
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (!file) {
+      setError("Прикрепите файл.");
+      return;
+    }
     if (!title.trim()) {
       setError("Укажите название материала.");
       return;
@@ -83,15 +89,25 @@ export default function UploadMaterialDialog({
       setError("Выберите предмет.");
       return;
     }
-    onSubmit({
-      title: title.trim(),
-      subject,
-      type: file ? typeFromFileName(file.name) : "pdf",
-      size: file?.size ?? 0,
-      file,
-    });
-    reset();
-    onOpenChange(false);
+
+    setSubmitting(true);
+    setError(null);
+    try {
+      await onSubmit({
+        title: title.trim(),
+        subject,
+        type: typeFromFileName(file.name),
+        size: file.size,
+        file,
+      });
+      reset();
+      onOpenChange(false);
+    } catch (cause) {
+      setError(
+        cause instanceof Error ? cause.message : "Не удалось загрузить файл.",
+      );
+      setSubmitting(false);
+    }
   }
 
   return (
@@ -199,6 +215,7 @@ export default function UploadMaterialDialog({
               type="button"
               variant="outline"
               className="rounded-xl"
+              disabled={submitting}
               onClick={() => {
                 reset();
                 onOpenChange(false);
@@ -206,8 +223,8 @@ export default function UploadMaterialDialog({
             >
               Отмена
             </Button>
-            <Button type="submit" className="rounded-xl">
-              Загрузить
+            <Button type="submit" className="rounded-xl" disabled={submitting}>
+              {submitting ? "Загрузка…" : "Загрузить"}
             </Button>
           </DialogFooter>
         </form>
