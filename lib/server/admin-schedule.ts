@@ -267,6 +267,13 @@ export async function importSchedule(request: Request) {
   const kind = form.get("kind") ?? "STUDENT";
   if (typeof kind !== "string" || !Object.hasOwn(SCHEDULE_KIND_LABELS, kind))
     fail("Выберите тип расписания.");
+  const createOther = form.get("createOther");
+  if (createOther !== null && createOther !== "true")
+    fail("Некорректный выбор дополнительного расписания.");
+  if (createOther === "true" && kind !== "STUDENT" && kind !== "GLOBAL")
+    fail(
+      "Дополнительное расписание доступно только для студенческого и глобального типов.",
+    );
   const from = String(form.get("from") || ""),
     to = String(form.get("to") || ""),
     first = String(form.get("first") || "");
@@ -281,10 +288,10 @@ export async function importSchedule(request: Request) {
     ![1, 2].includes(number)
   )
     fail("Проверьте год, курс и семестр.");
-  validateScheduleRange(from, to);
-  academicWeek(from, first);
   const yearFrom = `${year.slice(0, 4)}-09-01`,
     yearTo = `${year.slice(5)}-08-31`;
+  validateScheduleRange(from, to);
+  academicWeek(from, first);
   if (
     from < yearFrom ||
     to > yearTo ||
@@ -348,26 +355,35 @@ export async function importSchedule(request: Request) {
         });
         if (from < iso(semester.startsOn) || to > iso(semester.endsOn))
           fail("Период выходит за существующие границы семестра.");
-        const record = await tx.scheduleImport.create({
-          data: {
-            semesterId: semester.id,
-            course,
-            kind: kind as keyof typeof SCHEDULE_KIND_LABELS,
-            title: file.name,
-            sourceFilename: file.name,
-            sourceFileKey: key,
-            validFrom: date(from),
-            validTo: date(to),
-            importWarnings: extracted.warnings,
-          },
-        });
-        await saveLessons(tx, record.id, lessons);
-        return serializeSchedule(
-          await tx.scheduleImport.findUniqueOrThrow({
-            where: { id: record.id },
-            include,
-          }),
-        );
+        const kinds =
+          createOther === "true"
+            ? [kind, kind === "STUDENT" ? "GLOBAL" : "STUDENT"]
+            : [kind];
+        let primary: ReturnType<typeof serializeSchedule> | undefined;
+        for (const recordKind of kinds) {
+          const record = await tx.scheduleImport.create({
+            data: {
+              semesterId: semester.id,
+              course,
+              kind: recordKind as keyof typeof SCHEDULE_KIND_LABELS,
+              title: file.name,
+              sourceFilename: file.name,
+              sourceFileKey: key,
+              validFrom: date(from),
+              validTo: date(to),
+              importWarnings: extracted.warnings,
+            },
+          });
+          await saveLessons(tx, record.id, lessons);
+          const serialized = serializeSchedule(
+            await tx.scheduleImport.findUniqueOrThrow({
+              where: { id: record.id },
+              include,
+            }),
+          );
+          if (!primary) primary = serialized;
+        }
+        return primary!;
       },
       { timeout: 120000 },
     );
@@ -410,7 +426,13 @@ export async function changeSchedule(request: Request, id: string) {
           throw new HttpError(409, "Сначала верните расписание в черновик.");
         if (body.action === "delete") {
           await tx.scheduleImport.delete({ where: { id } });
-          removedFile = record.sourceFileKey;
+          if (
+            record.sourceFileKey &&
+            !(await tx.scheduleImport.count({
+              where: { sourceFileKey: record.sourceFileKey },
+            }))
+          )
+            removedFile = record.sourceFileKey;
           return { deleted: true };
         }
         if (body.action === "save") {
@@ -454,6 +476,8 @@ export async function changeSchedule(request: Request, id: string) {
               record.lessons.flatMap((l) => l.audiences.map((a) => a.groupId)),
             ),
           ];
+          if (!groupIds.length)
+            fail("Добавьте группу хотя бы к одному занятию перед публикацией.");
           const other = await tx.scheduleImport.findFirst({
             where: {
               id: { not: id },

@@ -80,7 +80,7 @@ export default function TaskDialog({
   subjects: string[];
   onClose: () => void;
   onSave: (data: TaskInput) => void;
-  onDelete: (id: number) => void;
+  onDelete: (id: string) => void;
   onAddSubject?: (name: string) => void;
 }) {
   const [isCustomSubject, setIsCustomSubject] = useState(false);

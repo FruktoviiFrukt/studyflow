@@ -3,6 +3,7 @@ import { encode } from "next-auth/jwt";
 import { readFile } from "node:fs/promises";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "../../lib/generated/prisma/client";
+import { randomUUID } from "node:crypto";
 
 test("real PDF draft, access control, edit, holiday, publication and student API", async ({
   page,
@@ -218,5 +219,291 @@ test("real PDF draft, access control, edit, holiday, publication and student API
     await admin.dispose();
     await student.dispose();
     await anon.dispose();
+  }
+});
+
+test("one PDF creates both schedule drafts and remains available until both are deleted", async ({
+  playwright,
+}) => {
+  const db = new PrismaClient({
+    adapter: new PrismaPg({
+      connectionString: process.env.IMPORT_TEST_DATABASE_URL,
+    }),
+  });
+  const adminId = `paired-import-${randomUUID()}`;
+  const token = await encode({
+    secret: "import-test-secret-only",
+    salt: "authjs.session-token",
+    token: { id: adminId, sub: adminId, role: "ADMIN" },
+  });
+  const admin = await playwright.request.newContext({
+    baseURL: "http://127.0.0.1:3103",
+    extraHTTPHeaders: { Cookie: `authjs.session-token=${token}` },
+  });
+  const ids: string[] = [];
+  try {
+    await db.user.create({
+      data: {
+        id: adminId,
+        role: "ADMIN",
+        email: `${adminId}@example.invalid`,
+        name: adminId,
+        password: "test-unused",
+      },
+    });
+    const upload = await admin.post("/api/admin/schedule", {
+      multipart: {
+        kind: "GLOBAL",
+        createOther: "true",
+        year: "2028/2029",
+        course: "1",
+        semester: "1",
+        from: "2028-09-01",
+        to: "2028-12-20",
+        first: "2028-08-28",
+        file: {
+          name: "paired.pdf",
+          mimeType: "application/pdf",
+          buffer: await readFile(process.env.IMPORT_TEST_PDF!),
+        },
+      },
+      timeout: 180000,
+    });
+    expect(upload.ok(), await upload.text()).toBe(true);
+    const primary = await upload.json();
+    ids.push(primary.id);
+    expect(primary.kind).toBe("GLOBAL");
+    expect(primary.validFrom).toBe("2028-09-01");
+    expect(primary.validTo).toBe("2028-12-20");
+    const source = await db.scheduleImport.findUniqueOrThrow({
+      where: { id: primary.id },
+    });
+    const pair = await db.scheduleImport.findFirstOrThrow({
+      where: { sourceFileKey: source.sourceFileKey, id: { not: primary.id } },
+      include: { lessons: true },
+    });
+    ids.push(pair.id);
+    expect(pair.kind).toBe("STUDENT");
+    expect(pair.lessons).toHaveLength(primary.lessons.length);
+    expect(pair.validFrom).toEqual(source.validFrom);
+    expect(pair.validTo).toEqual(source.validTo);
+
+    const deleted = await admin.patch(`/api/admin/schedule/${primary.id}`, {
+      data: { action: "delete", version: primary.version },
+    });
+    expect(deleted.ok(), await deleted.text()).toBe(true);
+    ids.shift();
+    expect(
+      (await admin.get(`/api/admin/schedule/${pair.id}/source`)).ok(),
+    ).toBe(true);
+
+    const remaining = await admin.get("/api/admin/schedule");
+    const records = await remaining.json();
+    const paired = records.find(
+      (record: { id: string }) => record.id === pair.id,
+    );
+    const lastDeleted = await admin.patch(`/api/admin/schedule/${pair.id}`, {
+      data: { action: "delete", version: paired.version },
+    });
+    expect(lastDeleted.ok(), await lastDeleted.text()).toBe(true);
+    ids.shift();
+  } finally {
+    if (ids.length)
+      await db.scheduleImport.deleteMany({ where: { id: { in: ids } } });
+    await db.user.deleteMany({ where: { id: adminId } });
+    await db.$disconnect();
+    await admin.dispose();
+  }
+});
+
+test("global publication is visible only in the global API and rejects overlaps", async ({
+  playwright,
+}) => {
+  const db = new PrismaClient({
+    adapter: new PrismaPg({
+      connectionString: process.env.IMPORT_TEST_DATABASE_URL,
+    }),
+  });
+  const prefix = `global-http-${randomUUID()}`;
+  const id = (name: string) => `${prefix}-${name}`;
+  const date = (value: string) => new Date(`${value}T00:00:00Z`);
+  const ids = {
+    year: id("year"),
+    semester: id("semester"),
+    g1: id("g1"),
+    g2: id("g2"),
+    subject: id("subject"),
+    admin: id("admin"),
+    viewer: id("viewer"),
+    global: id("global"),
+    student: id("student"),
+    overlap: id("overlap"),
+  };
+  async function cookie(userId: string) {
+    const token = await encode({
+      secret: "import-test-secret-only",
+      salt: "authjs.session-token",
+      token: {
+        id: userId,
+        sub: userId,
+        role: userId === ids.admin ? "ADMIN" : "STUDENT",
+      },
+    });
+    return `authjs.session-token=${token}`;
+  }
+  const baseURL = "http://127.0.0.1:3103";
+  const admin = await playwright.request.newContext({
+    baseURL,
+    extraHTTPHeaders: { Cookie: await cookie(ids.admin) },
+  });
+  const viewer = await playwright.request.newContext({
+    baseURL,
+    extraHTTPHeaders: { Cookie: await cookie(ids.viewer) },
+  });
+  try {
+    await db.academicYear.create({
+      data: {
+        id: ids.year,
+        name: ids.year,
+        startsOn: date("2026-09-01"),
+        endsOn: date("2027-08-31"),
+        firstOddWeekMonday: date("2026-08-31"),
+        semesters: {
+          create: {
+            id: ids.semester,
+            number: 1,
+            startsOn: date("2026-09-01"),
+            endsOn: date("2026-12-31"),
+          },
+        },
+      },
+    });
+    await db.studyGroup.createMany({
+      data: [
+        { id: ids.g1, name: ids.g1 },
+        { id: ids.g2, name: ids.g2 },
+      ],
+    });
+    await db.subject.create({ data: { id: ids.subject, name: ids.subject } });
+    await db.user.createMany({
+      data: [
+        {
+          id: ids.admin,
+          email: `${ids.admin}@example.invalid`,
+          name: "Admin",
+          password: "unused",
+          role: "ADMIN",
+        },
+        {
+          id: ids.viewer,
+          email: `${ids.viewer}@example.invalid`,
+          name: "Viewer",
+          password: "unused",
+          role: "STUDENT",
+          groupId: ids.g1,
+        },
+      ],
+    });
+    const base = {
+      semesterId: ids.semester,
+      course: 3,
+      title: "Global HTTP test",
+      validFrom: date("2026-09-01"),
+      validTo: date("2026-12-31"),
+    };
+    const draft = await db.scheduleImport.create({
+      data: {
+        ...base,
+        id: ids.global,
+        kind: "GLOBAL",
+        lessons: {
+          create: {
+            subjectId: ids.subject,
+            weekday: 0,
+            startMinutes: 585,
+            endMinutes: 675,
+            audiences: { create: [{ groupId: ids.g1 }, { groupId: ids.g2 }] },
+          },
+        },
+      },
+    });
+    await db.scheduleImport.create({
+      data: {
+        ...base,
+        id: ids.student,
+        kind: "STUDENT",
+        status: "PUBLISHED",
+        lessons: {
+          create: {
+            subjectId: ids.subject,
+            weekday: 0,
+            startMinutes: 675,
+            endMinutes: 765,
+            audiences: { create: { groupId: ids.g1 } },
+          },
+        },
+      },
+    });
+    const query = "/api/schedule/global?course=3&from=2026-09-14&to=2026-09-20";
+    expect((await (await viewer.get(query)).json()).groups).toEqual([]);
+    const publish = await admin.patch(`/api/admin/schedule/${ids.global}`, {
+      data: { action: "publish", version: draft.updatedAt.toISOString() },
+    });
+    expect(publish.ok(), await publish.text()).toBe(true);
+    const published = await publish.json();
+    const global = await viewer.get(query);
+    expect(global.ok()).toBe(true);
+    const globalBody = await global.json();
+    expect(globalBody.groups.map((group: { id: string }) => group.id)).toEqual([
+      ids.g1,
+      ids.g2,
+    ]);
+    expect(globalBody.days[0].lessons).toHaveLength(1);
+    expect(globalBody.days[0].lessons[0].groupIds).toEqual([ids.g1, ids.g2]);
+    const personal = await viewer.get(
+      "/api/schedule?from=2026-09-14&to=2026-09-14",
+    );
+    expect(personal.ok()).toBe(true);
+    expect((await personal.json()).days[0].lessons[0].startMinutes).toBe(675);
+
+    const overlap = await db.scheduleImport.create({
+      data: {
+        ...base,
+        id: ids.overlap,
+        kind: "GLOBAL",
+        lessons: {
+          create: {
+            subjectId: ids.subject,
+            weekday: 0,
+            startMinutes: 480,
+            endMinutes: 570,
+            audiences: { create: { groupId: ids.g1 } },
+          },
+        },
+      },
+    });
+    const rejected = await admin.patch(`/api/admin/schedule/${ids.overlap}`, {
+      data: { action: "publish", version: overlap.updatedAt.toISOString() },
+    });
+    expect(rejected.status()).toBe(409);
+    const unpublish = await admin.patch(`/api/admin/schedule/${ids.global}`, {
+      data: { action: "unpublish", version: published.version },
+    });
+    expect(unpublish.ok(), await unpublish.text()).toBe(true);
+    expect((await (await viewer.get(query)).json()).groups).toEqual([]);
+  } finally {
+    await db.scheduleImport.deleteMany({
+      where: { id: { in: [ids.global, ids.student, ids.overlap] } },
+    });
+    await db.user.deleteMany({
+      where: { id: { in: [ids.admin, ids.viewer] } },
+    });
+    await db.subject.deleteMany({ where: { id: ids.subject } });
+    await db.studyGroup.deleteMany({ where: { id: { in: [ids.g1, ids.g2] } } });
+    await db.semester.deleteMany({ where: { id: ids.semester } });
+    await db.academicYear.deleteMany({ where: { id: ids.year } });
+    await db.$disconnect();
+    await admin.dispose();
+    await viewer.dispose();
   }
 });
