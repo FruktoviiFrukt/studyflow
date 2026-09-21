@@ -16,24 +16,6 @@ import {
   ArrowRight,
 } from "lucide-react";
 
-const deadlines = [
-  {
-    subject: "Программирование",
-    task: "Лабораторная работа №4",
-    date: "9 сентября",
-  },
-  {
-    subject: "Базы данных",
-    task: "Практическая работа",
-    date: "11 сентября",
-  },
-  {
-    subject: "Компьютерные сети",
-    task: "Отчёт по лабораторной",
-    date: "13 сентября",
-  },
-];
-
 const quickActions = [
   {
     title: "Новое задание",
@@ -61,6 +43,14 @@ const quickActions = [
   },
 ];
 
+function formatDeadline(date: string) {
+  return new Intl.DateTimeFormat("ru-RU", {
+    day: "numeric",
+    month: "long",
+    timeZone: "UTC",
+  }).format(new Date(`${date}T12:00:00Z`));
+}
+
 export default async function DashboardPage() {
   const session = await auth();
   const dashboard = session?.user?.id
@@ -70,6 +60,8 @@ export default async function DashboardPage() {
   const userName = dashboard?.user.name ?? "Студент";
   const userGroup = dashboard?.user.group;
   const subjects = dashboard?.subjectProgress ?? [];
+  const tasks = dashboard?.tasks;
+  const deadlines = tasks?.deadlines ?? [];
 
   return (
     <TodayScheduleProvider>
@@ -97,15 +89,15 @@ export default async function DashboardPage() {
 
           <SummaryCard
             title="Ближайшие дедлайны"
-            value="3"
-            description="На этой неделе"
+            value={String(tasks?.upcomingCount ?? 0)}
+            description="В ближайшую неделю"
             icon={Clock3}
           />
 
           <SummaryCard
             title="Выполнено заданий"
-            value="12"
-            description="За текущий семестр"
+            value={String(tasks?.completedCount ?? 0)}
+            description="За всё время"
             icon={CheckCircle2}
           />
 
@@ -143,25 +135,31 @@ export default async function DashboardPage() {
             </div>
 
             <div className="space-y-3">
-              {deadlines.map((deadline) => (
-                <div
-                  key={`${deadline.subject}-${deadline.task}`}
-                  className="rounded-xl border border-gray-100 p-4"
-                >
-                  <p className="text-xs font-semibold uppercase tracking-wide text-blue-600">
-                    {deadline.subject}
-                  </p>
+              {deadlines.length === 0 ? (
+                <p className="rounded-xl bg-gray-50 p-4 text-sm text-gray-600">
+                  Ближайших заданий нет.
+                </p>
+              ) : (
+                deadlines.map((deadline) => (
+                  <div
+                    key={deadline.id}
+                    className="rounded-xl border border-gray-100 p-4"
+                  >
+                    <p className="text-xs font-semibold uppercase tracking-wide text-blue-600">
+                      {deadline.subject}
+                    </p>
 
-                  <p className="mt-2 text-sm font-semibold text-gray-900">
-                    {deadline.task}
-                  </p>
+                    <p className="mt-2 text-sm font-semibold text-gray-900">
+                      {deadline.title}
+                    </p>
 
-                  <div className="mt-3 flex items-center gap-2 text-xs text-gray-500">
-                    <Clock3 size={14} />
-                    <span>{deadline.date}</span>
+                    <div className="mt-3 flex items-center gap-2 text-xs text-gray-500">
+                      <Clock3 size={14} />
+                      <span>{formatDeadline(deadline.dueDate)}</span>
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))
+              )}
             </div>
           </section>
 

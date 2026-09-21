@@ -1,5 +1,6 @@
 import { subjectGrade } from "@/lib/grades";
 import { prisma } from "@/lib/prisma";
+import { addDays, universityToday } from "@/lib/schedule";
 import { getStoredSubjects } from "@/lib/server/gpa-profile";
 import type { DashboardResponse, DashboardUser } from "@/types/dashboard";
 
@@ -7,9 +8,7 @@ export async function getDashboardUser(
   userId: string,
 ): Promise<DashboardUser | null> {
   return prisma.user.findUnique({
-    where: {
-      id: userId,
-    },
+    where: { id: userId },
     select: {
       id: true,
       name: true,
@@ -29,7 +28,38 @@ export async function getDashboardData(
     return null;
   }
 
-  const subjects = await getStoredSubjects(userId);
+  const today = universityToday();
+  const weekEnd = addDays(today, 7);
+
+  const [upcomingCount, completedCount, deadlines, subjects] =
+    await Promise.all([
+      prisma.task.count({
+        where: {
+          userId,
+          status: { not: "done" },
+          dueDate: { gte: today, lte: weekEnd },
+        },
+      }),
+      prisma.task.count({
+        where: { userId, status: "done" },
+      }),
+      prisma.task.findMany({
+        where: {
+          userId,
+          status: { not: "done" },
+          dueDate: { gte: today },
+        },
+        orderBy: [{ dueDate: "asc" }, { createdAt: "asc" }],
+        take: 3,
+        select: {
+          id: true,
+          subject: true,
+          title: true,
+          dueDate: true,
+        },
+      }),
+      getStoredSubjects(userId),
+    ]);
 
   const subjectProgress = (subjects ?? []).map((subject) => {
     const grade = subjectGrade(subject);
@@ -46,5 +76,10 @@ export async function getDashboardData(
   return {
     user,
     subjectProgress,
+    tasks: {
+      upcomingCount,
+      completedCount,
+      deadlines,
+    },
   };
 }

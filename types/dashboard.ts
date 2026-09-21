@@ -14,9 +14,23 @@ export type DashboardSubjectProgress = {
   progress: number;
 };
 
+export type DashboardDeadline = {
+  id: string;
+  subject: string;
+  title: string;
+  dueDate: string;
+};
+
+export type DashboardTaskSummary = {
+  upcomingCount: number;
+  completedCount: number;
+  deadlines: DashboardDeadline[];
+};
+
 export type DashboardResponse = {
   user: DashboardUser;
   subjectProgress: DashboardSubjectProgress[];
+  tasks: DashboardTaskSummary;
 };
 
 export type DashboardErrorResponse = {
