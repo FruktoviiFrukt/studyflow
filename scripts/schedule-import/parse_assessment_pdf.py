@@ -118,7 +118,7 @@ def extract(path):
                 lessons.append({
                     "id": "",
                     "subject": discipline or groups_text,
-                    "type": "Семинар",
+                    "type": "Аттестация",
                     "day": lesson_date.weekday(),
                     "date": lesson_date.isoformat(),
                     "start": f"{hour:02}:{minute:02}",
@@ -126,7 +126,7 @@ def extract(path):
                     "teacher": teacher,
                     "room": " / ".join(rooms),
                     "topic": "",
-                    "parity": "every",
+                    "parity": "once",
                     "audiences": [{"group": group, "subgroup": "all"} for group in groups],
                     "reviewed": False,
                     "sourceText": "\n".join(filter(None, [
@@ -141,9 +141,8 @@ def extract(path):
             if found_on_page:
                 warnings.append(
                     f"Страница {page_index + 1}: сверьте предметы, преподавателей, аудитории и "
-                    f"даты с PDF. Тип занятия по умолчанию — «Семинар», окончание рассчитано как "
-                    f"начало + {ASSESSMENT_DURATION_MINUTES} минут — в источнике указано только "
-                    "время начала.",
+                    f"даты с PDF. Окончание рассчитано как начало + {ASSESSMENT_DURATION_MINUTES} "
+                    "минут — в источнике указано только время начала.",
                 )
     if not lessons:
         warnings.append("Занятия не извлечены. Создан пустой черновик для ручного заполнения.")

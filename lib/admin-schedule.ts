@@ -1,5 +1,5 @@
 // Frontend-only contracts. These records are never written to a server.
-export type Parity = "every" | "odd" | "even";
+export type Parity = "every" | "odd" | "even" | "once";
 export type Audience = { group: string; subgroup: "all" | "1" | "2" };
 export type ScheduleKind = "STUDENT" | "GLOBAL" | "ASSESSMENT";
 export const SCHEDULE_KIND_LABELS: Record<ScheduleKind, string> = {
@@ -63,6 +63,7 @@ export const PARITIES: Record<Parity, string> = {
   every: "Каждую неделю",
   odd: "Нечётная",
   even: "Чётная",
+  once: "Единоразово",
 };
 export const SLOTS = [
   "08:00–09:30",
@@ -73,7 +74,7 @@ export const SLOTS = [
   "17:00–18:30",
   "18:45–20:15",
 ];
-export const TYPES = ["Лекция", "Лабораторная", "Семинар"];
+export const TYPES = ["Лекция", "Лабораторная", "Семинар", "Аттестация"];
 
 export function emptyLesson(): AdminLesson {
   return {

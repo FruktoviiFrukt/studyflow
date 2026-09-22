@@ -48,14 +48,14 @@ def extract_rows(*page_rows):
 
 
 class AssessmentParserTest(unittest.TestCase):
-    def test_basic_row_produces_a_dated_seminar_lesson(self):
+    def test_basic_row_produces_a_dated_assessment_lesson(self):
         rows = [HEADER, [None, "Analiza matematica 1", "1",
                           "CIM-241, CR-241, CR-242", "Pricop V.", "24.10.2024", "9:45", "3-3"]]
         result = extract_rows(rows)
         self.assertEqual(len(result["lessons"]), 1)
         lesson = result["lessons"][0]
         self.assertEqual(lesson["subject"], "Analiza matematica 1")
-        self.assertEqual(lesson["type"], "Семинар")
+        self.assertEqual(lesson["type"], "Аттестация")
         self.assertEqual(lesson["date"], "2024-10-24")
         self.assertEqual(lesson["day"], 3)  # 2024-10-24 is a Thursday
         self.assertEqual((lesson["start"], lesson["end"]), ("09:45", "11:15"))
@@ -65,7 +65,7 @@ class AssessmentParserTest(unittest.TestCase):
             [a["group"] for a in lesson["audiences"]],
             ["CIM-241", "CR-241", "CR-242"],
         )
-        self.assertTrue(lesson["parity"] == "every" and lesson["reviewed"] is False)
+        self.assertTrue(lesson["parity"] == "once" and lesson["reviewed"] is False)
 
     def test_discipline_and_year_carry_forward_across_rows(self):
         rows = [HEADER,

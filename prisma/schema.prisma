@@ -74,6 +74,8 @@ enum WeekPattern {
   EVERY
   ODD
   EVEN
+  // A one-off date (ASSESSMENT lessons); not a real weekly recurrence.
+  ONCE
 }
 
 enum ScheduleStatus {
@@ -92,6 +94,7 @@ enum LessonType {
   LABORATORY
   PRACTICE
   SEMINAR
+  ASSESSMENT
   UNSPECIFIED
 }
 

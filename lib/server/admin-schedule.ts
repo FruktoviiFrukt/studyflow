@@ -35,6 +35,7 @@ const types = {
   Лекция: "LECTURE",
   Лабораторная: "LABORATORY",
   Семинар: "SEMINAR",
+  Аттестация: "ASSESSMENT",
 } as const;
 const typeLabels = {
   LECTURE: "Лекция",
@@ -42,8 +43,14 @@ const typeLabels = {
   SEMINAR: "Семинар",
   PRACTICE: "Семинар",
   UNSPECIFIED: "Семинар",
+  ASSESSMENT: "Аттестация",
 } as const;
-const parities = { every: "EVERY", odd: "ODD", even: "EVEN" } as const;
+const parities = {
+  every: "EVERY",
+  odd: "ODD",
+  even: "EVEN",
+  once: "ONCE",
+} as const;
 const date = (d: string) => new Date(`${d}T00:00:00Z`);
 const iso = (d: Date) => d.toISOString().slice(0, 10);
 const time = (n: number) =>
