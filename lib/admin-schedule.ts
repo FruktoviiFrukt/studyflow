@@ -21,6 +21,10 @@ export type AdminLesson = {
   audiences: Audience[];
   reviewed: boolean;
   sourceText?: string;
+  // One-off exam date, ScheduleImport.kind == ASSESSMENT only. `day` above
+  // is still filled in (derived from this date) for STUDENT/GLOBAL-style
+  // queries that assume it's always meaningful.
+  date?: string;
 };
 export type ScheduleDraft = {
   id: string;
@@ -102,6 +106,8 @@ export function lessonErrors(lesson: AdminLesson): string[] {
     errors.push("Окончание должно быть позже начала в пределах одного дня.");
   if (!lesson.audiences.length || lesson.audiences.some((a) => !a.group.trim()))
     errors.push("Укажите группу для каждого получателя.");
+  if (lesson.date !== undefined && !/^\d{4}-\d{2}-\d{2}$/.test(lesson.date))
+    errors.push("Некорректная дата занятия.");
   const seen = new Set<string>();
   for (const a of lesson.audiences) {
     const group = a.group.trim().toUpperCase();

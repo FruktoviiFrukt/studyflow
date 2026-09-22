@@ -172,11 +172,17 @@ model Lesson {
   id           String           @id @default(cuid())
   scheduleId   String
   subjectId    String
-  // Monday = 0, Sunday = 6.
+  // Monday = 0, Sunday = 6. For ScheduleImport.kind == ASSESSMENT this is
+  // derived from `date` for indexing/query consistency, not a real weekly
+  // recurrence — see `date` below.
   weekday      Int
   startMinutes Int
   endMinutes   Int
   weekPattern  WeekPattern      @default(EVERY)
+  // Only set for ScheduleImport.kind == ASSESSMENT: a one-off exam date.
+  // weekday/weekPattern above are not meaningful for those rows (weekday
+  // is filled in for index/query consistency, weekPattern stays EVERY).
+  date         DateTime?        @db.Date
   type         LessonType       @default(UNSPECIFIED)
   teacher      String?
   classroom    String?
