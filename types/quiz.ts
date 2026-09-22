@@ -1,5 +1,5 @@
 export type QuestionType = "multiple-choice" | "true-false";
-export type Difficulty = "easy" | "medium" | "hard";
+export type Difficulty = "easy" | "medium" | "hard" | "any";
 
 export interface AnswerOption {
   id: string;

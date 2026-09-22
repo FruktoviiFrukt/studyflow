@@ -1,17 +1,13 @@
 "use client";
 
-import Link from "next/link";
 import Image from "next/image";
 import Navigation from "./Navigation";
-
+import UserMenu from "./UserMenu";
+import { signOut } from "next-auth/react";
 
 import { LogOut } from "lucide-react";
 
-
-
 export default function Sidebar() {
-
-
   return (
     <aside className="fixed left-0 top-0 z-40 hidden h-screen w-64 flex-col border-r border-gray-200 bg-white px-4 py-5 md:flex">
       {/* Logo */}
@@ -35,30 +31,17 @@ export default function Sidebar() {
 
       {/* User */}
       <div className="shrink-0 border-t border-gray-100 pt-4">
-        <div className="mb-3 flex items-center gap-3 px-2">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue-600 text-sm font-semibold text-white">
-            S
-          </div>
+        <UserMenu variant="sidebar" />
 
-          <div className="min-w-0">
-            <p className="text-sm font-semibold text-gray-900">
-              Student
-            </p>
+        <button
+          type="button"
+          onClick={() => signOut({ callbackUrl: "/auth" })}
+          className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-gray-500 transition-colors hover:bg-gray-50 hover:text-gray-900"
+        >
+          <LogOut size={18} />
 
-            <p className="truncate text-xs text-gray-500">
-              student@utm.md
-            </p>
-          </div>
-        </div>
-
-      <Link
-        href="/auth"
-        className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-gray-500 transition-colors hover:bg-gray-50 hover:text-gray-900"
-      >
-        <LogOut size={18} />
-
-        <span>Выйти</span>
-      </Link>
+          <span>Выйти</span>
+        </button>
       </div>
     </aside>
   );

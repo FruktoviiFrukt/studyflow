@@ -18,6 +18,13 @@ import UploadMaterialDialog, {
   type NewMaterialPayload,
 } from "./upload-material-dialog";
 import { SUBJECTS, type Material } from "./types";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 async function readApiError(response: Response, fallback: string) {
   const data = (await response.json().catch(() => null)) as {
@@ -233,21 +240,22 @@ export default function Materials() {
             className={`${inputClass} pl-9`}
           />
         </label>
-        <label className="w-full lg:w-64">
+        <div className="w-full lg:w-64">
           <span className="sr-only">Фильтр по предмету</span>
-          <select
-            value={subject}
-            onChange={(event) => setSubject(event.target.value)}
-            className={inputClass}
-          >
-            <option value="all">Все предметы</option>
-            {SUBJECTS.map((item) => (
-              <option key={item} value={item}>
-                {item}
-              </option>
-            ))}
-          </select>
-        </label>
+          <Select value={subject} onValueChange={setSubject}>
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="Все предметы" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Все предметы</SelectItem>
+              {SUBJECTS.map((item) => (
+                <SelectItem key={item} value={item}>
+                  {item}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </section>
 
       {notice && (

@@ -1,0 +1,82 @@
+import { NextResponse } from "next/server";
+import bcrypt from "bcryptjs";
+
+import { prisma } from "@/lib/prisma";
+import { ALLOWED_GROUPS } from "@/lib/groups";
+
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+export async function POST(request: Request) {
+  const body = await request.json();
+  const { name, email, password, group } = body as {
+    name?: unknown;
+    email?: unknown;
+    password?: unknown;
+    group?: unknown;
+  };
+
+  if (typeof name !== "string" || !name.trim()) {
+    return NextResponse.json(
+      { message: "Введите имя и фамилию" },
+      { status: 400 },
+    );
+  }
+
+  if (typeof email !== "string" || !EMAIL_REGEX.test(email)) {
+    return NextResponse.json(
+      { message: "Введите корректный email" },
+      { status: 400 },
+    );
+  }
+
+  if (typeof password !== "string" || password.length < 6) {
+    return NextResponse.json(
+      { message: "Пароль должен содержать минимум 6 символов" },
+      { status: 400 },
+    );
+  }
+
+  if (
+    typeof group !== "string" ||
+    !ALLOWED_GROUPS.includes(group as (typeof ALLOWED_GROUPS)[number])
+  ) {
+    return NextResponse.json(
+      { message: "Выберите группу из списка" },
+      { status: 400 },
+    );
+  }
+
+  const existingUser = await prisma.user.findUnique({
+    where: { email },
+  });
+
+  if (existingUser) {
+    return NextResponse.json(
+      { message: "Этот email уже зарегистрирован" },
+      { status: 409 },
+    );
+  }
+
+  const hashedPassword = await bcrypt.hash(password, 10);
+
+  const studyGroup = await prisma.studyGroup.upsert({
+    where: { name: group },
+    update: {},
+    create: { name: group },
+  });
+
+  const user = await prisma.user.create({
+    data: {
+      name: name.trim(),
+      email,
+      password: hashedPassword,
+      group,
+      groupId: studyGroup.id,
+    },
+  });
+
+  return NextResponse.json(
+    { id: user.id, email: user.email, name: user.name },
+    { status: 201 },
+  );
+}

@@ -1,6 +1,7 @@
 "use client";
 
 import MobileSidebar from "./MobileSidebar";
+import UserMenu from "./UserMenu";
 import { Bell } from "lucide-react";
 import { usePathname } from "next/navigation";
 
@@ -23,15 +24,14 @@ export default function Header() {
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-gray-200 bg-white px-5 md:px-8">
       {/* Current page */}
-    <div className="flex min-w-0 items-center gap-3">
+      <div className="flex min-w-0 items-center gap-3">
+        <MobileSidebar />
 
-     <MobileSidebar />
+        <h1 className="truncate text-base font-semibold tracking-tight text-gray-900 sm:text-xl">
+          {title}
+        </h1>
+      </div>
 
-    <h1 className="truncate text-base font-semibold tracking-tight text-gray-900 sm:text-xl">
-    {title}
-    </h1>
-    </div>
- 
       {/* Right side */}
       <div className="flex min-w-0 items-center gap-3">
         {/* Notifications */}
@@ -48,21 +48,7 @@ export default function Header() {
         <div className="hidden h-7 w-px bg-gray-200 sm:block" />
 
         {/* User */}
-        <div className="flex min-w-0 items-center gap-3">
-          <div className="hidden text-right sm:block">
-            <p className="text-sm font-semibold leading-4 text-gray-900">
-              Student
-            </p>
-
-            <p className="mt-1 text-xs text-gray-500">
-              student@utm.md
-            </p>
-          </div>
-
-          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-blue-600 text-sm font-semibold text-white">
-            S
-          </div>
-        </div>
+        <UserMenu variant="header" />
       </div>
     </header>
   );

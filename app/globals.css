@@ -3,38 +3,20 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
-}
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
-}
-
-/* shadcn/ui tokens matched to the existing light header and sidebar. */
-:root {
+  /* shadcn/ui tokens */
   --card: #ffffff;
   --card-foreground: #111827;
+  --popover: #ffffff;
+  --popover-foreground: #111827;
+  --popover: #ffffff;
+  --popover-foreground: #111827;
   --primary: #2563eb;
   --primary-foreground: #ffffff;
   --secondary: #f3f4f6;
-  --secondary-foreground: #374151;
-  --muted: #f9fafb;
-  --muted-foreground: #6b7280;
+  --secondary-foreground: #1f2937;
+  --muted: #f3f4f6;
+  --muted-foreground: #4b5563;
   --accent: #eff6ff;
   --accent-foreground: #2563eb;
   --border: #e5e7eb;
@@ -43,9 +25,19 @@ body {
   --destructive: #dc2626;
   --destructive-foreground: #ffffff;
 }
+
 @theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+
   --color-card: var(--card);
   --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
   --color-secondary: var(--secondary);
@@ -59,4 +51,38 @@ body {
   --color-ring: var(--ring);
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+/* Custom scrollbar for subject browser */
+.ai-subject-scroll::-webkit-scrollbar {
+  width: 4px;
+}
+.ai-subject-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.ai-subject-scroll::-webkit-scrollbar-thumb {
+  background: #e5e7eb;
+  border-radius: 9999px;
+}
+.ai-subject-scroll::-webkit-scrollbar-thumb:hover {
+  background: #d1d5db;
+}
+
+/* Accordion expand/collapse via CSS grid trick */
+.accordion-content {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 220ms ease;
+}
+.accordion-content.open {
+  grid-template-rows: 1fr;
+}
+.accordion-content > div {
+  overflow: hidden;
 }

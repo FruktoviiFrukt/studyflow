@@ -186,9 +186,7 @@ export default function DashboardPage() {
                     {lesson.subject}
                   </p>
 
-                  <p className="mt-1 text-sm text-gray-500">
-                    {lesson.type}
-                  </p>
+                  <p className="mt-1 text-sm text-gray-500">{lesson.type}</p>
                 </div>
 
                 <div className="rounded-lg bg-white px-3 py-2 text-sm font-medium text-gray-600">
@@ -346,17 +344,11 @@ function SummaryCard({
     <div className="rounded-2xl border border-gray-200 bg-white p-5">
       <div className="flex items-start justify-between">
         <div>
-          <p className="text-sm font-medium text-gray-500">
-            {title}
-          </p>
+          <p className="text-sm font-medium text-gray-500">{title}</p>
 
-          <p className="mt-2 text-3xl font-bold text-gray-900">
-            {value}
-          </p>
+          <p className="mt-2 text-3xl font-bold text-gray-900">{value}</p>
 
-          <p className="mt-1 text-xs text-gray-500">
-            {description}
-          </p>
+          <p className="mt-1 text-xs text-gray-500">{description}</p>
         </div>
 
         <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-50 text-blue-600">

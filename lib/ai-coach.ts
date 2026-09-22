@@ -1,4 +1,4 @@
-export const MAX_NOTE_FILE_SIZE = 10 * 1024 * 1024; // 10 МБ — демо-лимит на загружаемый файл
+export const MAX_NOTE_FILE_SIZE = 10 * 1024 * 1024;
 
 export const ACCEPTED_NOTE_TYPES = [
   { label: "PDF", mime: "application/pdf", extension: ".pdf" },
@@ -7,6 +7,10 @@ export const ACCEPTED_NOTE_TYPES = [
     mime: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
     extension: ".docx",
   },
+  { label: "TXT", mime: "text/plain", extension: ".txt" },
+  { label: "PNG", mime: "image/png", extension: ".png" },
+  { label: "JPG", mime: "image/jpeg", extension: ".jpg" },
+  { label: "WEBP", mime: "image/webp", extension: ".webp" },
 ] as const;
 
 export const ACCEPTED_NOTE_INPUT_ATTR = ACCEPTED_NOTE_TYPES.map(
@@ -32,46 +36,39 @@ export function formatFileSize(bytes: number): string {
   return `${value.toFixed(value >= 10 ? 0 : 1)} ${units[unitIndex]}`;
 }
 
-export type AiCoachSubject = {
+export type ApiSubjectTopic = {
   id: string;
   name: string;
-  dot: string;
-  availableQuestions: number;
+  questionCount: number;
 };
 
-// Demo-данные: предметы, по которым уже накоплен банк вопросов для самопроверки.
-export const aiCoachSubjects: AiCoachSubject[] = [
-  {
-    id: "programming",
-    name: "Объектно-ориентированное программирование",
-    dot: "bg-blue-500",
-    availableQuestions: 48,
-  },
-  {
-    id: "math",
-    name: "Математический анализ",
-    dot: "bg-violet-500",
-    availableQuestions: 35,
-  },
-  {
-    id: "databases",
-    name: "Базы данных",
-    dot: "bg-emerald-500",
-    availableQuestions: 27,
-  },
-  {
-    id: "networks",
-    name: "Компьютерные сети",
-    dot: "bg-amber-500",
-    availableQuestions: 19,
-  },
-  {
-    id: "english",
-    name: "Английский язык",
-    dot: "bg-rose-500",
-    availableQuestions: 22,
-  },
+export type ApiSubject = {
+  id: string;
+  name: string;
+  code: string;
+  faculty: string;
+  availableQuestions: number;
+  easyCount: number;
+  mediumCount: number;
+  hardCount: number;
+  topics: ApiSubjectTopic[];
+};
+
+const DOT_PALETTE = [
+  "bg-blue-500",
+  "bg-violet-500",
+  "bg-emerald-500",
+  "bg-amber-500",
+  "bg-rose-500",
+  "bg-indigo-500",
+  "bg-teal-500",
+  "bg-orange-500",
 ];
+
+export function subjectDotColor(id: string): string {
+  const hash = id.split("").reduce((acc, c) => acc + c.charCodeAt(0), 0);
+  return DOT_PALETTE[hash % DOT_PALETTE.length];
+}
 
 export const questionCountOptions = [5, 10, 15, 20] as const;
 
@@ -79,14 +76,9 @@ export const difficultyOptions = [
   { value: "easy", label: "Легко" },
   { value: "medium", label: "Средне" },
   { value: "hard", label: "Сложно" },
+  { value: "any", label: "Микс" },
 ] as const;
 export type Difficulty = (typeof difficultyOptions)[number]["value"];
-
-export const questionTypeOptions = [
-  { value: "single", label: "Тест (один ответ)" },
-  { value: "true-false", label: "Верно / Неверно" },
-] as const;
-export type QuestionType = (typeof questionTypeOptions)[number]["value"];
 
 export type GenerationReadiness = {
   canGenerate: boolean;
@@ -94,19 +86,22 @@ export type GenerationReadiness = {
 };
 
 export function getGenerationReadiness(params: {
-  hasSubject: boolean;
   hasNotes: boolean;
+  questionCount?: number;
 }): GenerationReadiness {
-  const missingSteps: string[] = [];
-  if (!params.hasSubject) missingSteps.push("выберите предмет");
-  if (!params.hasNotes)
-    missingSteps.push("добавьте конспект или текст заметок");
+  const { hasNotes, questionCount = 5 } = params;
 
-  return {
-    canGenerate: missingSteps.length === 0,
-    hint:
-      missingSteps.length > 0
-        ? `Чтобы продолжить: ${missingSteps.join(", ")}.`
-        : null,
-  };
+  if (questionCount < 5) {
+    return {
+      canGenerate: false,
+      hint: "Минимальное количество вопросов — 5.",
+    };
+  }
+  if (!hasNotes) {
+    return {
+      canGenerate: false,
+      hint: "Добавьте текст или прикрепите файл.",
+    };
+  }
+  return { canGenerate: true, hint: null };
 }

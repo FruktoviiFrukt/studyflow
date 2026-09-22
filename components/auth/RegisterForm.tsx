@@ -1,26 +1,47 @@
 "use client";
 
 import { useState } from "react";
-import { Eye, EyeOff, LockKeyhole, Mail, User } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { signIn } from "next-auth/react";
+import {
+  Eye,
+  EyeOff,
+  GraduationCap,
+  LockKeyhole,
+  Mail,
+  User,
+} from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { ALLOWED_GROUPS } from "@/lib/groups";
 
 type RegisterFormProps = {
   onSwitch: () => void;
 };
 
 export default function RegisterForm({ onSwitch }: RegisterFormProps) {
+  const router = useRouter();
+
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [registerData, setRegisterData] = useState({
     name: "",
     email: "",
     password: "",
     confirmPassword: "",
+    group: "",
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
 
     const newErrors: Record<string, string> = {};
@@ -43,10 +64,59 @@ export default function RegisterForm({ onSwitch }: RegisterFormProps) {
       newErrors.confirmPassword = "Пароли не совпадают";
     }
 
+    if (!registerData.group) {
+      newErrors.group = "Выберите группу";
+    }
+
     setErrors(newErrors);
 
-    if (Object.keys(newErrors).length === 0) {
-      console.log("Registration data:", registerData);
+    if (Object.keys(newErrors).length > 0) {
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      const response = await fetch("/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: registerData.name,
+          email: registerData.email,
+          password: registerData.password,
+          group: registerData.group,
+        }),
+      });
+
+      if (response.status === 409) {
+        setErrors({ email: "Этот email уже зарегистрирован" });
+        return;
+      }
+
+      if (!response.ok) {
+        setErrors({
+          email: "Не удалось зарегистрироваться, попробуйте ещё раз",
+        });
+        return;
+      }
+
+      const result = await signIn("credentials", {
+        email: registerData.email,
+        password: registerData.password,
+        redirect: false,
+      });
+
+      if (result?.error) {
+        setErrors({
+          email:
+            "Аккаунт создан, но не удалось войти. Попробуйте войти вручную",
+        });
+        return;
+      }
+
+      router.push("/dashboard");
+    } finally {
+      setIsSubmitting(false);
     }
   }
 
@@ -237,11 +307,56 @@ export default function RegisterForm({ onSwitch }: RegisterFormProps) {
         )}
       </div>
 
+      {/* Group */}
+      <div>
+        <label
+          htmlFor="register-group"
+          className="mb-2 block text-sm font-medium text-slate-700"
+        >
+          Группа
+        </label>
+
+        <Select
+          value={registerData.group}
+          onValueChange={(value) =>
+            setRegisterData({
+              ...registerData,
+              group: value,
+            })
+          }
+        >
+          <SelectTrigger
+            id="register-group"
+            aria-invalid={Boolean(errors.group)}
+            aria-describedby={errors.group ? "register-group-error" : undefined}
+            className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm data-[size=default]:h-auto"
+          >
+            <GraduationCap className="h-5 w-5 text-slate-400" />
+            <SelectValue placeholder="Выберите группу" />
+          </SelectTrigger>
+
+          <SelectContent position="popper" sideOffset={4}>
+            {ALLOWED_GROUPS.map((group) => (
+              <SelectItem key={group} value={group}>
+                {group}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        {errors.group && (
+          <p id="register-group-error" className="mt-2 text-sm text-red-500">
+            {errors.group}
+          </p>
+        )}
+      </div>
+
       <button
         type="submit"
-        className="w-full rounded-xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-200"
+        disabled={isSubmitting}
+        className="w-full rounded-xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-200 disabled:cursor-not-allowed disabled:opacity-70"
       >
-        Создать аккаунт
+        {isSubmitting ? "Создаём аккаунт..." : "Создать аккаунт"}
       </button>
 
       <p className="text-center text-sm text-slate-500">
