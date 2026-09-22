@@ -35,6 +35,7 @@ model Material {
   originalName String
   storageKey   String   @unique
   mimeType     String
+  contentHash  String   @unique
   uploadedAt   DateTime @default(now())
 
   @@index([uploadedAt])

@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import {
@@ -72,9 +73,18 @@ export async function POST(request: Request) {
     return jsonError("У файла должно быть расширение.", 400);
   }
 
+  const bytes = Buffer.from(await file.arrayBuffer());
+  const contentHash = createHash("sha256").update(bytes).digest("hex");
+
+  const duplicate = await prisma.material.findUnique({
+    where: { contentHash },
+  });
+  if (duplicate) {
+    return jsonError("Такой файл уже загружен.", 409);
+  }
+
   const id = crypto.randomUUID();
   const storageKey = `${id}${ext}`;
-  const bytes = Buffer.from(await file.arrayBuffer());
 
   await saveMaterialFile(storageKey, bytes);
 
@@ -89,6 +99,7 @@ export async function POST(request: Request) {
         originalName: file.name,
         storageKey,
         mimeType: mimeTypeFor(type, file.type),
+        contentHash,
       },
     });
 
@@ -98,6 +109,14 @@ export async function POST(request: Request) {
     );
   } catch (error) {
     await deleteMaterialFile(storageKey);
+    if (
+      typeof error === "object" &&
+      error !== null &&
+      "code" in error &&
+      error.code === "P2002"
+    ) {
+      return jsonError("Такой файл уже загружен.", 409);
+    }
     throw error;
   }
 }

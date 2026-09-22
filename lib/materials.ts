@@ -40,6 +40,7 @@ export type MaterialRecord = {
   originalName: string;
   storageKey: string;
   mimeType: string;
+  contentHash: string;
   uploadedAt: Date;
 };
 
