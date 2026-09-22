@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { BookOpen, Search, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -26,48 +26,23 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-const INITIAL_MATERIALS: Material[] = [
-  {
-    id: "m1",
-    title: "Лабораторная работа №4 — основы ООП",
-    subject: "Программирование",
-    type: "pdf",
-    size: 2_450_000,
-    uploadedAt: "2026-09-02T10:20:00",
-  },
-  {
-    id: "m2",
-    title: "Конспект лекций: пределы и производные",
-    subject: "Высшая математика",
-    type: "docx",
-    size: 840_000,
-    uploadedAt: "2026-09-01T16:05:00",
-  },
-  {
-    id: "m3",
-    title: "ER-диаграмма учебной базы",
-    subject: "Базы данных",
-    type: "png",
-    size: 1_120_000,
-    uploadedAt: "2026-08-28T09:12:00",
-  },
-  {
-    id: "m4",
-    title: "Презентация: модель OSI",
-    subject: "Компьютерные сети",
-    type: "pptx",
-    size: 8_120_000,
-    uploadedAt: "2026-08-26T14:40:00",
-  },
-  {
-    id: "m5",
-    title: "Таблица SQL-запросов",
-    subject: "Базы данных",
-    type: "xlsx",
-    size: 180_000,
-    uploadedAt: "2026-08-21T11:00:00",
-  },
-];
+async function readApiError(response: Response, fallback: string) {
+  const data = (await response.json().catch(() => null)) as {
+    error?: string;
+  } | null;
+  return data?.error || fallback;
+}
+
+async function fetchMaterials(): Promise<Material[]> {
+  const response = await fetch("/api/materials");
+  if (!response.ok) {
+    throw new Error(
+      await readApiError(response, "Не удалось загрузить материалы."),
+    );
+  }
+  const data = (await response.json()) as { materials: Material[] };
+  return data.materials;
+}
 
 const inputClass =
   "h-10 w-full min-w-0 rounded-lg border border-gray-200 bg-white px-3 text-sm text-gray-900 outline-none transition-colors focus:border-blue-500 focus:ring-2 focus:ring-blue-100";
@@ -78,11 +53,14 @@ function subjectId(name: string) {
 
 export default function Materials() {
   const router = useRouter();
-  const [materials, setMaterials] = useState<Material[]>(INITIAL_MATERIALS);
+  const [materials, setMaterials] = useState<Material[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [subject, setSubject] = useState("all");
   const [uploadOpen, setUploadOpen] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<Material | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
 
   const filtered = useMemo(() => {
@@ -113,45 +91,116 @@ export default function Materials() {
     window.setTimeout(() => setNotice(null), 2500);
   }
 
-  function handleUpload(payload: NewMaterialPayload) {
-    setMaterials((current) => [
-      {
-        id: crypto.randomUUID(),
-        title: payload.title,
-        subject: payload.subject,
-        type: payload.type,
-        size: payload.size,
-        uploadedAt: new Date().toISOString(),
-        file: payload.file,
-      },
-      ...current,
-    ]);
+  useEffect(() => {
+    let cancelled = false;
+
+    async function load() {
+      try {
+        const list = await fetchMaterials();
+        if (cancelled) return;
+        setMaterials(list);
+        setError(null);
+        setLoading(false);
+      } catch (cause) {
+        if (cancelled) return;
+        setError(
+          cause instanceof Error
+            ? cause.message
+            : "Не удалось загрузить материалы.",
+        );
+        setLoading(false);
+      }
+    }
+
+    void load();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  async function loadMaterials() {
+    setLoading(true);
+    setError(null);
+    try {
+      setMaterials(await fetchMaterials());
+    } catch (cause) {
+      setError(
+        cause instanceof Error
+          ? cause.message
+          : "Не удалось загрузить материалы.",
+      );
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleUpload(payload: NewMaterialPayload) {
+    if (!payload.file) {
+      throw new Error("Прикрепите файл.");
+    }
+
+    const formData = new FormData();
+    formData.append("title", payload.title);
+    formData.append("subject", payload.subject);
+    formData.append("file", payload.file);
+
+    const response = await fetch("/api/materials", {
+      method: "POST",
+      body: formData,
+    });
+
+    if (!response.ok) {
+      throw new Error(
+        await readApiError(response, "Не удалось загрузить файл."),
+      );
+    }
+
+    const data = (await response.json()) as { material: Material };
+    setMaterials((current) => [data.material, ...current]);
     showNotice("Материал загружен");
   }
 
   function handleOpen(material: Material) {
-    if (material.file) {
-      window.open(
-        URL.createObjectURL(material.file),
-        "_blank",
-        "noopener,noreferrer",
-      );
-      return;
-    }
-    showNotice(`Открыт материал: ${material.title}`);
+    window.open(
+      `/api/materials/${material.id}/file`,
+      "_blank",
+      "noopener,noreferrer",
+    );
   }
 
   function handleDownload(material: Material) {
-    if (material.file) {
-      const url = URL.createObjectURL(material.file);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = material.file.name;
-      link.click();
-      URL.revokeObjectURL(url);
-      return;
+    const link = document.createElement("a");
+    link.href = `/api/materials/${material.id}/file?download=1`;
+    link.download = "";
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+  }
+
+  async function handleDelete() {
+    if (!pendingDelete || deleting) return;
+    setDeleting(true);
+    try {
+      const response = await fetch(`/api/materials/${pendingDelete.id}`, {
+        method: "DELETE",
+      });
+      if (!response.ok) {
+        throw new Error(
+          await readApiError(response, "Не удалось удалить материал."),
+        );
+      }
+      setMaterials((current) =>
+        current.filter((item) => item.id !== pendingDelete.id),
+      );
+      showNotice("Материал удалён");
+      setPendingDelete(null);
+    } catch (cause) {
+      showNotice(
+        cause instanceof Error ? cause.message : "Не удалось удалить материал.",
+      );
+    } finally {
+      setDeleting(false);
     }
-    showNotice(`Скачивание: ${material.title}`);
   }
 
   const hasFilters = query.trim().length > 0 || subject !== "all";
@@ -213,7 +262,23 @@ export default function Materials() {
         <p className="mb-4 text-sm font-medium text-blue-700">{notice}</p>
       )}
 
-      {filtered.length === 0 ? (
+      {loading ? (
+        <Card className="rounded-2xl p-10 text-center shadow-none">
+          <p className="text-sm text-gray-500">Загрузка материалов…</p>
+        </Card>
+      ) : error ? (
+        <Card className="rounded-2xl border-dashed p-10 text-center shadow-none">
+          <h3 className="text-lg font-semibold text-gray-900">
+            Не удалось загрузить материалы
+          </h3>
+          <p className="mx-auto mt-2 max-w-md text-sm text-gray-500">{error}</p>
+          <div className="mt-5">
+            <Button className="rounded-xl" onClick={() => void loadMaterials()}>
+              Повторить
+            </Button>
+          </div>
+        </Card>
+      ) : filtered.length === 0 ? (
         <Card className="rounded-2xl border-dashed p-10 text-center shadow-none">
           <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-50 text-blue-600">
             <BookOpen size={26} />
@@ -344,16 +409,10 @@ export default function Materials() {
             <Button
               variant="destructive"
               className="rounded-xl"
-              onClick={() => {
-                if (!pendingDelete) return;
-                setMaterials((current) =>
-                  current.filter((item) => item.id !== pendingDelete.id),
-                );
-                showNotice("Материал удалён");
-                setPendingDelete(null);
-              }}
+              disabled={deleting}
+              onClick={() => void handleDelete()}
             >
-              Удалить
+              {deleting ? "Удаление…" : "Удалить"}
             </Button>
           </DialogFooter>
         </DialogContent>
