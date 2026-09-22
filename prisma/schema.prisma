@@ -361,3 +361,18 @@ model GpaProfile {
   subjects  Json
   updatedAt DateTime @updatedAt
 }
+
+model Material {
+  id           String   @id @default(cuid())
+  title        String
+  subject      String
+  type         String
+  size         Int
+  originalName String
+  storageKey   String   @unique
+  mimeType     String
+  contentHash  String   @unique
+  uploadedAt   DateTime @default(now())
+
+  @@index([uploadedAt])
+}
