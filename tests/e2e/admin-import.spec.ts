@@ -507,3 +507,142 @@ test("global publication is visible only in the global API and rejects overlaps"
     await viewer.dispose();
   }
 });
+
+test("assessment PDF import produces dated lessons readable via the student assessment API", async ({
+  playwright,
+}) => {
+  const db = new PrismaClient({
+    adapter: new PrismaPg({
+      connectionString: process.env.IMPORT_TEST_DATABASE_URL,
+    }),
+  });
+  const prefix = `assessment-import-${randomUUID()}`;
+  const adminId = `${prefix}-admin`;
+  const studentId = `${prefix}-student`;
+  async function cookie(userId: string, role: "ADMIN" | "STUDENT") {
+    const token = await encode({
+      secret: "import-test-secret-only",
+      salt: "authjs.session-token",
+      token: { id: userId, sub: userId, role },
+    });
+    return `authjs.session-token=${token}`;
+  }
+  const baseURL = "http://127.0.0.1:3103";
+  const admin = await playwright.request.newContext({
+    baseURL,
+    extraHTTPHeaders: { Cookie: await cookie(adminId, "ADMIN") },
+  });
+  const student = await playwright.request.newContext({
+    baseURL,
+    extraHTTPHeaders: { Cookie: await cookie(studentId, "STUDENT") },
+  });
+  let id: string | undefined;
+  try {
+    await db.user.create({
+      data: {
+        id: adminId,
+        role: "ADMIN",
+        email: `${adminId}@example.invalid`,
+        name: adminId,
+        password: "test-unused",
+      },
+    });
+    await db.user.create({
+      data: {
+        id: studentId,
+        role: "STUDENT",
+        email: `${studentId}@example.invalid`,
+        name: studentId,
+        password: "test-unused",
+      },
+    });
+    const upload = await admin.post("/api/admin/schedule", {
+      multipart: {
+        kind: "ASSESSMENT",
+        year: "2024/2025",
+        course: "2",
+        semester: "1",
+        from: "2024-09-01",
+        to: "2024-12-20",
+        first: "2024-08-26",
+        file: {
+          name: "assessment.pdf",
+          mimeType: "application/pdf",
+          buffer: await readFile(process.env.IMPORT_TEST_ASSESSMENT_PDF!),
+        },
+      },
+      timeout: 180000,
+    });
+    expect(upload.ok(), await upload.text()).toBe(true);
+    const record = await upload.json();
+    expect(record.kind).toBe("ASSESSMENT");
+    id = record.id;
+    expect(record.lessons.length).toBeGreaterThan(30);
+    const lesson = record.lessons.find(
+      (l: { subject: string; teacher: string }) =>
+        l.subject === "Analiza matematica 1" && l.teacher === "Pricop V.",
+    );
+    expect(lesson).toBeTruthy();
+    expect(lesson.date).toBe("2024-10-24");
+    expect(lesson.start).toBe("09:45");
+    expect(lesson.room).toBe("3-3");
+    expect(lesson.audiences.map((a: { group: string }) => a.group)).toContain(
+      "CIM-241",
+    );
+    // The parser must widen parse_pdf.py's group pattern to keep compound
+    // codes like "SD-IA-241" whole instead of truncating to "IA-241".
+    const compound = record.lessons.find(
+      (l: { audiences: { group: string }[] }) =>
+        l.audiences.some((a) => a.group === "SD-IA-241"),
+    );
+    expect(compound).toBeTruthy();
+
+    const group = await db.studyGroup.findUniqueOrThrow({
+      where: { name: "CIM-241" },
+    });
+    await db.user.update({
+      where: { id: studentId },
+      data: { groupId: group.id, subgroupId: null },
+    });
+    const reviewedLessons = record.lessons.map(
+      (l: Record<string, unknown>) => ({
+        ...l,
+        reviewed: true,
+      }),
+    );
+    const saved = await admin.patch(`/api/admin/schedule/${id}`, {
+      data: {
+        action: "save",
+        version: record.version,
+        lessons: reviewedLessons,
+        holidays: [],
+      },
+    });
+    expect(saved.ok(), await saved.text()).toBe(true);
+    const withReviewed = await saved.json();
+    const published = await admin.patch(`/api/admin/schedule/${id}`, {
+      data: { action: "publish", version: withReviewed.version },
+    });
+    expect(published.ok(), await published.text()).toBe(true);
+
+    const view = await student.get(
+      "/api/schedule/assessments?from=2024-10-21&to=2024-10-25",
+    );
+    expect(view.ok(), await view.text()).toBe(true);
+    const body = await view.json();
+    expect(body.status).toBe("READY");
+    const thursday = body.days.find(
+      (d: { date: string }) => d.date === "2024-10-24",
+    );
+    expect(thursday.status).toBe("LESSONS");
+    expect(thursday.lessons[0].subject.name).toBe("Analiza matematica 1");
+    expect(thursday.lessons[0].teacher).toBe("Pricop V.");
+    expect(thursday.lessons[0].startMinutes).toBe(9 * 60 + 45);
+  } finally {
+    if (id) await db.scheduleImport.deleteMany({ where: { id } });
+    await db.user.deleteMany({ where: { id: { in: [adminId, studentId] } } });
+    await db.$disconnect();
+    await admin.dispose();
+    await student.dispose();
+  }
+});

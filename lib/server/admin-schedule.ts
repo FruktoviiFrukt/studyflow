@@ -35,6 +35,7 @@ const types = {
   Лекция: "LECTURE",
   Лабораторная: "LABORATORY",
   Семинар: "SEMINAR",
+  Аттестация: "ASSESSMENT",
 } as const;
 const typeLabels = {
   LECTURE: "Лекция",
@@ -42,8 +43,14 @@ const typeLabels = {
   SEMINAR: "Семинар",
   PRACTICE: "Семинар",
   UNSPECIFIED: "Семинар",
+  ASSESSMENT: "Аттестация",
 } as const;
-const parities = { every: "EVERY", odd: "ODD", even: "EVEN" } as const;
+const parities = {
+  every: "EVERY",
+  odd: "ODD",
+  even: "EVEN",
+  once: "ONCE",
+} as const;
 const date = (d: string) => new Date(`${d}T00:00:00Z`);
 const iso = (d: Date) => d.toISOString().slice(0, 10);
 const time = (n: number) =>
@@ -80,6 +87,7 @@ export function serializeSchedule(r: RecordWithRelations) {
       id: l.id,
       subject: l.subject.name,
       day: l.weekday,
+      date: l.date ? iso(l.date) : undefined,
       start: time(l.startMinutes),
       end: time(l.endMinutes),
       type: typeLabels[l.type],
@@ -191,6 +199,11 @@ function validateLessons(value: unknown): AdminLesson[] {
       (typeof l.sourceText !== "string" || l.sourceText.length > 10000)
     )
       fail("Слишком длинный исходный текст.");
+    if (
+      l.date !== undefined &&
+      (typeof l.date !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(l.date))
+    )
+      fail("Некорректная дата занятия.");
     l.audiences = [
       ...new Set(l.audiences.map((a: { group: string }) => a.group)),
     ].map((group) => ({ group, subgroup: "all" }));
@@ -230,6 +243,7 @@ async function saveLessons(
         weekday: l.day,
         startMinutes: minutes(l.start),
         endMinutes: minutes(l.end),
+        date: l.date ? date(l.date) : null,
         type: types[l.type as keyof typeof types],
         weekPattern: parities[l.parity],
         teacher: l.teacher || null,
@@ -306,17 +320,16 @@ export async function importSchedule(request: Request) {
     location = path.join(root, key);
   await mkdir(root, { recursive: true });
   await writeFile(location, bytes, { flag: "wx" });
+  const parserScript =
+    kind === "ASSESSMENT"
+      ? "scripts/schedule-import/parse_assessment_pdf.py"
+      : "scripts/schedule-import/parse_pdf.py";
   try {
     let extracted: { lessons: AdminLesson[]; warnings: string[] };
     try {
       const { stdout } = await execute(
         process.env.SCHEDULE_PYTHON || "python",
-        [
-          "-X",
-          "utf8",
-          path.resolve("scripts/schedule-import/parse_pdf.py"),
-          location,
-        ],
+        ["-X", "utf8", path.resolve(parserScript), location],
         { timeout: 90000, maxBuffer: 8 * 1024 * 1024, windowsHide: true },
       );
       extracted = JSON.parse(stdout);

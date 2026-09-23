@@ -8,7 +8,7 @@ export type TemplateLesson = {
   weekday: number;
   startMinutes: number;
   endMinutes: number;
-  weekPattern: "EVERY" | "ODD" | "EVEN";
+  weekPattern: "EVERY" | "ODD" | "EVEN" | "ONCE";
   groupIds: string[];
   subject: { id: string; name: string; colorKey: string };
   type: ScheduleForCalculation["lessons"][number]["type"];

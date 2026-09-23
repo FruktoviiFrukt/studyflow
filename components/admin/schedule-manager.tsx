@@ -170,7 +170,7 @@ export default function ScheduleManager() {
             ? "Расписание опубликовано и доступно студентам."
             : draft.kind === "GLOBAL"
               ? "Глобальное расписание опубликовано и доступно всем группам."
-              : "Расписание опубликовано. Страница для аттестаций ещё не подключена."
+              : "Расписание аттестаций опубликовано и доступно студентам."
           : name === "delete"
             ? "Черновик удалён."
             : "Изменения сохранены в БД.",
@@ -420,14 +420,16 @@ export default function ScheduleManager() {
                       ))}
                     </SelectField>
                   )}
-                  <SelectField
-                    label="Чётность"
-                    value={parity}
-                    onChange={(e) => setParity(e.target.value)}
-                  >
-                    <option value="odd">Нечётная</option>
-                    <option value="even">Чётная</option>
-                  </SelectField>
+                  {draft.kind !== "ASSESSMENT" && (
+                    <SelectField
+                      label="Чётность"
+                      value={parity}
+                      onChange={(e) => setParity(e.target.value)}
+                    >
+                      <option value="odd">Нечётная</option>
+                      <option value="even">Чётная</option>
+                    </SelectField>
+                  )}
                 </div>
                 {globalData ? (
                   <GlobalTimetable
@@ -452,6 +454,7 @@ export default function ScheduleManager() {
                   />
                 ) : (
                   <Preview
+                    key={`${draft.id}:${selectedGroup}:${draft.status}`}
                     lessons={draft.lessons.filter((l) =>
                       matchesStudent(l, selectedGroup, parity),
                     )}
@@ -742,7 +745,7 @@ export default function ScheduleManager() {
                   ? "Расписание станет доступно студентам."
                   : draft?.kind === "GLOBAL"
                     ? "Глобальное расписание станет доступно на странице всех групп."
-                    : "Расписание получит статус опубликованного. Страница аттестаций ещё не подключена."
+                    : "Расписание аттестаций станет доступно студентам их группы."
                 : confirmation === "unpublish"
                   ? "Расписание будет скрыто от студентов до повторной публикации."
                   : "Черновик и его занятия будут удалены из БД."}

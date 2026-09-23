@@ -16,6 +16,7 @@ export const lessonTypes = {
   PRACTICE: "Семинар",
   SEMINAR: "Семинар",
   UNSPECIFIED: "Семинар",
+  ASSESSMENT: "Аттестация",
 };
 export function subjectStyle(name: string): {
   color: string;

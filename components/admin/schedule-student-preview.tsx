@@ -3,6 +3,7 @@ import {
   DAYS,
   SLOTS,
   holidayOn,
+  lessonOnDate,
   type ScheduleHoliday,
   type AdminLesson,
 } from "@/lib/admin-schedule";
@@ -41,8 +42,24 @@ export default function ScheduleStudentPreview({
   onEdit: (lesson: AdminLesson) => void;
   holidays: ScheduleHoliday[];
 }) {
-  const [date, setDate] = useState(universityToday);
+  const [date, setDate] = useState(
+    () =>
+      lessons
+        .map((lesson) => lesson.date)
+        .filter((value): value is string => !!value)
+        .sort()[0] || universityToday(),
+  );
+  const datedOnly =
+    lessons.length > 0 && lessons.every((lesson) => lesson.parity === "once");
+  const firstDate = lessons
+    .map((lesson) => lesson.date)
+    .filter((value): value is string => !!value)
+    .sort()[0];
   const week = mondayOf(date);
+  const hasDatedLessonsThisWeek = lessons.some(
+    (lesson) =>
+      lesson.date && lesson.date >= week && lesson.date <= addDays(week, 6),
+  );
   const days =
     day === ""
       ? [
@@ -78,9 +95,36 @@ export default function ScheduleStudentPreview({
           />
         </div>
         <p className="pb-2 text-sm text-gray-500">
-          {weekLabel(week)} · чётность задаётся фильтром «Неделя»
+          {weekLabel(week)} ·{" "}
+          {datedOnly
+            ? "аттестации показаны по датам из PDF"
+            : "чётность задаётся фильтром «Чётность»"}
         </p>
       </div>
+      {datedOnly && firstDate && !hasDatedLessonsThisWeek && (
+        <div
+          role="status"
+          className="border-b border-gray-100 bg-blue-50 p-5 text-sm text-blue-950"
+        >
+          <p>
+            На выбранную неделю у этой группы нет аттестаций. Первая аттестация
+            —{" "}
+            {formatDate(firstDate, {
+              day: "numeric",
+              month: "long",
+              year: "numeric",
+            })}
+            .
+          </p>
+          <button
+            type="button"
+            className="mt-2 font-medium underline underline-offset-4"
+            onClick={() => setDate(firstDate)}
+          >
+            Перейти к первой аттестации
+          </button>
+        </div>
+      )}
       <div
         className="overflow-x-auto"
         role="region"
@@ -141,7 +185,7 @@ export default function ScheduleStudentPreview({
                   const matches = lessons.filter(
                     (l) =>
                       !holidayOn(addDays(week, d), holidays) &&
-                      l.day === d &&
+                      lessonOnDate(l, addDays(week, d), d) &&
                       `${l.start}–${l.end}` === slot,
                   );
                   return (
