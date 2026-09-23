@@ -21,6 +21,7 @@ function setup({
     code: null,
     faculty: null,
     status: "ACTIVE",
+    lessons: [],
   };
   const api = createSubjectCatalogApi({
     authenticate: async () => session,
@@ -63,6 +64,10 @@ test("every catalog operation requires an authenticated current administrator", 
   ]) {
     const s = setup(options);
     assert.equal((await s.api.GET(s.request("GET"))).status, status);
+    assert.equal(
+      (await s.api.DETAIL(s.request("GET"), "subject")).status,
+      status,
+    );
     assert.equal(
       (await s.api.POST(s.request("POST", { name: "Test" }))).status,
       status,

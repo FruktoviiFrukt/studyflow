@@ -1,5 +1,6 @@
 import type { PrismaClient, Prisma } from "../generated/prisma/client";
 import { SUBJECT_LIMITS } from "../subject-catalog";
+import type { SubjectSchedule } from "../subject-catalog";
 
 type Dependencies = {
   authenticate: () => Promise<{ user?: { id?: string } } | null>;
@@ -12,6 +13,102 @@ const select = {
   faculty: true,
   status: true,
 } as const;
+const listSelect = {
+  ...select,
+  lessons: {
+    distinct: ["scheduleId"],
+    select: { schedule: { select: { id: true, status: true } } },
+  },
+} satisfies Prisma.SubjectSelect;
+function serializeSubject(
+  record: Prisma.SubjectGetPayload<{ select: typeof listSelect }>,
+) {
+  const { lessons, ...subject } = record;
+  const schedules = new Map(
+    lessons.map((lesson) => [lesson.schedule.id, lesson.schedule.status]),
+  );
+  const published = [...schedules.values()].filter(
+    (status) => status === "PUBLISHED",
+  ).length;
+  return {
+    ...subject,
+    schedules: {
+      total: schedules.size,
+      published,
+      drafts: schedules.size - published,
+    },
+  };
+}
+const detailSelect = {
+  ...select,
+  lessons: {
+    select: {
+      teacher: true,
+      audiences: { select: { group: { select: { name: true } } } },
+      schedule: {
+        select: {
+          id: true,
+          title: true,
+          kind: true,
+          status: true,
+          course: true,
+          validFrom: true,
+          validTo: true,
+          semester: {
+            select: { number: true, academicYear: { select: { name: true } } },
+          },
+        },
+      },
+    },
+  },
+} satisfies Prisma.SubjectSelect;
+function serializeDetails(
+  record: Prisma.SubjectGetPayload<{ select: typeof detailSelect }>,
+) {
+  const schedules = new Map<string, SubjectSchedule>();
+  for (const lesson of record.lessons) {
+    const source = lesson.schedule;
+    let entry = schedules.get(source.id);
+    if (!entry) {
+      entry = {
+        id: source.id,
+        title: source.title,
+        kind: source.kind,
+        status: source.status,
+        academicYear: source.semester.academicYear.name,
+        semester: source.semester.number,
+        course: source.course,
+        validFrom: source.validFrom.toISOString().slice(0, 10),
+        validTo: source.validTo.toISOString().slice(0, 10),
+        lessonCount: 0,
+        groups: [],
+        teachers: [],
+      };
+      schedules.set(source.id, entry);
+    }
+    entry.lessonCount++;
+    for (const audience of lesson.audiences)
+      entry.groups.push(audience.group.name);
+    if (lesson.teacher?.trim()) entry.teachers.push(lesson.teacher.trim());
+  }
+  const relatedSchedules = [...schedules.values()]
+    .map((schedule) => ({
+      ...schedule,
+      groups: [...new Set(schedule.groups)].sort((a, b) =>
+        a.localeCompare(b, "ru", { numeric: true }),
+      ),
+      teachers: [...new Set(schedule.teachers)].sort((a, b) =>
+        a.localeCompare(b, "ru"),
+      ),
+    }))
+    .sort(
+      (a, b) =>
+        b.validFrom.localeCompare(a.validFrom) ||
+        a.title.localeCompare(b.title, "ru") ||
+        a.id.localeCompare(b.id),
+    );
+  return { ...serializeSubject(record), relatedSchedules };
+}
 class RequestError extends Error {
   constructor(
     public status: number,
@@ -163,21 +260,38 @@ export function createSubjectCatalogApi({ authenticate, db }: Dependencies) {
     GET: (request: Request) =>
       run(request, async () =>
         json(
-          await db.subject.findMany({
-            orderBy: [{ name: "asc" }, { id: "asc" }],
-            select,
-          }),
+          (
+            await db.subject.findMany({
+              orderBy: [{ name: "asc" }, { id: "asc" }],
+              select: listSelect,
+            })
+          ).map(serializeSubject),
         ),
       ),
+    DETAIL: (request: Request, id: string) =>
+      run(request, async () => {
+        const record = await db.subject.findUnique({
+          where: { id },
+          select: detailSelect,
+        });
+        if (!record)
+          throw new RequestError(
+            404,
+            "Дисциплина не найдена. Обновите список.",
+          );
+        return json(serializeDetails(record));
+      }),
     POST: (request: Request) =>
       run(request, async () => {
         const data = await parseBody(request, true);
         await checkDuplicates(data);
         return json(
-          await db.subject.create({
-            data: { ...data, name: data.name! },
-            select,
-          }),
+          serializeSubject(
+            await db.subject.create({
+              data: { ...data, name: data.name! },
+              select: listSelect,
+            }),
+          ),
           201,
         );
       }),
@@ -195,7 +309,15 @@ export function createSubjectCatalogApi({ authenticate, db }: Dependencies) {
             "Дисциплина не найдена. Обновите список.",
           );
         await checkDuplicates(data, id);
-        return json(await db.subject.update({ where: { id }, data, select }));
+        return json(
+          serializeSubject(
+            await db.subject.update({
+              where: { id },
+              data,
+              select: listSelect,
+            }),
+          ),
+        );
       }),
   };
 }

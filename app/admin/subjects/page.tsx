@@ -25,6 +25,9 @@ import {
   DialogHeader,
 } from "@/components/ui/dialog";
 import { SUBJECT_LIMITS, type CatalogSubject } from "@/lib/subject-catalog";
+import SubjectSchedules, {
+  SubjectScheduleSummary,
+} from "@/components/admin/subject-schedules";
 
 type Form = { name: string; code: string; faculty: string };
 const emptyForm: Form = { name: "", code: "", faculty: "" };
@@ -492,6 +495,7 @@ export default function AdminSubjectsPage() {
                           <p className="mt-1 text-xs text-gray-500">
                             {s.code || "Код не указан"}
                           </p>
+                          <SubjectScheduleSummary schedules={s.schedules} />
                         </td>
                         <td className="break-words px-4 py-4">
                           {s.faculty || "Не указан"}
@@ -519,6 +523,7 @@ export default function AdminSubjectsPage() {
                             {s.code || "Код не указан"} ·{" "}
                             {s.faculty || "Факультет не указан"}
                           </p>
+                          <SubjectScheduleSummary schedules={s.schedules} />
                         </div>
                         <Status value={s.status} />
                       </div>
@@ -618,6 +623,7 @@ export default function AdminSubjectsPage() {
                   </div>
                 ))}
               </dl>
+              <SubjectSchedules key={detail.id} subjectId={detail.id} />
               <Button disabled={busy} onClick={() => openEditor(detail)}>
                 Редактировать дисциплину
               </Button>
