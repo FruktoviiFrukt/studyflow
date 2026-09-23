@@ -420,14 +420,16 @@ export default function ScheduleManager() {
                       ))}
                     </SelectField>
                   )}
-                  <SelectField
-                    label="Чётность"
-                    value={parity}
-                    onChange={(e) => setParity(e.target.value)}
-                  >
-                    <option value="odd">Нечётная</option>
-                    <option value="even">Чётная</option>
-                  </SelectField>
+                  {draft.kind !== "ASSESSMENT" && (
+                    <SelectField
+                      label="Чётность"
+                      value={parity}
+                      onChange={(e) => setParity(e.target.value)}
+                    >
+                      <option value="odd">Нечётная</option>
+                      <option value="even">Чётная</option>
+                    </SelectField>
+                  )}
                 </div>
                 {globalData ? (
                   <GlobalTimetable
@@ -452,6 +454,7 @@ export default function ScheduleManager() {
                   />
                 ) : (
                   <Preview
+                    key={`${draft.id}:${selectedGroup}:${draft.status}`}
                     lessons={draft.lessons.filter((l) =>
                       matchesStudent(l, selectedGroup, parity),
                     )}

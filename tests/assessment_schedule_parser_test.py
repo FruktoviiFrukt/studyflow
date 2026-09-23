@@ -18,6 +18,7 @@ class FakeTable:
     def __init__(self, rows):
         self._rows = rows
         self.cells = list(range(len(rows) * 8))
+        self.bbox = (0, 0, 800, 1000)
 
     def extract(self):
         return self._rows
@@ -27,7 +28,7 @@ class FakePage:
     def __init__(self, rows):
         self.rows = rows
 
-    def find_tables(self):
+    def find_tables(self, settings=None):
         return [FakeTable(self.rows)]
 
 
@@ -48,6 +49,16 @@ def extract_rows(*page_rows):
 
 
 class AssessmentParserTest(unittest.TestCase):
+    def test_split_subject_starts_on_previous_page_without_its_label(self):
+        page1 = [HEADER,
+                 [None, "Algebra", "1", "TI-242", "Costaș A.", "21.10.2024", "9:45", "3-3"],
+                 [None, "", "1", "CIM-241", "Corlat A.", "17.10.2024", "11:30", "3-3"]]
+        page2 = [[None, "Probabilitate și statistică aplicată", "2", "TI-242", "Leahu A.", "25.10.2024", "13:30", "5-1"],
+                 [None, None, "3", "IA-241", "Marusic G.", "18.10.2024", "13:30", "104"]]
+        lessons = extract_rows(page1, page2)["lessons"]
+        self.assertEqual([l["subject"] for l in lessons],
+                         ["Algebra"] + ["Probabilitate și statistică aplicată"] * 3)
+
     def test_basic_row_produces_a_dated_assessment_lesson(self):
         rows = [HEADER, [None, "Analiza matematica 1", "1",
                           "CIM-241, CR-241, CR-242", "Pricop V.", "24.10.2024", "9:45", "3-3"]]

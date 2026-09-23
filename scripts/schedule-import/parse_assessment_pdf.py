@@ -31,22 +31,53 @@ def is_header(row):
     return clean(row[5]) == "Data" or clean(row[1]) == "Disciplina"
 
 
+def assessment_tables(pages):
+    """Close page-edge cells so split merged subject labels are not lost."""
+    result = []
+    for page in pages:
+        tables = page.find_tables()
+        if not tables:
+            result.append([])
+            continue
+        table = max(tables, key=lambda t: len(t.cells))
+        if len(table.cells) > 10000:
+            raise ValueError("Слишком большая таблица")
+        repaired = page.find_tables({
+            "explicit_horizontal_lines": [table.bbox[1], table.bbox[3]],
+        })
+        rows = max(repaired, key=lambda t: len(t.cells)).extract()
+        result.append(rows)
+    # A subject can start at the very bottom of a page, with its text printed
+    # only on the next page. Empty string is a real (empty) cell; None means
+    # continuation of the preceding merged cell.
+    for index, rows in enumerate(result[:-1]):
+        following = [r for r in result[index + 1] if len(r) >= 8 and not is_header(r)]
+        next_subject = clean(following[0][1]) if following else ""
+        if not next_subject:
+            continue
+        for row_index in range(len(rows) - 1, -1, -1):
+            row = rows[row_index]
+            if len(row) < 8 or is_header(row):
+                continue
+            if row[1] is not None:
+                if not clean(row[1]):
+                    row[1] = next_subject
+                break
+    return result
+
+
 def extract(path):
     lessons, warnings = [], []
     with pdfplumber.open(path) as pdf:
         if len(pdf.pages) > 10:
             raise ValueError("Не более 10 страниц в одном PDF")
         discipline = None
-        for page_index, page in enumerate(pdf.pages):
-            tables = page.find_tables()
-            if not tables:
+        for page_index, rows in enumerate(assessment_tables(pdf.pages)):
+            if not rows:
                 warnings.append(f"Страница {page_index + 1}: таблица не найдена, требуется ручной ввод.")
                 continue
-            table = max(tables, key=lambda t: len(t.cells))
-            if len(table.cells) > 10000:
-                raise ValueError("Слишком большая таблица")
             found_on_page = False
-            for row in table.extract():
+            for row in rows:
                 if len(row) < 8 or is_header(row):
                     continue
                 if row[1]:

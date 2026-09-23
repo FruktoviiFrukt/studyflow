@@ -131,9 +131,15 @@ export function matchesStudent(
   return (
     (parity === "all" ||
       lesson.parity === "every" ||
+      lesson.parity === "once" ||
       lesson.parity === parity) &&
     lesson.audiences.some((a) => !group || a.group === group)
   );
+}
+
+export function lessonOnDate(lesson: AdminLesson, date: string, day: number) {
+  if (lesson.date) return lesson.date === date;
+  return lesson.parity !== "once" && lesson.day === day;
 }
 
 export function scheduleIssues(lessons: AdminLesson[]) {
