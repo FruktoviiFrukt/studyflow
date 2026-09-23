@@ -15,7 +15,6 @@ export type Material = {
   type: MaterialType;
   size: number;
   uploadedAt: string;
-  file?: File | null;
 };
 
 export function formatFileSize(bytes: number) {

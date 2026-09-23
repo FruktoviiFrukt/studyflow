@@ -76,6 +76,11 @@ export default function ScheduleLessonEditor({
             нескольким группам.
           </DialogDescription>
         </DialogHeader>
+        {lesson.sourceText && (
+          <pre className="max-h-40 overflow-auto whitespace-pre-wrap rounded-lg bg-blue-50 p-3 text-xs text-blue-950">
+            {lesson.sourceText}
+          </pre>
+        )}
         <form onSubmit={save} className="space-y-5">
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label="Предмет *">
@@ -199,19 +204,6 @@ export default function ScheduleLessonEditor({
                         placeholder="SI-261"
                       />
                     </Field>
-                    <SelectField
-                      label={`Получатели ${index + 1}`}
-                      value={a.subgroup}
-                      onChange={(e) =>
-                        recipient(index, {
-                          subgroup: e.target.value as Audience["subgroup"],
-                        })
-                      }
-                    >
-                      <option value="all">Вся группа</option>
-                      <option value="1">Подгруппа 1</option>
-                      <option value="2">Подгруппа 2</option>
-                    </SelectField>
                   </div>
                   <Button
                     type="button"
@@ -247,8 +239,9 @@ export default function ScheduleLessonEditor({
             </Button>
           </fieldset>
           <p className="rounded-xl bg-blue-50 px-4 py-3 text-xs leading-5 text-blue-800">
-            В PDF сверху — нечётная неделя, снизу — чётная. Если у подгрупп
-            разные преподаватели или аудитории, создайте отдельные занятия.
+            В PDF сверху — нечётная неделя, снизу — чётная. Если в одной ячейке
+            указаны варианты 1) и 2), создайте отдельные занятия для всей группы
+            на одно время.
           </p>
           <Field label="Тема занятия · необязательно">
             <textarea
@@ -267,10 +260,9 @@ export default function ScheduleLessonEditor({
               onChange={(e) => change("reviewed", e.target.checked)}
             />
             <span>
-              Данные, группы и подгруппы проверены
+              Данные и группы проверены
               <span className="mt-1 block text-xs text-gray-500">
-                Непроверенные занятия можно сохранить в черновик, но нельзя
-                опубликовать.
+                Непроверенные занятия останутся в замечаниях после публикации.
               </span>
             </span>
           </label>

@@ -19,6 +19,7 @@ export default function DatePicker({
   label = "Выбрать дату",
   min,
   showValue = false,
+  mondaysOnly = false,
 }: {
   value: string;
   today: string;
@@ -26,6 +27,7 @@ export default function DatePicker({
   label?: string;
   min?: string;
   showValue?: boolean;
+  mondaysOnly?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [month, setMonth] = useState(
@@ -38,7 +40,14 @@ export default function DatePicker({
     date.setUTCMonth(date.getUTCMonth() + offset);
     setMonth(date.toISOString().slice(0, 10));
   }
+  function isDisabled(date: string) {
+    return (
+      Boolean(min && date < min) ||
+      (mondaysOnly && parseDate(date).getUTCDay() !== 1)
+    );
+  }
   function select(date: string) {
+    if (isDisabled(date)) return;
     onSelect(date);
     setOpen(false);
   }
@@ -75,7 +84,9 @@ export default function DatePicker({
         aria-describedby={undefined}
         className="w-[calc(100%-2rem)] max-w-sm rounded-2xl border-gray-200 bg-white p-4 text-gray-900 sm:rounded-2xl"
       >
-        <DialogTitle className="mb-2 text-base">Выберите день</DialogTitle>
+        <DialogTitle className="mb-2 text-base">
+          {mondaysOnly ? "Выберите понедельник" : "Выберите день"}
+        </DialogTitle>
         <div className="flex items-center justify-between">
           <Button
             variant="ghost"
@@ -113,7 +124,7 @@ export default function DatePicker({
             <button
               key={date}
               type="button"
-              disabled={Boolean(min && date < min)}
+              disabled={isDisabled(date)}
               aria-label={formatDate(date, {
                 day: "numeric",
                 month: "long",
@@ -142,7 +153,7 @@ export default function DatePicker({
         </div>
         <Button
           type="button"
-          disabled={Boolean(min && today < min)}
+          disabled={isDisabled(today)}
           variant="secondary"
           onClick={() => select(today)}
           className="rounded-xl"

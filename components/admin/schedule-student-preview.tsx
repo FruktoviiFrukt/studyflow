@@ -3,6 +3,7 @@ import {
   DAYS,
   SLOTS,
   holidayOn,
+  lessonOnDate,
   type ScheduleHoliday,
   type AdminLesson,
 } from "@/lib/admin-schedule";
@@ -13,7 +14,18 @@ import {
   formatDate,
   weekLabel,
 } from "@/lib/schedule";
-import { Field, fieldClass } from "./schedule-fields";
+import DatePicker from "@/components/schedule/date-picker";
+
+function slotLabel(slot: string) {
+  const exact = SLOTS.indexOf(slot);
+  if (exact >= 0) return `${exact + 1} пара`;
+  const [start, end] = slot.split("–");
+  const first = SLOTS.findIndex((item) => item.startsWith(`${start}–`));
+  const last = SLOTS.findIndex((item) => item.endsWith(`–${end}`));
+  return first >= 0 && last > first
+    ? `${first + 1}–${last + 1} пары`
+    : "Другое время";
+}
 
 export default function ScheduleStudentPreview({
   lessons,
@@ -30,8 +42,24 @@ export default function ScheduleStudentPreview({
   onEdit: (lesson: AdminLesson) => void;
   holidays: ScheduleHoliday[];
 }) {
-  const [date, setDate] = useState(universityToday);
+  const [date, setDate] = useState(
+    () =>
+      lessons
+        .map((lesson) => lesson.date)
+        .filter((value): value is string => !!value)
+        .sort()[0] || universityToday(),
+  );
+  const datedOnly =
+    lessons.length > 0 && lessons.every((lesson) => lesson.parity === "once");
+  const firstDate = lessons
+    .map((lesson) => lesson.date)
+    .filter((value): value is string => !!value)
+    .sort()[0];
   const week = mondayOf(date);
+  const hasDatedLessonsThisWeek = lessons.some(
+    (lesson) =>
+      lesson.date && lesson.date >= week && lesson.date <= addDays(week, 6),
+  );
   const days =
     day === ""
       ? [
@@ -54,20 +82,49 @@ export default function ScheduleStudentPreview({
   return (
     <>
       <div className="flex flex-wrap items-end gap-4 border-b border-gray-100 p-5">
-        <Field label="Дата предпросмотра">
-          <input
-            type="date"
-            className={fieldClass}
+        <div className="grid gap-1.5">
+          <span className="text-sm font-medium text-gray-700">
+            Дата предпросмотра
+          </span>
+          <DatePicker
+            label="Дата предпросмотра"
+            showValue
             value={date}
-            onChange={(e) => {
-              if (e.target.value) setDate(e.target.value);
-            }}
+            today={universityToday()}
+            onSelect={setDate}
           />
-        </Field>
+        </div>
         <p className="pb-2 text-sm text-gray-500">
-          {weekLabel(week)} · чётность задаётся фильтром «Неделя»
+          {weekLabel(week)} ·{" "}
+          {datedOnly
+            ? "аттестации показаны по датам из PDF"
+            : "чётность задаётся фильтром «Чётность»"}
         </p>
       </div>
+      {datedOnly && firstDate && !hasDatedLessonsThisWeek && (
+        <div
+          role="status"
+          className="border-b border-gray-100 bg-blue-50 p-5 text-sm text-blue-950"
+        >
+          <p>
+            На выбранную неделю у этой группы нет аттестаций. Первая аттестация
+            —{" "}
+            {formatDate(firstDate, {
+              day: "numeric",
+              month: "long",
+              year: "numeric",
+            })}
+            .
+          </p>
+          <button
+            type="button"
+            className="mt-2 font-medium underline underline-offset-4"
+            onClick={() => setDate(firstDate)}
+          >
+            Перейти к первой аттестации
+          </button>
+        </div>
+      )}
       <div
         className="overflow-x-auto"
         role="region"
@@ -121,16 +178,14 @@ export default function ScheduleStudentPreview({
                   </span>
                   <span className="mt-1 block">{slot.split("–")[1]}</span>
                   <span className="mt-2 block text-[10px]">
-                    {SLOTS.includes(slot)
-                      ? `${SLOTS.indexOf(slot) + 1} пара`
-                      : "Другое время"}
+                    {slotLabel(slot)}
                   </span>
                 </th>
                 {days.map((d) => {
                   const matches = lessons.filter(
                     (l) =>
                       !holidayOn(addDays(week, d), holidays) &&
-                      l.day === d &&
+                      lessonOnDate(l, addDays(week, d), d) &&
                       `${l.start}–${l.end}` === slot,
                   );
                   return (

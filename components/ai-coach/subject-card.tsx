@@ -1,47 +1,53 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import type { AiCoachSubject } from "@/lib/ai-coach";
+import { subjectDotColor, type ApiSubject } from "@/lib/ai-coach";
 
-type SubjectCardProps = {
-  subject: AiCoachSubject;
-  selected: boolean;
-  onToggle: (id: string) => void;
+type Props = {
+  subject: ApiSubject;
+  isSelected: boolean;
+  onToggle: (subject: ApiSubject) => void;
 };
 
-export default function SubjectCard({
-  subject,
-  selected,
-  onToggle,
-}: SubjectCardProps) {
+export default function SubjectCard({ subject, isSelected, onToggle }: Props) {
+  const dotColor = subjectDotColor(subject.id);
+  const hasQuestions = subject.availableQuestions > 0;
+
+  const diffParts: string[] = [];
+  if (subject.easyCount > 0) diffParts.push(`${subject.easyCount} лёгк.`);
+  if (subject.mediumCount > 0) diffParts.push(`${subject.mediumCount} средн.`);
+  if (subject.hardCount > 0) diffParts.push(`${subject.hardCount} сл.`);
+
   return (
     <button
       type="button"
-      role="checkbox"
-      aria-checked={selected}
-      onClick={() => onToggle(subject.id)}
+      onClick={() => onToggle(subject)}
+      disabled={!hasQuestions}
       className={cn(
-        "relative flex flex-col gap-3 rounded-xl border p-4 text-left transition-colors",
-        selected
-          ? "border-blue-500 bg-blue-50/60 ring-1 ring-blue-500"
-          : "border-gray-200 bg-white hover:border-blue-300 hover:bg-blue-50/30",
+        "w-full text-left rounded-2xl border p-3 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400",
+        isSelected
+          ? "border-blue-300 bg-blue-50 shadow-sm"
+          : "border-gray-200 bg-white hover:border-blue-200 hover:shadow-sm",
+        !hasQuestions && "cursor-not-allowed opacity-40",
       )}
     >
-      <span className="flex items-center gap-2">
+      <div className="flex items-start gap-2">
         <span
           aria-hidden="true"
-          className={cn("size-2.5 shrink-0 rounded-full", subject.dot)}
+          className={cn("mt-[5px] size-2 shrink-0 rounded-full", dotColor)}
         />
-        <span className="text-sm font-semibold text-gray-900">
+        <span className="text-sm font-semibold leading-snug text-gray-900">
           {subject.name}
         </span>
-      </span>
-      <span className="text-xs text-gray-500">
-        Доступно вопросов:{" "}
-        <span className="font-medium text-gray-700">
-          {subject.availableQuestions}
-        </span>
-      </span>
+      </div>
+
+      {hasQuestions ? (
+        <p className="mt-1.5 pl-4 text-[11px] text-gray-500">
+          {diffParts.join(" · ")}
+        </p>
+      ) : (
+        <p className="mt-1.5 pl-4 text-[11px] text-gray-400">Нет вопросов</p>
+      )}
     </button>
   );
 }

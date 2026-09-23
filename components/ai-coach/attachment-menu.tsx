@@ -58,7 +58,7 @@ export default function AttachmentMenu({ onAddFile }: AttachmentMenuProps) {
       <input
         ref={fileInputRef}
         type="file"
-        accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        accept=".pdf,.docx,.txt,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain,.png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp"
         tabIndex={-1}
         aria-hidden="true"
         className="sr-only"

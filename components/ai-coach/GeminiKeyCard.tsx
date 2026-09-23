@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import {
+  AlertCircle,
   CheckCircle2,
   Eye,
   EyeOff,
@@ -15,11 +16,16 @@ import { cn } from "@/lib/utils";
 type Props = {
   onLinked?: () => void;
   onUnlinked?: () => void;
+  errorMessage?: string;
 };
 
 type Status = { type: "success" | "error"; message: string } | null;
 
-export default function GeminiKeyCard({ onLinked, onUnlinked }: Props) {
+export default function GeminiKeyCard({
+  onLinked,
+  onUnlinked,
+  errorMessage,
+}: Props) {
   const [linked, setLinked] = useState<boolean | null>(null);
   const [keyValue, setKeyValue] = useState("");
   const [showKey, setShowKey] = useState(false);
@@ -73,6 +79,12 @@ export default function GeminiKeyCard({ onLinked, onUnlinked }: Props) {
   }
 
   async function handleDelete() {
+    if (
+      !window.confirm(
+        "Удалить привязанный Gemini API-ключ? После удаления AI Exam Coach перестанет работать.",
+      )
+    )
+      return;
     setStatus(null);
     setDeleting(true);
     try {
@@ -112,6 +124,13 @@ export default function GeminiKeyCard({ onLinked, onUnlinked }: Props) {
           Получить ключ бесплатно →
         </a>
       </p>
+
+      {errorMessage && (
+        <div className="flex items-start gap-2 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+          <AlertCircle aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
+          {errorMessage}
+        </div>
+      )}
 
       {linked === null && (
         <div className="flex items-center gap-2 text-sm text-gray-400">

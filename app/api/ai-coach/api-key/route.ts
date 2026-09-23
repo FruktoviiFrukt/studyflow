@@ -3,8 +3,31 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { encryptApiKey } from "@/lib/byok";
 
-function isPlausibleGeminiKey(key: string): boolean {
-  return key.length >= 20;
+const GEMINI_VALIDATE_URL =
+  "https://generativelanguage.googleapis.com/v1beta/models";
+
+async function validateGeminiKey(
+  key: string,
+): Promise<{ ok: true } | { ok: false; message: string }> {
+  try {
+    // The key travels in a header, not in the URL, so it never lands in access logs.
+    const res = await fetch(GEMINI_VALIDATE_URL, {
+      headers: { "x-goog-api-key": key },
+    });
+    if (res.ok) return { ok: true };
+
+    let hint = "Проверьте ключ в Google AI Studio";
+    try {
+      const body = (await res.json()) as { error?: { message?: string } };
+      if (body.error?.message) hint = body.error.message;
+    } catch {}
+    return { ok: false, message: `API ключ недействителен — ${hint}` };
+  } catch {
+    return {
+      ok: false,
+      message: "Не удалось проверить ключ — нет доступа к Gemini API",
+    };
+  }
 }
 
 // GET /api/ai-coach/api-key — check whether the current user has a key linked
@@ -51,9 +74,21 @@ export async function POST(request: Request) {
 
     const trimmedKey = apiKey.trim();
 
-    if (!isPlausibleGeminiKey(trimmedKey)) {
+    if (trimmedKey.length < 20) {
       return NextResponse.json(
-        { message: "Ключ слишком короткий" },
+        {
+          message:
+            "Ключ слишком короткий — Gemini ключи имеют длину 39+ символов",
+        },
+        { status: 422 },
+      );
+    }
+
+    // Validate the key against the real Gemini API before saving
+    const validation = await validateGeminiKey(trimmedKey);
+    if (!validation.ok) {
+      return NextResponse.json(
+        { message: validation.message },
         { status: 422 },
       );
     }

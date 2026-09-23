@@ -45,6 +45,11 @@ SECRETS-TO-SHARE.txt
 next-env.d.ts
 
 /lib/generated/prisma
+
+# uploaded study materials
+/uploads
 /.review-output/
 /playwright-report/
 /test-results/
+/.data/
+__pycache__/

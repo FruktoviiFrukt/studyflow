@@ -155,12 +155,9 @@ export function ResultsScreen({
             <RotateCcw aria-hidden="true" />
             Пройти заново
           </Button>
-          <Button
-            onClick={onPracticeWeak}
-            disabled={result.weakTopics.length === 0}
-          >
+          <Button onClick={onPracticeWeak} disabled={result.percentage >= 100}>
             <Target aria-hidden="true" />
-            Проработать слабые темы
+            Проработать слабые места
           </Button>
         </div>
       </div>
