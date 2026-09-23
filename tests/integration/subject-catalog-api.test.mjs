@@ -73,6 +73,7 @@ test("catalog API persists edits and archive state, and rechecks administrator r
       name: id,
       code,
       faculty: "FCIM",
+      ectsCredits: null,
       status: "ARCHIVED",
       schedules: { total: 0, published: 0, drafts: 0 },
     });
@@ -91,6 +92,44 @@ test("catalog API persists edits and archive state, and rechecks administrator r
     assert.equal(restored.status, "ACTIVE");
     assert.equal(restored.code, null);
     assert.equal(restored.faculty, null);
+    assert.equal(
+      (await api.PATCH(request("PATCH", { ectsCredits: 4.5 }), subject.id))
+        .status,
+      200,
+    );
+    const creditsSaved = await (
+      await api.DETAIL(request("GET"), subject.id)
+    ).json();
+    assert.equal(creditsSaved.ectsCredits, 4.5);
+    assert.equal(typeof creditsSaved.ectsCredits, "number");
+    await api.PATCH(request("PATCH", { status: "ARCHIVED" }), subject.id);
+    assert.equal(
+      (await (await fresh.GET(request("GET"))).json()).find(
+        (s) => s.id === subject.id,
+      ).ectsCredits,
+      4.5,
+    );
+    assert.equal(
+      (await api.PATCH(request("PATCH", { ectsCredits: -1 }), subject.id))
+        .status,
+      400,
+    );
+    assert.equal(
+      Number(
+        (await db.subject.findUniqueOrThrow({ where: { id: subject.id } }))
+          .ectsCredits,
+      ),
+      4.5,
+    );
+    await api.PATCH(
+      request("PATCH", { ectsCredits: null, status: "ACTIVE" }),
+      subject.id,
+    );
+    assert.equal(
+      (await db.subject.findUniqueOrThrow({ where: { id: subject.id } }))
+        .ectsCredits,
+      null,
+    );
     // Existing imports are linked through lessons, not inferred from names.
     await db.academicYear.create({
       data: {

@@ -24,17 +24,27 @@ import {
   DialogDescription,
   DialogHeader,
 } from "@/components/ui/dialog";
-import { SUBJECT_LIMITS, type CatalogSubject } from "@/lib/subject-catalog";
+import {
+  SUBJECT_LIMITS,
+  isValidEctsCredits,
+  type CatalogSubject,
+} from "@/lib/subject-catalog";
 import SubjectSchedules, {
   SubjectScheduleSummary,
 } from "@/components/admin/subject-schedules";
 
-type Form = { name: string; code: string; faculty: string };
-const emptyForm: Form = { name: "", code: "", faculty: "" };
+type Form = {
+  name: string;
+  code: string;
+  faculty: string;
+  ectsCredits: string;
+};
+const emptyForm: Form = { name: "", code: "", faculty: "", ectsCredits: "" };
 const labels = {
   name: "Название",
   code: "Код дисциплины",
   faculty: "Факультет",
+  ectsCredits: "Кредиты ECTS",
 };
 const statusLabels = { ACTIVE: "Активна", ARCHIVED: "Архив" };
 const fieldClass =
@@ -171,6 +181,8 @@ export default function AdminSubjectsPage() {
           name: subject.name,
           code: subject.code ?? "",
           faculty: subject.faculty ?? "",
+          ectsCredits:
+            subject.ectsCredits == null ? "" : String(subject.ectsCredits),
         }
       : { ...emptyForm };
     setForm(initial);
@@ -190,10 +202,18 @@ export default function AdminSubjectsPage() {
     if (mutationLock.current || !editor) return;
     const nextErrors: Partial<Record<keyof Form, string>> = {};
     if (!form.name.trim()) nextErrors.name = "Укажите название.";
-    for (const key of Object.keys(labels) as (keyof Form)[]) {
+    for (const key of Object.keys(
+      SUBJECT_LIMITS,
+    ) as (keyof typeof SUBJECT_LIMITS)[]) {
       if (form[key].trim().length > SUBJECT_LIMITS[key])
         nextErrors[key] = `Не более ${SUBJECT_LIMITS[key]} символов.`;
     }
+    const ectsCredits = form.ectsCredits.trim()
+      ? Number(form.ectsCredits.trim().replace(",", "."))
+      : null;
+    if (ectsCredits !== null && !isValidEctsCredits(ectsCredits))
+      nextErrors.ectsCredits =
+        "Укажите число от 0,1 до 60 с одним знаком после запятой.";
     setErrors(nextErrors);
     setFormError("");
     if (Object.keys(nextErrors).length) {
@@ -211,7 +231,7 @@ export default function AdminSubjectsPage() {
           {
             method: editor.id ? "PATCH" : "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(form),
+            body: JSON.stringify({ ...form, ectsCredits }),
           },
         ),
       );
@@ -468,11 +488,14 @@ export default function AdminSubjectsPage() {
                   <caption className="sr-only">Список дисциплин</caption>
                   <thead className="border-b border-gray-100 text-xs text-gray-500">
                     <tr>
-                      <th scope="col" className="w-[44%] px-6 py-3">
+                      <th scope="col" className="w-[38%] px-6 py-3">
                         Дисциплина
                       </th>
                       <th scope="col" className="px-4 py-3">
                         Факультет
+                      </th>
+                      <th scope="col" className="px-4 py-3">
+                        Кредиты ECTS
                       </th>
                       <th scope="col" className="px-4 py-3">
                         Статус
@@ -501,6 +524,11 @@ export default function AdminSubjectsPage() {
                           {s.faculty || "Не указан"}
                         </td>
                         <td className="px-4 py-4">
+                          {s.ectsCredits == null
+                            ? "Не указаны"
+                            : s.ectsCredits.toLocaleString("ru")}
+                        </td>
+                        <td className="px-4 py-4">
                           <Status value={s.status} />
                         </td>
                         <td className="px-6 py-4">{renderActions(s)}</td>
@@ -527,6 +555,12 @@ export default function AdminSubjectsPage() {
                         </div>
                         <Status value={s.status} />
                       </div>
+                      <p className="text-xs text-gray-500">
+                        Кредиты ECTS:{" "}
+                        {s.ectsCredits == null
+                          ? "не указаны"
+                          : s.ectsCredits.toLocaleString("ru")}
+                      </p>
                       {renderActions(s)}
                     </article>
                   ))}
@@ -622,6 +656,14 @@ export default function AdminSubjectsPage() {
                     </dd>
                   </div>
                 ))}
+                <div>
+                  <dt className="text-xs text-gray-500">Кредиты ECTS</dt>
+                  <dd className="mt-1 font-medium">
+                    {detail.ectsCredits == null
+                      ? "Не указаны"
+                      : detail.ectsCredits.toLocaleString("ru")}
+                  </dd>
+                </div>
               </dl>
               <SubjectSchedules key={detail.id} subjectId={detail.id} />
               <Button disabled={busy} onClick={() => openEditor(detail)}>
@@ -737,7 +779,8 @@ export default function AdminSubjectsPage() {
               {editor?.id ? "Редактирование дисциплины" : "Новая дисциплина"}
             </DialogTitle>
             <DialogDescription>
-              Название обязательно. Код и факультет можно заполнить позже.
+              Название обязательно. Остальные сведения можно заполнить позже.
+              Кредиты ECTS задаются вручную для всей дисциплины.
             </DialogDescription>
           </DialogHeader>
           <form noValidate onSubmit={save} className="space-y-5">
@@ -753,7 +796,11 @@ export default function AdminSubjectsPage() {
                   </span>
                   <input
                     id={`subject-${key}`}
-                    maxLength={SUBJECT_LIMITS[key]}
+                    maxLength={key === "ectsCredits" ? 8 : SUBJECT_LIMITS[key]}
+                    inputMode={key === "ectsCredits" ? "decimal" : undefined}
+                    placeholder={
+                      key === "ectsCredits" ? "Например, 5 или 4,5" : undefined
+                    }
                     required={key === "name"}
                     className={fieldClass}
                     value={form[key]}

@@ -22,11 +22,17 @@ test("subject catalog preserves name-only imports and archived metadata", async 
       assert.equal(subject.status, "ACTIVE");
       assert.equal(subject.code, null);
       assert.equal(subject.faculty, null);
+      assert.equal(subject.ectsCredits, null);
       assert.equal(subject.colorKey, "blue");
     }
     await db.subject.update({
       where: { id: ids[0] },
-      data: { code: prefix, faculty: "FCIM", status: "ARCHIVED" },
+      data: {
+        code: prefix,
+        faculty: "FCIM",
+        status: "ARCHIVED",
+        ectsCredits: 4.5,
+      },
     });
     // Match the schedule import's upsert: importing again must not reactivate
     // the subject or discard administrator-supplied catalog fields.
@@ -39,6 +45,7 @@ test("subject catalog preserves name-only imports and archived metadata", async 
     assert.equal(imported.status, "ARCHIVED");
     assert.equal(imported.code, prefix);
     assert.equal(imported.faculty, "FCIM");
+    assert.equal(Number(imported.ectsCredits), 4.5);
     await assert.rejects(
       () =>
         db.subject.create({ data: { id: ids[2], name: ids[2], code: prefix } }),

@@ -1,5 +1,5 @@
 import type { PrismaClient, Prisma } from "../generated/prisma/client";
-import { SUBJECT_LIMITS } from "../subject-catalog";
+import { SUBJECT_LIMITS, isValidEctsCredits } from "../subject-catalog";
 import type { SubjectSchedule } from "../subject-catalog";
 
 type Dependencies = {
@@ -11,6 +11,7 @@ const select = {
   name: true,
   code: true,
   faculty: true,
+  ectsCredits: true,
   status: true,
 } as const;
 const listSelect = {
@@ -23,7 +24,7 @@ const listSelect = {
 function serializeSubject(
   record: Prisma.SubjectGetPayload<{ select: typeof listSelect }>,
 ) {
-  const { lessons, ...subject } = record;
+  const { lessons, ectsCredits, ...subject } = record;
   const schedules = new Map(
     lessons.map((lesson) => [lesson.schedule.id, lesson.schedule.status]),
   );
@@ -32,6 +33,7 @@ function serializeSubject(
   ).length;
   return {
     ...subject,
+    ectsCredits: ectsCredits == null ? null : Number(ectsCredits),
     schedules: {
       total: schedules.size,
       published,
@@ -137,14 +139,15 @@ async function parseBody(request: Request, creating: boolean) {
   if (!body || typeof body !== "object" || Array.isArray(body))
     throw new RequestError(400, "Ожидается объект с полями дисциплины.");
   const allowed = creating
-    ? ["name", "code", "faculty"]
-    : ["name", "code", "faculty", "status"];
+    ? ["name", "code", "faculty", "ectsCredits"]
+    : ["name", "code", "faculty", "ectsCredits", "status"];
   if (Object.keys(body).some((key) => !allowed.includes(key)))
     throw new RequestError(400, "Запрос содержит неизвестные поля.");
   const data: {
     name?: string;
     code?: string | null;
     faculty?: string | null;
+    ectsCredits?: number | null;
     status?: "ACTIVE" | "ARCHIVED";
   } = {};
   for (const field of ["name", "code", "faculty"] as const) {
@@ -171,6 +174,15 @@ async function parseBody(request: Request, creating: boolean) {
       );
     if (field === "name") data.name = value;
     else data[field] = value || null;
+  }
+  if ("ectsCredits" in body) {
+    if (body.ectsCredits !== null && !isValidEctsCredits(body.ectsCredits))
+      throw new RequestError(
+        400,
+        "Укажите число от 0,1 до 60 с одним знаком после запятой или оставьте поле пустым.",
+        "ectsCredits",
+      );
+    data.ectsCredits = body.ectsCredits;
   }
   if ("status" in body) {
     if (body.status !== "ACTIVE" && body.status !== "ARCHIVED")

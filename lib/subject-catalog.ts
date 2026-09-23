@@ -3,6 +3,7 @@ export type CatalogSubject = {
   name: string;
   code: string | null;
   faculty: string | null;
+  ectsCredits: number | null;
   status: "ACTIVE" | "ARCHIVED";
   schedules: { total: number; published: number; drafts: number };
 };
@@ -27,3 +28,13 @@ export type CatalogSubjectDetails = CatalogSubject & {
 };
 
 export const SUBJECT_LIMITS = { name: 160, code: 40, faculty: 80 } as const;
+
+export function isValidEctsCredits(value: unknown): value is number {
+  return (
+    typeof value === "number" &&
+    Number.isFinite(value) &&
+    value > 0 &&
+    value <= 60 &&
+    Math.abs(value * 10 - Math.round(value * 10)) < 1e-8
+  );
+}

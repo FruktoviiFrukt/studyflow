@@ -146,15 +146,17 @@ enum SubjectStatus {
 }
 
 model Subject {
-  id       String        @id @default(cuid())
-  name     String        @unique
+  id          String        @id @default(cuid())
+  name        String        @unique
   // Imported schedules may not specify an official code or faculty.
-  code     String?       @unique
-  faculty  String?
-  status   SubjectStatus @default(ACTIVE)
+  code        String?       @unique
+  faculty     String?
+  // Manually maintained catalog value, never inferred from schedule lessons.
+  ectsCredits Decimal?      @db.Decimal(4, 1)
+  status      SubjectStatus @default(ACTIVE)
   // Palette key; CSS classes belong to the frontend.
-  colorKey String        @default("blue")
-  lessons  Lesson[]
+  colorKey    String        @default("blue")
+  lessons     Lesson[]
 }
 
 model ScheduleImport {

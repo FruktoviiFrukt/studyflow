@@ -220,3 +220,35 @@ test("missing subjects return 404 and foreign origins cannot mutate", async () =
   );
   assert.equal(s.writes.length, 0);
 });
+
+test("ECTS credits accept optional decimal values and reject invalid input", async () => {
+  for (const ectsCredits of [null, 0.1, 4.5, 8.3, 60]) {
+    const s = setup();
+    const response = await s.api.POST(
+      s.request("POST", { name: "New", ectsCredits }),
+    );
+    assert.equal(response.status, 201);
+    assert.equal((await response.json()).ectsCredits, ectsCredits);
+    const update = await s.api.PATCH(
+      s.request("PATCH", { ectsCredits }),
+      "subject",
+    );
+    assert.equal(update.status, 200);
+  }
+  for (const ectsCredits of [0, -1, 60.1, 4.55, "4.5", "", false, {}, []]) {
+    const s = setup();
+    const response = await s.api.PATCH(
+      s.request("PATCH", { ectsCredits }),
+      "subject",
+    );
+    assert.equal(response.status, 400);
+    assert.equal((await response.json()).field, "ectsCredits");
+    assert.equal(s.writes.length, 0);
+  }
+  const s = setup();
+  assert.equal(
+    (await (await s.api.POST(s.request("POST", { name: "Unset" }))).json())
+      .ectsCredits,
+    null,
+  );
+});
