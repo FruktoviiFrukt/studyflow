@@ -1,9 +1,308 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, type APIRequestContext } from "@playwright/test";
 import { encode } from "next-auth/jwt";
 import { readFile } from "node:fs/promises";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "../../lib/generated/prisma/client";
 import { randomUUID } from "node:crypto";
+import type { SubjectMatchPreview } from "../../lib/subject-matching";
+
+async function confirmedImport(
+  admin: APIRequestContext,
+  options: NonNullable<Parameters<APIRequestContext["post"]>[1]>,
+) {
+  const preview = await admin.post("/api/admin/schedule", {
+    ...options,
+    multipart: { ...options.multipart, stage: "preview" },
+  });
+  expect(preview.ok(), await preview.text()).toBe(true);
+  const matches: SubjectMatchPreview = await preview.json();
+  return admin.post("/api/admin/schedule", {
+    ...options,
+    multipart: {
+      ...options.multipart,
+      stage: "confirm",
+      subjectChoices: JSON.stringify(
+        matches.subjects.map((s) => ({
+          sourceName: s.sourceName,
+          subjectId: s.exactIds[0] ?? null,
+        })),
+      ),
+    },
+  });
+}
+
+test("subject matching previews without writes and preserves mapping and PDF names across edits and repeat imports", async ({
+  playwright,
+}) => {
+  const db = new PrismaClient({
+    adapter: new PrismaPg({
+      connectionString: process.env.IMPORT_TEST_DATABASE_URL,
+    }),
+  });
+  const adminId = "matching-" + randomUUID();
+  const token = await encode({
+    secret: "import-test-secret-only",
+    salt: "authjs.session-token",
+    token: { id: adminId, sub: adminId },
+  });
+  const admin = await playwright.request.newContext({
+    baseURL: "http://127.0.0.1:3103",
+    extraHTTPHeaders: { Cookie: `authjs.session-token=${token}` },
+  });
+  const ids: string[] = [];
+  let canonicalId = "";
+  try {
+    await db.user.create({
+      data: {
+        id: adminId,
+        email: `${adminId}@example.invalid`,
+        name: "Test",
+        password: "unused",
+        role: "ADMIN",
+      },
+    });
+    const canonical = await db.subject.create({
+      data: {
+        name: adminId + " canonical",
+        status: "ARCHIVED",
+        ectsCredits: 4.5,
+      },
+    });
+    canonicalId = canonical.id;
+    const multipart = {
+      kind: "STUDENT",
+      year: "2026/2027",
+      course: "1",
+      semester: "1",
+      from: "2026-09-01",
+      to: "2026-12-31",
+      first: "2026-08-31",
+      file: {
+        name: "matching.pdf",
+        mimeType: "application/pdf",
+        buffer: await readFile(process.env.IMPORT_TEST_PDF!),
+      },
+    };
+    const before = [
+      await db.subject.count(),
+      await db.scheduleImport.count(),
+      await db.lesson.count(),
+    ];
+    const preview = await admin.post("/api/admin/schedule", {
+      multipart: { ...multipart, stage: "preview" },
+    });
+    expect(preview.ok(), await preview.text()).toBe(true);
+    const matches: SubjectMatchPreview = await preview.json();
+    expect(matches.subjects.length).toBeGreaterThan(0);
+    expect([
+      await db.subject.count(),
+      await db.scheduleImport.count(),
+      await db.lesson.count(),
+    ]).toEqual(before);
+    const choices = matches.subjects.map((s, i) => ({
+      sourceName: s.sourceName,
+      subjectId: i === 0 ? canonical.id : (s.exactIds[0] ?? null),
+    }));
+    const invalid = await admin.post("/api/admin/schedule", {
+      multipart: { ...multipart, stage: "confirm", subjectChoices: "[]" },
+    });
+    expect(invalid.status()).toBe(400);
+    expect([
+      await db.subject.count(),
+      await db.scheduleImport.count(),
+      await db.lesson.count(),
+    ]).toEqual(before);
+    const confirm = () =>
+      admin.post("/api/admin/schedule", {
+        multipart: {
+          ...multipart,
+          stage: "confirm",
+          subjectChoices: JSON.stringify(choices),
+        },
+      });
+    const response = await confirm();
+    expect(response.ok(), await response.text()).toBe(true);
+    const record = await response.json();
+    ids.push(record.id);
+    const mapped = record.lessons.filter(
+      (l: { sourceSubjectName: string }) =>
+        l.sourceSubjectName === choices[0].sourceName,
+    );
+    expect(mapped.length).toBeGreaterThan(0);
+    expect(
+      mapped.every(
+        (l: { subjectId: string; subject: string }) =>
+          l.subjectId === canonical.id && l.subject === canonical.name,
+      ),
+    ).toBe(true);
+    expect(
+      record.lessons.every(
+        (l: { sourceSubjectName: string }) => !!l.sourceSubjectName,
+      ),
+    ).toBe(true);
+    const count = await db.subject.count();
+    const repeated = await confirm();
+    expect(repeated.ok(), await repeated.text()).toBe(true);
+    ids.push((await repeated.json()).id);
+    expect(await db.subject.count()).toBe(count);
+    await db.subject.update({
+      where: { id: canonical.id },
+      data: { name: canonical.name + " renamed" },
+    });
+    const saved = await admin.patch(`/api/admin/schedule/${record.id}`, {
+      data: {
+        action: "save",
+        version: record.version,
+        lessons: record.lessons.map((l: object) => ({
+          ...l,
+          sourceSubjectName: "tampered",
+        })),
+        holidays: [],
+      },
+    });
+    expect(saved.ok(), await saved.text()).toBe(true);
+    const updated = await saved.json();
+    expect(
+      updated.lessons
+        .filter((l: { subjectId: string }) => l.subjectId === canonical.id)
+        .every(
+          (l: { sourceSubjectName: string; subject: string }) =>
+            l.sourceSubjectName === choices[0].sourceName &&
+            l.subject === canonical.name + " renamed",
+        ),
+    ).toBe(true);
+    const stored = await db.subject.findUniqueOrThrow({
+      where: { id: canonical.id },
+    });
+    expect(stored.status).toBe("ARCHIVED");
+    expect(Number(stored.ectsCredits)).toBe(4.5);
+  } finally {
+    for (const id of ids) {
+      const record = await db.scheduleImport.findUnique({ where: { id } });
+      if (record)
+        await admin.patch(`/api/admin/schedule/${id}`, {
+          data: { action: "delete", version: record.updatedAt.toISOString() },
+        });
+    }
+    if (canonicalId) await db.subject.delete({ where: { id: canonicalId } });
+    await db.user.deleteMany({ where: { id: adminId } });
+    await db.$disconnect();
+    await admin.dispose();
+  }
+});
+
+test("matching UI requires ambiguous decisions and keeps choices after a failed confirmation", async ({
+  page,
+}) => {
+  test.setTimeout(45000);
+  const db = new PrismaClient({
+    adapter: new PrismaPg({
+      connectionString: process.env.IMPORT_TEST_DATABASE_URL,
+    }),
+  });
+  const adminId = "matching-ui-" + randomUUID();
+  await db.user.create({
+    data: {
+      id: adminId,
+      email: `${adminId}@example.invalid`,
+      name: "Test",
+      password: "unused",
+      role: "ADMIN",
+    },
+  });
+  const token = await encode({
+    secret: "import-test-secret-only",
+    salt: "authjs.session-token",
+    token: { id: adminId, sub: adminId, role: "ADMIN" },
+  });
+  await page.context().addCookies([
+    {
+      name: "authjs.session-token",
+      value: token,
+      domain: "127.0.0.1",
+      path: "/",
+    },
+  ]);
+  try {
+    let confirmed = 0;
+    await page.route("**/api/admin/schedule", async (route) => {
+      if (route.request().method() === "GET")
+        return route.fulfill({ json: [] });
+      const body = route.request().postData() || "";
+      if (body.includes('"confirm"') || body.includes("\r\nconfirm\r\n")) {
+        confirmed++;
+        return route.fulfill({
+          status: 400,
+          json: { message: "Повторите подтверждение" },
+        });
+      }
+      return route.fulfill({
+        json: {
+          lessonCount: 3,
+          catalog: [
+            { id: "a", name: "Algebra", code: "ALG", status: "ARCHIVED" },
+            { id: "b", name: "Algebra liniară", code: null, status: "ACTIVE" },
+          ],
+          subjects: [
+            { sourceName: "ALGEBRA", exactIds: ["a"], suggestedIds: ["b"] },
+            { sourceName: "Algebra lin", exactIds: [], suggestedIds: ["b"] },
+            { sourceName: "Новый предмет", exactIds: [], suggestedIds: [] },
+          ],
+        },
+      });
+    });
+    await page.goto("/admin/schedule");
+    await page
+      .getByRole("button", { name: "Новое расписание", exact: true })
+      .click();
+    await page.getByLabel("PDF расписания", { exact: true }).setInputFiles({
+      name: "test.pdf",
+      mimeType: "application/pdf",
+      buffer: Buffer.from("%PDF-test"),
+    });
+    await page
+      .getByRole("button", { name: "Загрузить и распознать", exact: true })
+      .click();
+    await expect(
+      page.getByRole("heading", { name: "Сопоставить дисциплины" }),
+    ).toBeVisible();
+    const confirm = page.getByRole("button", {
+      name: "Подтвердить и создать черновик",
+      exact: true,
+    });
+    await expect(confirm).toBeDisabled();
+    await expect(page.locator("#subject-match-0")).toHaveValue("a");
+    await expect(page.locator("#subject-match-2")).toHaveValue("new");
+    await page.locator("#subject-match-1").selectOption("b");
+    await confirm.click();
+    await expect(page.getByRole("dialog").getByRole("alert")).toHaveText(
+      "Повторите подтверждение",
+    );
+    await expect(page.locator("#subject-match-1")).toHaveValue("b");
+    expect(confirmed).toBe(1);
+    await page.screenshot({
+      path: ".review-output/subject-matching-desktop.png",
+    });
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.screenshot({
+      path: ".review-output/subject-matching-mobile.png",
+    });
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+    ).toBe(true);
+    await page
+      .getByRole("button", { name: "Назад к файлу", exact: true })
+      .click();
+    await expect(
+      page.getByRole("heading", { name: "Загрузить расписание" }),
+    ).toBeVisible();
+  } finally {
+    await db.user.delete({ where: { id: adminId } });
+    await db.$disconnect();
+  }
+});
 
 test("real PDF draft, access control, edit, holiday, publication and student API", async ({
   page,
@@ -46,7 +345,7 @@ test("real PDF draft, access control, edit, holiday, publication and student API
       });
     expect((await anon.get("/api/admin/schedule")).status()).toBe(401);
     expect((await student.get("/api/admin/schedule")).status()).toBe(403);
-    const upload = await admin.post("/api/admin/schedule", {
+    const upload = await confirmedImport(admin, {
       multipart: {
         kind: "STUDENT",
         year: "2026/2027",
@@ -90,6 +389,7 @@ test("real PDF draft, access control, edit, holiday, publication and student API
       ...shared,
       id: "",
       subject: "Лекция из PDF",
+      subjectId: undefined,
       day: 0,
       start: "18:45",
       end: "20:15",
@@ -192,7 +492,7 @@ test("real PDF draft, access control, edit, holiday, publication and student API
       .first()
       .click();
     await expect(
-      page.getByText("Проверенная лекция", { exact: true }),
+      page.getByText("Лекция из PDF", { exact: true }),
     ).toBeVisible();
     await page.screenshot({
       path: ".review-output/admin-import-live.png",
@@ -251,7 +551,7 @@ test("one PDF creates both schedule drafts and remains available until both are 
         password: "test-unused",
       },
     });
-    const upload = await admin.post("/api/admin/schedule", {
+    const upload = await confirmedImport(admin, {
       multipart: {
         kind: "GLOBAL",
         createOther: "true",
@@ -556,7 +856,7 @@ test("assessment PDF import produces dated lessons readable via the student asse
         password: "test-unused",
       },
     });
-    const upload = await admin.post("/api/admin/schedule", {
+    const upload = await confirmedImport(admin, {
       multipart: {
         kind: "ASSESSMENT",
         year: "2024/2025",

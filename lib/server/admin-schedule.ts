@@ -13,6 +13,11 @@ import {
   type ScheduleHoliday,
 } from "@/lib/admin-schedule";
 import { validateScheduleRange, academicWeek } from "./student-schedule";
+import {
+  previewSubjectMatches,
+  validateSubjectChoices,
+} from "@/lib/subject-matching";
+import { resolveImportSubjects } from "./subject-import";
 
 const execute = promisify(execFile);
 const root = path.resolve(
@@ -86,6 +91,8 @@ export function serializeSchedule(r: RecordWithRelations) {
     lessons: r.lessons.map((l) => ({
       id: l.id,
       subject: l.subject.name,
+      subjectId: l.subjectId,
+      sourceSubjectName: l.sourceSubjectName ?? undefined,
       day: l.weekday,
       date: l.date ? iso(l.date) : undefined,
       start: time(l.startMinutes),
@@ -200,6 +207,19 @@ function validateLessons(value: unknown): AdminLesson[] {
     )
       fail("Слишком длинный исходный текст.");
     if (
+      l.subjectId !== undefined &&
+      (typeof l.subjectId !== "string" ||
+        !l.subjectId ||
+        l.subjectId.length > 200)
+    )
+      fail("Некорректная дисциплина.");
+    if (
+      l.sourceSubjectName !== undefined &&
+      (typeof l.sourceSubjectName !== "string" ||
+        l.sourceSubjectName.length > 1000)
+    )
+      fail("Некорректное исходное название предмета.");
+    if (
       l.date !== undefined &&
       (typeof l.date !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(l.date))
     )
@@ -218,6 +238,14 @@ async function saveLessons(
   scheduleId: string,
   lessons: AdminLesson[],
 ) {
+  const subjects = await resolveImportSubjects(tx, [
+    ...new Map(
+      lessons.map((l) => [
+        l.subject,
+        { sourceName: l.subject, subjectId: l.subjectId ?? null },
+      ]),
+    ).values(),
+  ]);
   const groups = new Map<string, { id: string }>();
   for (const name of new Set(
     lessons.flatMap((l) => l.audiences.map((a) => a.group)),
@@ -231,11 +259,7 @@ async function saveLessons(
   }
   await tx.lesson.deleteMany({ where: { scheduleId } });
   for (const l of lessons) {
-    const subject = await tx.subject.upsert({
-      where: { name: l.subject.trim() },
-      update: {},
-      create: { name: l.subject.trim() },
-    });
+    const subject = subjects.get(l.subject)!;
     await tx.lesson.create({
       data: {
         scheduleId,
@@ -250,6 +274,7 @@ async function saveLessons(
         classroom: l.room || null,
         topic: l.topic || null,
         sourceText: l.sourceText || null,
+        sourceSubjectName: l.sourceSubjectName ?? null,
         reviewed: l.reviewed,
         audiences: {
           create: l.audiences.map((a) => {
@@ -269,6 +294,9 @@ export async function importSchedule(request: Request) {
   if (Number(request.headers.get("content-length")) > 22 * 1024 * 1024)
     throw new HttpError(413, "PDF должен быть не больше 20 МБ.");
   const form = await request.formData();
+  const stage = form.get("stage");
+  if (stage !== "preview" && stage !== "confirm")
+    fail("Сначала распознайте PDF и подтвердите сопоставление предметов.");
   const file = form.get("file");
   if (
     !(file instanceof File) ||
@@ -340,8 +368,29 @@ export async function importSchedule(request: Request) {
       );
     }
     const lessons = validateLessons(extracted.lessons);
+    const names = lessons.map((l) => l.subject);
+    if (stage === "preview") {
+      const catalog = await prisma.subject.findMany({
+        select: { id: true, name: true, code: true, status: true },
+        orderBy: { name: "asc" },
+      });
+      await unlink(location);
+      return previewSubjectMatches(names, catalog, lessons.length);
+    }
+    const rawChoices = form.get("subjectChoices");
+    if (typeof rawChoices !== "string" || rawChoices.length > 1024 * 1024)
+      fail("Подтвердите сопоставление предметов.");
+    const choices = validateSubjectChoices(JSON.parse(rawChoices), names);
     return await prisma.$transaction(
       async (tx) => {
+        await tx.$executeRaw`SELECT pg_advisory_xact_lock(735026151)`;
+        const subjects = await resolveImportSubjects(tx, choices);
+        const mappedLessons = lessons.map((l) => ({
+          ...l,
+          sourceSubjectName: l.subject,
+          subjectId: subjects.get(l.subject)!.id,
+          subject: subjects.get(l.subject)!.name,
+        }));
         const academic = await tx.academicYear.upsert({
           where: { name: year },
           update: {},
@@ -387,7 +436,7 @@ export async function importSchedule(request: Request) {
               importWarnings: extracted.warnings,
             },
           });
-          await saveLessons(tx, record.id, lessons);
+          await saveLessons(tx, record.id, mappedLessons);
           const serialized = serializeSchedule(
             await tx.scheduleImport.findUniqueOrThrow({
               where: { id: record.id },
@@ -450,6 +499,11 @@ export async function changeSchedule(request: Request, id: string) {
         }
         if (body.action === "save") {
           const lessons = validateLessons(body.lessons);
+          // Source provenance is immutable when editing an existing lesson.
+          for (const lesson of lessons) {
+            const previous = record.lessons.find((l) => l.id === lesson.id);
+            lesson.sourceSubjectName = previous?.sourceSubjectName ?? undefined;
+          }
           if (!Array.isArray(body.holidays) || body.holidays.length > 100)
             fail("Некорректный список каникул.");
           for (const h of body.holidays) {

@@ -81,6 +81,11 @@ export default function ScheduleLessonEditor({
             {lesson.sourceText}
           </pre>
         )}
+        {lesson.sourceSubjectName && (
+          <p className="break-words rounded-lg bg-gray-50 p-3 text-sm">
+            Название в PDF: <strong>{lesson.sourceSubjectName}</strong>
+          </p>
+        )}
         <form onSubmit={save} className="space-y-5">
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label="Предмет *">
@@ -89,7 +94,16 @@ export default function ScheduleLessonEditor({
                 maxLength={160}
                 className={fieldClass}
                 value={form.subject}
-                onChange={(e) => change("subject", e.target.value)}
+                onChange={(e) =>
+                  setForm((current) => ({
+                    ...current,
+                    subject: e.target.value,
+                    subjectId:
+                      e.target.value === lesson.subject
+                        ? lesson.subjectId
+                        : undefined,
+                  }))
+                }
                 placeholder="Например, Математический анализ"
               />
             </Field>
