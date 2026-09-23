@@ -81,6 +81,14 @@ class AssessmentParserTest(unittest.TestCase):
         self.assertIn("SD-IA-241", groups)
         self.assertIn("IA-241", groups)
 
+    def test_group_code_wrapped_mid_code_is_not_dropped(self):
+        rows = [HEADER, [None, "Algebra liniară și geometria analică", "1",
+                          "TI-241, TI-242, TI-243, TI-244, TI-\n245, SI-243",
+                          "Costaș A.", "21.10.2024", "9:45", "3-3"]]
+        groups = [a["group"] for a in extract_rows(rows)["lessons"][0]["audiences"]]
+        self.assertIn("TI-245", groups)
+        self.assertNotIn("TI", groups)
+
     def test_multiple_teachers_are_joined_into_one_string(self):
         rows = [HEADER, [None, "Proiectarea conceptuală", "1", "FAF-241",
                           "Cazac C.,\nGherman. N.,\nMalîi A.", "21.10.2024", "17:00", "101"]]

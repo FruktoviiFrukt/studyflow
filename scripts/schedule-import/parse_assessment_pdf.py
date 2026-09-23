@@ -51,7 +51,11 @@ def extract(path):
                     continue
                 if row[1]:
                     discipline = clean(row[1])
-                groups_text = clean(row[3]) if row[3] else ""
+                # A group code can wrap mid-code across lines (e.g. "TI-\n245"
+                # is really "TI-245"), so newlines are dropped, not turned
+                # into spaces, before matching GROUP — same fix as the room
+                # column below, otherwise the group silently fails to match.
+                groups_text = clean((row[3] or "").replace("\n", ""))
                 date_text = clean(row[5]) if row[5] else ""
                 time_text = clean(row[6]) if row[6] else ""
                 # Blank/footer rows (e.g. a signature line) carry no group,
