@@ -140,11 +140,20 @@ model Subgroup {
   @@unique([id, groupId])
 }
 
+enum SubjectStatus {
+  ACTIVE
+  ARCHIVED
+}
+
 model Subject {
-  id       String   @id @default(cuid())
-  name     String   @unique
+  id       String        @id @default(cuid())
+  name     String        @unique
+  // Imported schedules may not specify an official code or faculty.
+  code     String?       @unique
+  faculty  String?
+  status   SubjectStatus @default(ACTIVE)
   // Palette key; CSS classes belong to the frontend.
-  colorKey String   @default("blue")
+  colorKey String        @default("blue")
   lessons  Lesson[]
 }
 
