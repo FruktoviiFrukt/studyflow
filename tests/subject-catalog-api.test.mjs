@@ -28,6 +28,11 @@ function setup({
     db: {
       user: { findUnique: async () => (role ? { role } : null) },
       subject: {
+        delete: async (args) => {
+          if (failure) throw failure;
+          writes.push(args);
+          return { id: "subject" };
+        },
         findMany: async () => {
           reads++;
           return [record];
@@ -80,6 +85,37 @@ test("every catalog operation requires an authenticated current administrator", 
     assert.equal(s.writes.length, 0);
     assert.equal(s.readCount(), 0);
   }
+});
+test("delete is admin-only, respects references and reports missing subjects", async () => {
+  for (const [options, status] of [
+    [{ session: null }, 401],
+    [{ role: "STUDENT" }, 403],
+    [{ failure: { code: "P2003" } }, 409],
+    [{ failure: { code: "P2025" } }, 404],
+  ]) {
+    const s = setup(options);
+    assert.equal(
+      (await s.api.DELETE(s.request("DELETE"), "subject")).status,
+      status,
+    );
+    assert.equal(s.writes.length, 0);
+  }
+  const s = setup();
+  assert.equal(
+    (
+      await s.api.DELETE(
+        s.request("DELETE", undefined, { Origin: "https://other.test" }),
+        "subject",
+      )
+    ).status,
+    403,
+  );
+  const result = await s.api.DELETE(s.request("DELETE"), "subject");
+  assert.equal(result.status, 200);
+  assert.deepEqual(await result.json(), { deleted: true });
+  assert.deepEqual(s.writes, [
+    { where: { id: "subject" }, select: { id: true } },
+  ]);
 });
 test("catalog returns real records with private no-store caching", async () => {
   const s = setup();

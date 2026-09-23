@@ -233,6 +233,14 @@ export function createSubjectCatalogApi({ authenticate, db }: Dependencies) {
           { message: "Дисциплина с таким названием или кодом уже существует." },
           409,
         );
+      if (code === "P2003")
+        return json(
+          {
+            message:
+              "Дисциплина используется в расписаниях. Вместо удаления перенесите её в архив.",
+          },
+          409,
+        );
       console.error("[subject-catalog] Request failed", error);
       return json(
         { message: "Не удалось выполнить действие. Попробуйте ещё раз." },
@@ -269,6 +277,12 @@ export function createSubjectCatalogApi({ authenticate, db }: Dependencies) {
     }
   }
   return {
+    DELETE: (request: Request, id: string) =>
+      run(request, async () => {
+        // The database's RESTRICT foreign keys also protect concurrent imports.
+        await db.subject.delete({ where: { id }, select: { id: true } });
+        return json({ deleted: true });
+      }),
     GET: (request: Request) =>
       run(request, async () =>
         json(

@@ -103,6 +103,7 @@ export default function AdminSubjectsPage() {
   const [detailId, setDetailId] = useState<string | null>(null);
   const [actionsId, setActionsId] = useState<string | null>(null);
   const [archive, setArchive] = useState<CatalogSubject | null>(null);
+  const [removing, setRemoving] = useState<CatalogSubject | null>(null);
   const [notice, setNotice] = useState("");
   const load = useCallback((signal?: AbortSignal) => {
     return fetch("/api/admin/subjects", { cache: "no-store", signal })
@@ -253,6 +254,32 @@ export default function AdminSubjectsPage() {
             ? error.message
             : "Не удалось сохранить. Проверьте соединение и попробуйте ещё раз.",
         );
+    } finally {
+      mutationLock.current = false;
+      setBusy(false);
+    }
+  }
+  async function removeSubject(subject: CatalogSubject) {
+    if (mutationLock.current) return;
+    mutationLock.current = true;
+    setBusy(true);
+    setActionError("");
+    try {
+      await readResponse<{ deleted: boolean }>(
+        await fetch(`/api/admin/subjects/${encodeURIComponent(subject.id)}`, {
+          method: "DELETE",
+        }),
+      );
+      setSubjects((all) => all.filter((s) => s.id !== subject.id));
+      setDetailId(null);
+      setRemoving(null);
+      setNotice(`«${subject.name}» удалена.`);
+    } catch (error) {
+      setActionError(
+        error instanceof ApiError
+          ? error.message
+          : "Не удалось удалить. Повторите попытку.",
+      );
     } finally {
       mutationLock.current = false;
       setBusy(false);
@@ -721,8 +748,65 @@ export default function AdminSubjectsPage() {
                     ? "Активировать"
                     : "Перенести в архив"}
               </Button>
+              <Button
+                variant="outline"
+                className="text-red-600"
+                disabled={busy || actions.schedules.total > 0}
+                onClick={() => {
+                  setActionError("");
+                  setRemoving(actions);
+                  setActionsId(null);
+                }}
+              >
+                Удалить дисциплину
+              </Button>
+              {actions.schedules.total > 0 && (
+                <p className="text-sm text-gray-500">
+                  Дисциплина используется в расписаниях. Можно перенести её в
+                  архив: занятия и история сохранятся.
+                </p>
+              )}
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+      <Dialog
+        open={!!removing}
+        onOpenChange={(open) => {
+          if (!open && !busy) setRemoving(null);
+        }}
+      >
+        <DialogContent className={dialogClass}>
+          <DialogHeader>
+            <DialogTitle>Удалить дисциплину?</DialogTitle>
+            <DialogDescription className="break-words">
+              «{removing?.name}» будет удалена без возможности восстановления.
+              Удаление разрешено только при отсутствии связанных занятий.
+            </DialogDescription>
+          </DialogHeader>
+          {actionError && (
+            <p role="alert" className="text-sm text-red-600">
+              {actionError}
+            </p>
+          )}
+          <div className="flex justify-end gap-2">
+            <Button
+              variant="outline"
+              disabled={busy}
+              onClick={() => setRemoving(null)}
+            >
+              Отмена
+            </Button>
+            <Button
+              disabled={busy}
+              className="bg-red-600 hover:bg-red-700"
+              onClick={() => {
+                if (removing) void removeSubject(removing);
+              }}
+            >
+              {busy ? "Удаление…" : "Удалить"}
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
       <Dialog

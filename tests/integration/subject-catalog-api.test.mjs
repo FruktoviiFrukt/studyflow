@@ -195,6 +195,26 @@ test("catalog API persists edits and archive state, and rechecks administrator r
       (s) => s.id === subject.id,
     );
     assert.deepEqual(linked.schedules, { total: 2, published: 1, drafts: 1 });
+    assert.equal((await api.DELETE(request("DELETE"), subject.id)).status, 409);
+    assert.equal(
+      await db.lesson.count({ where: { subjectId: subject.id } }),
+      3,
+    );
+    await api.PATCH(request("PATCH", { status: "ARCHIVED" }), subject.id);
+    assert.equal((await api.DELETE(request("DELETE"), subject.id)).status, 409);
+    assert.equal(
+      await db.lesson.count({ where: { subjectId: subject.id } }),
+      3,
+    );
+    await api.PATCH(request("PATCH", { status: "ACTIVE" }), subject.id);
+    const unused = await db.subject.create({ data: { name: id + "-unused" } });
+    ids.push(unused.id);
+    assert.equal((await api.DELETE(request("DELETE"), unused.id)).status, 200);
+    assert.equal(
+      await db.subject.findUnique({ where: { id: unused.id } }),
+      null,
+    );
+    assert.equal((await api.DELETE(request("DELETE"), unused.id)).status, 404);
     const detail = await (await api.DETAIL(request("GET"), subject.id)).json();
     const draft = detail.relatedSchedules.find((s) => s.status === "DRAFT");
     assert.equal(draft.lessonCount, 2);
@@ -224,6 +244,7 @@ test("catalog API persists edits and archive state, and rechecks administrator r
       drafts: 2,
     });
     await db.user.update({ where: { id }, data: { role: "STUDENT" } });
+    assert.equal((await api.DELETE(request("DELETE"), subject.id)).status, 403);
     assert.equal((await api.GET(request("GET"))).status, 403);
     assert.equal((await api.DETAIL(request("GET"), subject.id)).status, 403);
     assert.equal(
