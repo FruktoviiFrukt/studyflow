@@ -103,7 +103,7 @@ export default async function DashboardPage() {
 
           <SummaryCard
             title="Учебные материалы"
-            value="18"
+            value={String(dashboard?.materialsCount ?? 0)}
             description="Доступных файлов"
             icon={BookOpen}
           />

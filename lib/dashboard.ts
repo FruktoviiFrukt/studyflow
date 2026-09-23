@@ -31,7 +31,7 @@ export async function getDashboardData(
   const today = universityToday();
   const weekEnd = addDays(today, 7);
 
-  const [upcomingCount, completedCount, deadlines, subjects] =
+  const [upcomingCount, completedCount, deadlines, subjects, materialsCount] =
     await Promise.all([
       prisma.task.count({
         where: {
@@ -59,6 +59,7 @@ export async function getDashboardData(
         },
       }),
       getStoredSubjects(userId),
+      prisma.material.count(),
     ]);
 
   const subjectProgress = (subjects ?? []).map((subject) => {
@@ -76,6 +77,7 @@ export async function getDashboardData(
   return {
     user,
     subjectProgress,
+    materialsCount,
     tasks: {
       upcomingCount,
       completedCount,

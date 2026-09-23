@@ -31,6 +31,7 @@ export type DashboardResponse = {
   user: DashboardUser;
   subjectProgress: DashboardSubjectProgress[];
   tasks: DashboardTaskSummary;
+  materialsCount: number;
 };
 
 export type DashboardErrorResponse = {
