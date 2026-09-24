@@ -15,7 +15,7 @@ export default defineConfig({
   reporter: "list",
   use: {
     baseURL: "http://127.0.0.1:3103",
-    channel: "chrome",
+    channel: process.env.PLAYWRIGHT_CHANNEL || "chrome",
     trace: "retain-on-failure",
   },
   webServer: {
