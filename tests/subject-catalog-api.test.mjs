@@ -12,6 +12,7 @@ function setup({
   existing = { id: "subject" },
   duplicate = null,
   failure = null,
+  normalizedDuplicate = null,
 } = {}) {
   const writes = [];
   let reads = 0;
@@ -33,8 +34,12 @@ function setup({
           writes.push(args);
           return { id: "subject" };
         },
-        findMany: async () => {
+        findMany: async (args) => {
           reads++;
+          if (!args.select.lessons)
+            return normalizedDuplicate
+              ? [{ id: "other", name: normalizedDuplicate }]
+              : [];
           return [record];
         },
         findFirst: async () => duplicate,
@@ -123,6 +128,18 @@ test("catalog returns real records with private no-store caching", async () => {
   assert.equal(response.status, 200);
   assert.equal((await response.json())[0].name, "Algebra");
   assert.equal(response.headers.get("Cache-Control"), "private, no-store");
+});
+test("catalog rejects spelling-only duplicates on create and rename", async () => {
+  const s = setup({ normalizedDuplicate: "Analiza matematică 1" });
+  for (const method of ["POST", "PATCH"]) {
+    const r = await s.api[method](
+      s.request(method, { name: "  ANALIZA   MATEMATICA 1 " }),
+      "subject",
+    );
+    assert.equal(r.status, 409);
+    assert.equal((await r.json()).field, "name");
+  }
+  assert.equal(s.writes.length, 0);
 });
 test("create trims fields, normalizes code/faculty and supports missing metadata", async () => {
   const s = setup();

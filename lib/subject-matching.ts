@@ -15,13 +15,14 @@ export type SubjectMatchPreview = {
   lessonCount: number;
 };
 
-// Conservative identity: accents and punctuation remain significant.
+// Keep course numbers and punctuation. Short uppercase abbreviations remain
+// accent-sensitive: their expansion must be confirmed by an administrator.
 export function subjectNameKey(name: string) {
-  return name
-    .normalize("NFC")
-    .trim()
-    .replace(/\s+/gu, " ")
-    .toLocaleLowerCase("ro");
+  const clean = name.normalize("NFC").trim().replace(/\s+/gu, " ");
+  const abbreviation = /^[\p{Lu}]{1,4}$/u.test(clean);
+  return (
+    abbreviation ? clean : clean.normalize("NFD").replace(/\p{M}/gu, "")
+  ).toLocaleLowerCase("ro");
 }
 function words(name: string) {
   return new Set(

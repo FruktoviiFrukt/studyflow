@@ -15,6 +15,19 @@ const catalog = [
   },
   { id: "3", name: "Fizica", code: null, status: "ACTIVE" },
 ];
+test("course numbers and ambiguous abbreviations remain distinct", () => {
+  const result = previewSubjectMatches(
+    ["Analiza matematica 1", "ÎS"],
+    [
+      { id: "basic", name: "Analiza matematică", code: null, status: "ACTIVE" },
+      { id: "one", name: "Analiza matematică 1", code: null, status: "ACTIVE" },
+      { id: "abbr", name: "IS", code: null, status: "ACTIVE" },
+    ],
+    2,
+  );
+  assert.deepEqual(result.subjects[0].exactIds, ["one"]);
+  assert.deepEqual(result.subjects[1].exactIds, []);
+});
 test("matching preserves source spelling, deduplicates repeated names and separates exact from suggestions", () => {
   const result = previewSubjectMatches(
     ["  ALGEBRA   LINIARĂ ", "Algebra liniara", "Fizica", "Fizica", "New"],
@@ -24,8 +37,7 @@ test("matching preserves source spelling, deduplicates repeated names and separa
   assert.equal(result.subjects.length, 4);
   assert.equal(result.subjects[0].sourceName, "  ALGEBRA   LINIARĂ ");
   assert.deepEqual(result.subjects[0].exactIds, ["1"]);
-  assert.deepEqual(result.subjects[1].exactIds, []);
-  assert.ok(result.subjects[1].suggestedIds.includes("1"));
+  assert.deepEqual(result.subjects[1].exactIds, ["1"]);
   assert.deepEqual(result.subjects[3].suggestedIds, []);
   assert.equal(result.catalog[0].status, "ARCHIVED");
 });

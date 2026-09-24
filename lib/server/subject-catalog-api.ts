@@ -1,5 +1,6 @@
 import type { PrismaClient, Prisma } from "../generated/prisma/client";
 import { SUBJECT_LIMITS, isValidEctsCredits } from "../subject-catalog";
+import { subjectNameKey } from "../subject-matching";
 import type { SubjectSchedule } from "../subject-catalog";
 
 type Dependencies = {
@@ -252,6 +253,23 @@ export function createSubjectCatalogApi({ authenticate, db }: Dependencies) {
     data: { name?: string; code?: string | null },
     id?: string,
   ) {
+    if (data.name) {
+      const catalog = await db.subject.findMany({
+        select: { id: true, name: true },
+      });
+      if (
+        catalog.some(
+          (s) =>
+            s.id !== id &&
+            subjectNameKey(s.name) === subjectNameKey(data.name!),
+        )
+      )
+        throw new RequestError(
+          409,
+          "Дисциплина с таким названием уже существует (с учётом регистра, пробелов и диакритики).",
+          "name",
+        );
+    }
     const matches: Prisma.SubjectWhereInput[] = [];
     if (data.name)
       matches.push({ name: { equals: data.name, mode: "insensitive" } });
