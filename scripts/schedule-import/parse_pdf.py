@@ -11,6 +11,22 @@ ROOM = re.compile(r"(?:[A-Za-zА-Яа-я]-?\d|\d|Aula\s+\d)[\w\s/.,-]*", re.IGNO
 NUMBERED = re.compile(r"^[12]\)\s*")
 HALF_GROUP = re.compile(r"(?:0[.,]?5|½)\s*gr\.?", re.IGNORECASE)
 TEACHER = re.compile(r"^[^\d()]+?\s+[A-ZĂÂÎȘȚ][a-zăâîșț]{0,2}\.?$")
+# Only a surname + initials, not arbitrary trailing words. Bare Roman numerals
+# are left in course titles (e.g. "Matematica I").
+TEACHER_NAME = r"[A-ZĂÂÎȘȚŞŢ][a-zăâîșțşţ]+(?:[-’'][A-Za-zăâîșțşţĂÂÎȘȚŞŢ]+)*\s+(?:[A-ZĂÂÎȘȚŞŢ][a-zăâîșțşţ]{0,2}\.|[A-HJ-UW-ZĂÂÎȘȚŞŢ])"
+INLINE_TEACHER = re.compile(r"(.+?)\s+(" + TEACHER_NAME + r")(?:\s+(.+))?")
+
+
+def separate_inline_details(lines):
+    """Split only recognizable teacher/room suffixes; retain uncertain text."""
+    expanded = []
+    for line in lines:
+        inline = INLINE_TEACHER.fullmatch(line)
+        if inline and (not inline[3] or ROOM.fullmatch(inline[3])):
+            expanded.extend(part for part in inline.groups() if part)
+        else:
+            expanded.append(line)
+    return expanded
 
 
 def shaded_cell(rects, box):
@@ -82,21 +98,13 @@ def parse_cell(text, day, start, end, parity, groups, page_index, shaded=False):
     lines = [line.strip() for line in normalized.splitlines() if line.strip()]
     if half_group:
         lines = [line for line in lines if line not in ("lab.", "c.")]
-        expanded = []
-        for line in lines:
-            inline = re.fullmatch(
-                r"(.+?)\s+([A-ZĂÂÎȘȚŞŢ][a-zăâîșțşţ]+(?:[-’'][A-Za-zăâîșțşţĂÂÎȘȚŞŢ]+)*\s+[A-ZĂÂÎȘȚŞŢ][a-zăâîșțşţ]{0,2}\.)(?:\s+(.+))?",
-                line,
-            )
-            if inline and (not inline[3] or ROOM.fullmatch(inline[3])):
-                expanded.extend(part for part in inline.groups() if part)
-            else:
-                expanded.append(line)
-        lines = expanded
+    lines = separate_inline_details(lines)
     while lines and ROOM.fullmatch(lines[0]):
         lines.pop(0)
     if not lines:
         return [], [f"Страница {page_index + 1}: отдельная ячейка аудитории ({text}) требует сверки с соседним занятием."]
+    if all(re.fullmatch(TEACHER_NAME, line) or ROOM.fullmatch(line) for line in lines):
+        return [], [f"Страница {page_index + 1}: найден преподаватель или аудитория без названия предмета ({text}); добавьте занятие вручную после сверки с PDF."]
 
     lesson_type = "Лабораторная" if laboratory else "Лекция" if shaded else "Семинар"
     numbered = [i for i, line in enumerate(lines) if NUMBERED.match(line)]

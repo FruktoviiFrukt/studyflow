@@ -70,6 +70,32 @@ def extract_cells(cells, edges=None, rects=None):
 
 
 class ParallelCellsTest(unittest.TestCase):
+    def test_inline_teacher_and_room_are_separate_from_subject(self):
+        cases = [
+            ("ASCS Plămădeală C", "ASCS", "Plămădeală C", ""),
+            ("Baze de date 1 Saranciuc D. 3-3 Amdaris", "Baze de date 1", "Saranciuc D.", "3-3 Amdaris"),
+            ("Analiza și Specif. Software Plămădeală C", "Analiza și Specif. Software", "Plămădeală C", ""),
+            ("BD (noiembrie / decembrie) Saranciuc D.", "BD (noiembrie / decembrie)", "Saranciuc D.", ""),
+            ("APA Munteanu M. D-01-03", "APA", "Munteanu M.", "D-01-03"),
+        ]
+        for text, subject, teacher, room in cases:
+            with self.subTest(text=text):
+                lessons = extract_cell(text, False)["lessons"]
+                self.assertEqual(len(lessons), 1)
+                self.assertEqual((lessons[0]["subject"], lessons[0]["teacher"], lessons[0]["room"]), (subject, teacher, room))
+                self.assertIn(text, lessons[0]["sourceText"])
+
+    def test_standalone_metadata_is_flagged_not_created_as_subject(self):
+        for text in ("Aula 6-2 Henri Coandă", "Plămădeală C", "Saranciuc D.\n3-3 Amdaris"):
+            result = extract_cell(text, False)
+            self.assertEqual(result["lessons"], [])
+            self.assertTrue(any(text in warning for warning in result["warnings"]))
+
+    def test_legitimate_course_numbers_and_uncertain_suffixes_are_preserved(self):
+        for text in ("Matematica I", "Baze de date 1", "Programarea C++", "Analiza Matematică I", "ASCS Plămădeală C cabinet necunoscut"):
+            lessons = extract_cell(text, False)["lessons"]
+            self.assertEqual(lessons[0]["subject"], text)
+
     def test_flattened_half_group_options_are_existing_subject_names(self):
         for text in (
             "0,5 gr. 1) CDE Chiriac M. A03 2) MS Litra D.",
