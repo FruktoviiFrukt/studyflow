@@ -71,14 +71,33 @@ def merge_fragments(cells, edges):
 
 def parse_cell(text, day, start, end, parity, groups, page_index, shaded=False):
     """Turn one PDF cell into group-visible lessons, preserving parallel options."""
-    lines = [line.strip() for line in text.splitlines() if line.strip()]
+    laboratory = text.strip().startswith("lab.")
+    half_group = bool(HALF_GROUP.search(text))
+    normalized = text
+    if half_group:
+        # Some PDFs flatten subgroup labels and both options onto one line.
+        # The marker describes the audience, never part of a subject name.
+        normalized = HALF_GROUP.sub("", normalized)
+        normalized = re.sub(r"(?<!\w)([12]\))\s*", r"\n\1 ", normalized)
+    lines = [line.strip() for line in normalized.splitlines() if line.strip()]
+    if half_group:
+        lines = [line for line in lines if line not in ("lab.", "c.")]
+        expanded = []
+        for line in lines:
+            inline = re.fullmatch(
+                r"(.+?)\s+([A-ZĂÂÎȘȚŞŢ][a-zăâîșțşţ]+(?:[-’'][A-Za-zăâîșțşţĂÂÎȘȚŞŢ]+)*\s+[A-ZĂÂÎȘȚŞŢ][a-zăâîșțşţ]{0,2}\.)(?:\s+(.+))?",
+                line,
+            )
+            if inline and (not inline[3] or ROOM.fullmatch(inline[3])):
+                expanded.extend(part for part in inline.groups() if part)
+            else:
+                expanded.append(line)
+        lines = expanded
     while lines and ROOM.fullmatch(lines[0]):
         lines.pop(0)
     if not lines:
         return [], [f"Страница {page_index + 1}: отдельная ячейка аудитории ({text}) требует сверки с соседним занятием."]
 
-    laboratory = lines[0].startswith("lab.")
-    half_group = bool(HALF_GROUP.search(lines[0]))
     lesson_type = "Лабораторная" if laboratory else "Лекция" if shaded else "Семинар"
     numbered = [i for i, line in enumerate(lines) if NUMBERED.match(line)]
     if numbered:

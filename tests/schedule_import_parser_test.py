@@ -70,6 +70,28 @@ def extract_cells(cells, edges=None, rects=None):
 
 
 class ParallelCellsTest(unittest.TestCase):
+    def test_flattened_half_group_options_are_existing_subject_names(self):
+        for text in (
+            "0,5 gr. 1) CDE Chiriac M. A03 2) MS Litra D.",
+            "lab. 0,5 gr.\n1) CDE Chiriac M. A03\n2) MS Litra D.",
+        ):
+            lessons = extract_cell(text, False)["lessons"]
+            self.assertEqual(
+                [(l["subject"], l["teacher"], l["room"]) for l in lessons],
+                [("CDE", "Chiriac M.", "A03"), ("MS", "Litra D.", "")],
+            )
+            self.assertTrue(all(text in l["sourceText"] for l in lessons))
+
+    def test_half_group_marker_is_not_a_subject_prefix_or_suffix(self):
+        for text, subject, teacher in (
+            ("0,5 gr. AFU Brînză M.", "AFU", "Brînză M."),
+            ("PADM 0,5 gr.", "PADM", ""),
+            ("0,5 gr.\nAFU\nBrînză M.", "AFU", "Brînză M."),
+        ):
+            lessons = extract_cell(text, False)["lessons"]
+            self.assertEqual(len(lessons), 1)
+            self.assertEqual((lessons[0]["subject"], lessons[0]["teacher"]), (subject, teacher))
+
     def test_two_slot_numbered_cell_creates_two_long_lessons(self):
         result = extract_cell("lab. 05 gr.\n1) CDE\nChiriac M.\nA03\n2) MS\nLitra D.\n422", True)
         lessons = result["lessons"]
