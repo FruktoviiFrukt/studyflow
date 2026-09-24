@@ -239,6 +239,9 @@ test("matching UI requires ambiguous decisions and keeps choices after a failed 
       return route.fulfill({
         json: {
           lessonCount: 3,
+          warnings: [
+            "Страница 1: преподаватель без предмета — сверьте ячейку с PDF.",
+          ],
           catalog: [
             { id: "a", name: "Algebra", code: "ALG", status: "ARCHIVED" },
             { id: "b", name: "Algebra liniară", code: null, status: "ACTIVE" },
@@ -271,6 +274,15 @@ test("matching UI requires ambiguous decisions and keeps choices after a failed 
       exact: true,
     });
     await expect(confirm).toBeDisabled();
+    await page
+      .getByText("Замечания распознавания (1)", { exact: true })
+      .click();
+    await expect(
+      page.getByText(
+        "Страница 1: преподаватель без предмета — сверьте ячейку с PDF.",
+        { exact: true },
+      ),
+    ).toBeVisible();
     await expect(page.locator("#subject-match-0")).toHaveValue("a");
     await expect(page.locator("#subject-match-2")).toHaveValue("new");
     await page.locator("#subject-match-1").selectOption("b");

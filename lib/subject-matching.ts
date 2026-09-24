@@ -13,20 +13,24 @@ export type SubjectMatchPreview = {
   }[];
   catalog: MatchSubject[];
   lessonCount: number;
+  warnings?: string[];
 };
 
-// Keep course numbers and punctuation. Short uppercase abbreviations remain
+// Keep course numbers and punctuation. Short abbreviations remain
 // accent-sensitive: their expansion must be confirmed by an administrator.
-export function subjectNameKey(name: string) {
+function normalizedName(name: string) {
   const clean = name.normalize("NFC").trim().replace(/\s+/gu, " ");
-  const abbreviation = /^[\p{Lu}]{1,4}$/u.test(clean);
+  const abbreviation = /^[\p{L}]{1,4}\d*$/u.test(clean.replace(/\s/gu, ""));
   return (
     abbreviation ? clean : clean.normalize("NFD").replace(/\p{M}/gu, "")
   ).toLocaleLowerCase("ro");
 }
+export function subjectNameKey(name: string) {
+  return normalizedName(name).replace(/\s/gu, "");
+}
 function words(name: string) {
   return new Set(
-    subjectNameKey(name)
+    normalizedName(name)
       .normalize("NFD")
       .replace(/\p{M}/gu, "")
       .split(/[^\p{L}\p{N}]+/u)

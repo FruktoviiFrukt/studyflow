@@ -32,6 +32,7 @@ test("import decisions preserve metadata, reuse normalized names and reject stal
     const choices = [
       { sourceName: prefix + " new", subjectId: null },
       { sourceName: prefix + " NEW", subjectId: null },
+      { sourceName: prefix + "new", subjectId: null },
     ];
     result = await apply(choices);
     assert.equal(new Set([...result.values()].map((s) => s.id)).size, 1);

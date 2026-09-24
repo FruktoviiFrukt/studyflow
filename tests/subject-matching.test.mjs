@@ -1,10 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { tsImport } from "tsx/esm/api";
-const { previewSubjectMatches, validateSubjectChoices } = await tsImport(
-  "../lib/subject-matching.ts",
-  import.meta.url,
-);
+const { previewSubjectMatches, validateSubjectChoices, subjectNameKey } =
+  await tsImport("../lib/subject-matching.ts", import.meta.url);
 const catalog = [
   { id: "1", name: "Algebra liniară", code: null, status: "ARCHIVED" },
   {
@@ -15,6 +13,27 @@ const catalog = [
   },
   { id: "3", name: "Fizica", code: null, status: "ACTIVE" },
 ];
+test("case and missing spaces reuse the same subject without losing numbers or punctuation", () => {
+  for (const [a, b] of [
+    ["BD 1", "bd1"],
+    ["Etică și Securitate Umană", "eticași securitateumană"],
+    ["L. Engleză", "L.Engleză"],
+    ["BD\u00a01", "BD1"],
+    ["ÎS", "îs"],
+  ]) {
+    assert.equal(subjectNameKey(a), subjectNameKey(b));
+  }
+  for (const [a, b] of [
+    ["BD1", "BD2"],
+    ["BD", "BD1"],
+    ["ÎS", "IS"],
+    ["îs", "is"],
+    ["C++", "C"],
+    ["Securitate", "Securitatea"],
+  ]) {
+    assert.notEqual(subjectNameKey(a), subjectNameKey(b));
+  }
+});
 test("course numbers and ambiguous abbreviations remain distinct", () => {
   const result = previewSubjectMatches(
     ["Analiza matematica 1", "ÎS"],

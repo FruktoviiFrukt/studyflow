@@ -50,6 +50,20 @@ export default function ScheduleSubjectMatching({
         {preview.subjects.length}. Проверьте соответствия. Похожие названия
         требуют вашего выбора. Архивные дисциплины останутся в архиве.
       </p>
+      {!!preview.warnings?.length && (
+        <details className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm">
+          <summary className="cursor-pointer font-medium">
+            Замечания распознавания ({preview.warnings.length})
+          </summary>
+          <ul className="mt-2 list-disc space-y-2 pl-5">
+            {preview.warnings.map((warning, index) => (
+              <li key={index} className="whitespace-pre-wrap break-words">
+                {warning}
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
       <input
         className={fieldClass}
         aria-label="Поиск названия из PDF"

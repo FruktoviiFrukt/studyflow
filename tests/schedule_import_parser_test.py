@@ -31,7 +31,10 @@ class FakePage:
         return FakeCrop(self.cells[cell])
 
     def within_bbox(self, cell):
-        return FakeCrop(self.cells[cell])
+        if cell in self.cells:
+            return FakeCrop(self.cells[cell])
+        return FakeCrop("\n".join(text for box, text in sorted(self.cells.items(), key=lambda item:item[0][1])
+                                  if box[0]>=cell[0] and box[2]<=cell[2] and box[1]>=cell[1] and box[3]<=cell[3]))
 
 
 class FakeCrop:
@@ -70,8 +73,42 @@ def extract_cells(cells, edges=None, rects=None):
 
 
 class ParallelCellsTest(unittest.TestCase):
+    def test_sport_location_and_corroborated_surname_are_metadata(self):
+        lesson=parser.parse_cell("Ed. Fizică\nSala sportivă",0,"08:00","09:30","every",["TI-245"],0)[0][0]
+        self.assertEqual((lesson["subject"],lesson["room"]),("Ed. Fizică","Sala sportivă"))
+        lesson=parser.parse_cell("CDE\nBîrnaz\n524",0,"08:00","09:30","every",["TI-245"],0,known_surnames={"Bîrnaz"})[0][0]
+        self.assertEqual((lesson["subject"],lesson["teacher"]),("CDE","Bîrnaz"))
+        unknown=parser.parse_cell("CDE\nUnknown\n524",0,"08:00","09:30","every",["TI-245"],0)[0][0]
+        self.assertEqual(unknown["subject"],"CDE Unknown")
+
+    def test_half_group_title_is_not_discarded_and_prefix_is_case_insensitive(self):
+        for text in ("lab. 0.5 gr. CDE\nLitra D.\nA03", "Lab.\nCDE\nLitra D.\nA03", "lab. PADM 0,5 gr.\nBîrnaz A.\n427"):
+            lesson=extract_cell(text,False)["lessons"][0]
+            self.assertIn(lesson["subject"], ("CDE", "PADM"))
+            self.assertEqual(lesson["type"], "Лабораторная")
+
+    def test_teacher_lists_and_initial_first_names_do_not_pollute_subject(self):
+        for names in ("Șova M.,Nicolai F.", "Strucova T., Pilețchi T.", "P.Russu", "Reițman P. / Dumitrașcu M.", "DutoaL., Nicolai F."):
+            lesson=extract_cell("L. Engleză\n"+names+"\n611",False)["lessons"][0]
+            self.assertEqual(lesson["subject"], "L. Engleză")
+            self.assertTrue(lesson["teacher"])
+            self.assertEqual(extract_cell(names,False)["lessons"], [])
+
+    def test_title_crossing_empty_fragments_is_read_after_geometry_merge(self):
+        cells={(100,0,200,20):"TI-245",(0,20,40,100):"Luni",(40,20,100,100):"08:00–09:30",
+               (100,20,200,35):"",(100,35,200,45):"",(100,45,200,100):"624\nCantir L."}
+        original=FakePage.within_bbox
+        def read(page,box):
+            if box==(100,20,200,100):return FakeCrop("L. Română\n624\nCantir L.")
+            return original(page,box)
+        with patch.object(FakePage,'within_bbox',read): lessons=extract_cells(cells)["lessons"]
+        self.assertEqual(len(lessons),1)
+        self.assertEqual((lessons[0]["subject"],lessons[0]["teacher"],lessons[0]["room"]),("L. Română","Cantir L.","624"))
+
     def test_inline_teacher_and_room_are_separate_from_subject(self):
         cases = [
+            ("CI 2 A03 Magariu N.", "CI 2", "Magariu N.", "A03"),
+            ("Matematici Speciale Bostan V. ; Cojuhari E. 3-3 Amdaris", "Matematici Speciale", "Bostan V. Cojuhari E.", "3-3 Amdaris"),
             ("ASCS Plămădeală C", "ASCS", "Plămădeală C", ""),
             ("Baze de date 1 Saranciuc D. 3-3 Amdaris", "Baze de date 1", "Saranciuc D.", "3-3 Amdaris"),
             ("Analiza și Specif. Software Plămădeală C", "Analiza și Specif. Software", "Plămădeală C", ""),
@@ -86,13 +123,13 @@ class ParallelCellsTest(unittest.TestCase):
                 self.assertIn(text, lessons[0]["sourceText"])
 
     def test_standalone_metadata_is_flagged_not_created_as_subject(self):
-        for text in ("Aula 6-2 Henri Coandă", "Plămădeală C", "Saranciuc D.\n3-3 Amdaris"):
+        for text in ("Aula 6-2 Henri Coandă", "Plămădeală C", "Saranciuc D.\n3-3 Amdaris", "Zbancă D. Aula 6-2 Henri Coandă"):
             result = extract_cell(text, False)
             self.assertEqual(result["lessons"], [])
             self.assertTrue(any(text in warning for warning in result["warnings"]))
 
     def test_legitimate_course_numbers_and_uncertain_suffixes_are_preserved(self):
-        for text in ("Matematica I", "Baze de date 1", "Programarea C++", "Analiza Matematică I", "ASCS Plămădeală C cabinet necunoscut"):
+        for text in ("Matematica I", "Baze de date 1", "Circuite Integrate 2", "Programarea C++", "Analiza Matematică I", "ASCS Plămădeală C cabinet necunoscut"):
             lessons = extract_cell(text, False)["lessons"]
             self.assertEqual(lessons[0]["subject"], text)
 

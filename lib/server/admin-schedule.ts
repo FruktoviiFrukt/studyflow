@@ -375,7 +375,10 @@ export async function importSchedule(request: Request) {
         orderBy: { name: "asc" },
       });
       await unlink(location);
-      return previewSubjectMatches(names, catalog, lessons.length);
+      return {
+        ...previewSubjectMatches(names, catalog, lessons.length),
+        warnings: extracted.warnings,
+      };
     }
     const rawChoices = form.get("subjectChoices");
     if (typeof rawChoices !== "string" || rawChoices.length > 1024 * 1024)
