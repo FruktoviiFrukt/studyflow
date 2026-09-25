@@ -19,8 +19,8 @@ export default defineConfig({
     reuseExistingServer: false,
     timeout: 120000,
     env: {
+      // auth.ts sets trustHost: true, so AUTH_TRUST_HOST is not needed.
       AUTH_SECRET: "schedule-ui-test-secret-only",
-      AUTH_TRUST_HOST: "true",
     },
   },
 });

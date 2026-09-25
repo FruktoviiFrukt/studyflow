@@ -50,6 +50,8 @@ async function main() {
       name: ADMIN_NAME,
       password: hashedPassword,
       role: "ADMIN",
+      // Seeded, not registered through the app — skip email verification.
+      emailVerified: new Date(),
     },
   });
   console.log(`Seeded admin user: ${ADMIN_EMAIL}`);
