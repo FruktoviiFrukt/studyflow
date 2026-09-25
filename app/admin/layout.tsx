@@ -1,6 +1,8 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 
+import AdminLogoutButton from "@/components/admin/AdminLogoutButton";
+
 const adminSections = [
   { href: "/admin", label: "Обзор" },
   { href: "/admin/users", label: "Пользователи" },
@@ -17,18 +19,22 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-        <header className="mb-6">
-          <p className="mb-1 text-sm font-medium text-blue-600">
-            Администрирование
-          </p>
+        <header className="mb-6 flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <p className="mb-1 text-sm font-medium text-blue-600">
+              Администрирование
+            </p>
 
-          <h1 className="text-2xl font-bold text-gray-900 sm:text-3xl">
-            Панель администратора
-          </h1>
+            <h1 className="text-2xl font-bold text-gray-900 sm:text-3xl">
+              Панель администратора
+            </h1>
 
-          <p className="mt-2 text-sm text-gray-500">
-            Управление пользователями, дисциплинами и расписанием
-          </p>
+            <p className="mt-2 text-sm text-gray-500">
+              Управление пользователями, дисциплинами и расписанием
+            </p>
+          </div>
+
+          <AdminLogoutButton />
         </header>
 
         <nav
