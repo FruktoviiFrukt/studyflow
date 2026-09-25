@@ -11,7 +11,9 @@ export default auth((req) => {
   }
 
   if (isAuthRoute && isLoggedIn) {
-    return NextResponse.redirect(new URL("/dashboard", nextUrl));
+    const destination =
+      req.auth?.user?.role === "ADMIN" ? "/admin/schedule" : "/dashboard";
+    return NextResponse.redirect(new URL(destination, nextUrl));
   }
 
   return NextResponse.next();

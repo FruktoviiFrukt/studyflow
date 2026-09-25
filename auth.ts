@@ -1,10 +1,19 @@
-import NextAuth from "next-auth";
+import NextAuth, { CredentialsSignin } from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 
 import { prisma } from "@/lib/prisma";
 
+class EmailNotVerifiedError extends CredentialsSignin {
+  code = "email-not-verified";
+}
+
 export const { handlers, auth, signIn, signOut } = NextAuth({
+  // Trust the incoming request's Host header instead of requiring every
+  // developer to set AUTH_TRUST_HOST in .env — safe here because this app
+  // is not exposed behind a proxy that lets clients spoof that header
+  // without also controlling the request itself.
+  trustHost: true,
   session: {
     strategy: "jwt",
   },
@@ -37,6 +46,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
         if (!passwordMatches) {
           return null;
+        }
+
+        if (!user.emailVerified) {
+          throw new EmailNotVerifiedError();
         }
 
         return {
