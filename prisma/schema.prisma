@@ -17,16 +17,17 @@ enum Role {
 }
 
 model User {
-  id           String   @id @default(cuid())
-  email        String   @unique
-  password     String
-  name         String
-  role         Role     @default(STUDENT)
-  group        String?
-  groupId      String?
-  subgroupId   String?
-  geminiApiKey String? // AES-256-GCM encrypted, never stored plain
-  createdAt    DateTime @default(now())
+  id            String    @id @default(cuid())
+  email         String    @unique
+  password      String
+  name          String
+  role          Role      @default(STUDENT)
+  group         String?
+  groupId       String?
+  subgroupId    String?
+  geminiApiKey  String? // AES-256-GCM encrypted, never stored plain
+  emailVerified DateTime?
+  createdAt     DateTime  @default(now())
 
   // Relations: Schedule module
   studyGroup StudyGroup? @relation(fields: [groupId], references: [id], onDelete: Restrict)
@@ -38,10 +39,29 @@ model User {
   quizSessions     QuizSession[]
   tasks            Task[]
 
-  gpaProfile GpaProfile?
+  gpaProfile         GpaProfile?
+  verificationTokens VerificationToken[]
 
   @@index([groupId])
   @@index([subgroupId, groupId])
+}
+
+enum TokenType {
+  EMAIL_VERIFY
+  PASSWORD_RESET
+}
+
+model VerificationToken {
+  id        String    @id @default(cuid())
+  token     String    @unique
+  userId    String
+  type      TokenType
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, type])
 }
 
 // ---------------------------------------------------------------------------

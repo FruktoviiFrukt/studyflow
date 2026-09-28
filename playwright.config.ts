@@ -24,10 +24,10 @@ export default defineConfig({
     reuseExistingServer: false,
     timeout: 60_000,
     env: {
-      // The e2e server is local only; a fixed secret and trusted host are fine here.
+      // The e2e server is local only; a fixed secret is fine here.
+      // auth.ts sets trustHost: true, so AUTH_TRUST_HOST is not needed.
       AUTH_SECRET:
         process.env.AUTH_SECRET ?? "e2e-only-secret-not-for-production",
-      AUTH_TRUST_HOST: "true",
     },
   },
 });

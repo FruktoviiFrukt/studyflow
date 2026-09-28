@@ -1,9 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { signIn } from "next-auth/react";
 import {
+  CheckCircle2,
   Eye,
   EyeOff,
   GraduationCap,
@@ -19,17 +18,17 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ALLOWED_GROUPS } from "@/lib/groups";
+import { passwordError, PASSWORD_REQUIREMENTS_HINT } from "@/lib/password";
 
 type RegisterFormProps = {
   onSwitch: () => void;
 };
 
 export default function RegisterForm({ onSwitch }: RegisterFormProps) {
-  const router = useRouter();
-
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [registeredEmail, setRegisteredEmail] = useState<string | null>(null);
 
   const [registerData, setRegisterData] = useState({
     name: "",
@@ -54,8 +53,9 @@ export default function RegisterForm({ onSwitch }: RegisterFormProps) {
       newErrors.email = "Введите email";
     }
 
-    if (registerData.password.length < 6) {
-      newErrors.password = "Пароль должен содержать минимум 6 символов";
+    const passwordIssue = passwordError(registerData.password);
+    if (passwordIssue) {
+      newErrors.password = passwordIssue;
     }
 
     if (!registerData.confirmPassword) {
@@ -100,24 +100,36 @@ export default function RegisterForm({ onSwitch }: RegisterFormProps) {
         return;
       }
 
-      const result = await signIn("credentials", {
-        email: registerData.email,
-        password: registerData.password,
-        redirect: false,
-      });
-
-      if (result?.error) {
-        setErrors({
-          email:
-            "Аккаунт создан, но не удалось войти. Попробуйте войти вручную",
-        });
-        return;
-      }
-
-      router.push("/dashboard");
+      setRegisteredEmail(registerData.email);
     } finally {
       setIsSubmitting(false);
     }
+  }
+
+  if (registeredEmail) {
+    return (
+      <div className="mt-8 space-y-5 text-center">
+        <CheckCircle2 className="mx-auto h-12 w-12 text-blue-600" />
+
+        <h3 className="text-lg font-semibold text-slate-900">
+          Проверьте почту
+        </h3>
+
+        <p className="text-sm leading-6 text-slate-500">
+          Мы отправили ссылку для подтверждения на{" "}
+          <span className="font-medium text-slate-700">{registeredEmail}</span>.
+          Перейдите по ней, чтобы завершить регистрацию и войти.
+        </p>
+
+        <button
+          type="button"
+          onClick={onSwitch}
+          className="text-sm font-medium text-blue-600 hover:text-blue-700"
+        >
+          Вернуться ко входу
+        </button>
+      </div>
+    );
   }
 
   return (
@@ -219,7 +231,7 @@ export default function RegisterForm({ onSwitch }: RegisterFormProps) {
                 password: e.target.value,
               })
             }
-            placeholder="Минимум 6 символов"
+            placeholder={PASSWORD_REQUIREMENTS_HINT}
             aria-invalid={Boolean(errors.password)}
             aria-describedby={
               errors.password ? "register-password-error" : undefined

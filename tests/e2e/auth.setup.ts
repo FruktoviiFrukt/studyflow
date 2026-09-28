@@ -11,6 +11,7 @@ setup("sign in once and keep the session for other tests", async ({ page }) => {
   await page.locator("#login-email").fill(email);
   await page.locator("#login-password").fill(password);
   await page.locator("form").getByRole("button", { name: "Войти" }).click();
-  await expect(page).toHaveURL(/\/dashboard$/);
+  // admin@utm.md is an ADMIN account, so login now lands on the admin panel.
+  await expect(page).toHaveURL(/\/admin\/schedule$/);
   await page.context().storageState({ path: STORAGE_STATE });
 });

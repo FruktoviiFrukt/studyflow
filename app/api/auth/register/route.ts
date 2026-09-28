@@ -1,10 +1,14 @@
+import { randomBytes } from "node:crypto";
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 
 import { prisma } from "@/lib/prisma";
 import { ALLOWED_GROUPS } from "@/lib/groups";
+import { passwordError } from "@/lib/password";
+import { sendVerificationEmail } from "@/lib/server/email";
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const VERIFICATION_TOKEN_TTL_MS = 24 * 60 * 60 * 1000;
 
 export async function POST(request: Request) {
   const body = await request.json();
@@ -29,11 +33,13 @@ export async function POST(request: Request) {
     );
   }
 
-  if (typeof password !== "string" || password.length < 6) {
-    return NextResponse.json(
-      { message: "Пароль должен содержать минимум 6 символов" },
-      { status: 400 },
-    );
+  if (typeof password !== "string") {
+    return NextResponse.json({ message: "Введите пароль" }, { status: 400 });
+  }
+
+  const passwordIssue = passwordError(password);
+  if (passwordIssue) {
+    return NextResponse.json({ message: passwordIssue }, { status: 400 });
   }
 
   if (
@@ -74,6 +80,17 @@ export async function POST(request: Request) {
       groupId: studyGroup.id,
     },
   });
+
+  const token = randomBytes(32).toString("hex");
+  await prisma.verificationToken.create({
+    data: {
+      token,
+      userId: user.id,
+      type: "EMAIL_VERIFY",
+      expiresAt: new Date(Date.now() + VERIFICATION_TOKEN_TTL_MS),
+    },
+  });
+  await sendVerificationEmail(user.email, token);
 
   return NextResponse.json(
     { id: user.id, email: user.email, name: user.name },

@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { signIn } from "next-auth/react";
+import Link from "next/link";
+import { getSession, signIn } from "next-auth/react";
 import { Check, Eye, EyeOff, LockKeyhole, Mail } from "lucide-react";
 
 type LoginFormProps = {
@@ -52,11 +53,19 @@ export default function LoginForm({ onSwitch }: LoginFormProps) {
       });
 
       if (result?.error) {
-        setErrors({ password: "Неверный email или пароль" });
+        setErrors({
+          password:
+            result.code === "email-not-verified"
+              ? "Подтвердите email — мы отправили ссылку при регистрации"
+              : "Неверный email или пароль",
+        });
         return;
       }
 
-      router.push("/dashboard");
+      const session = await getSession();
+      router.push(
+        session?.user.role === "ADMIN" ? "/admin/schedule" : "/dashboard",
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -177,12 +186,12 @@ export default function LoginForm({ onSwitch }: LoginFormProps) {
           <span>Запомнить меня</span>
         </label>
 
-        <button
-          type="button"
+        <Link
+          href="/auth/forgot-password"
           className="text-sm font-medium text-blue-600 transition hover:text-blue-700"
         >
           Забыли пароль?
-        </button>
+        </Link>
       </div>
 
       <button

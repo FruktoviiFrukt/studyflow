@@ -26,8 +26,8 @@ export default defineConfig({
     reuseExistingServer: false,
     env: {
       DATABASE_URL: database,
+      // auth.ts sets trustHost: true, so AUTH_TRUST_HOST is not needed.
       AUTH_SECRET: "import-test-secret-only",
-      AUTH_TRUST_HOST: "true",
       SCHEDULE_PYTHON: process.env.SCHEDULE_PYTHON || "python",
       SCHEDULE_UPLOAD_DIR: ".review-output/import-test-pdfs",
     },
