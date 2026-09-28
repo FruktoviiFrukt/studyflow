@@ -27,6 +27,8 @@ import GlobalTimetable from "@/components/schedule/global-timetable";
 import { adminGlobalTemplate, streamOf } from "@/lib/global-template-view";
 import DatePicker from "@/components/schedule/date-picker";
 import { universityToday } from "@/lib/schedule";
+import ScheduleSubjectMatching from "./schedule-subject-matching";
+import type { SubjectMatchPreview } from "@/lib/subject-matching";
 
 type RecordData = ScheduleDraft & {
   version: string;
@@ -79,6 +81,10 @@ export default function ScheduleManager() {
   const [notice, setNotice] = useState("");
   const [upload, setUpload] = useState(false);
   const [uploadKind, setUploadKind] = useState<ScheduleKind>("STUDENT");
+  const [matching, setMatching] = useState<{
+    preview: SubjectMatchPreview;
+    form: FormData;
+  } | null>(null);
   const [confirmation, setConfirmation] = useState<
     "publish" | "unpublish" | "delete" | null
   >(null);
@@ -595,18 +601,66 @@ export default function ScheduleManager() {
       <Dialog
         open={upload}
         onOpenChange={(open) => {
-          if (!busy) setUpload(open);
+          if (!busy) {
+            setUpload(open);
+            if (!open) {
+              setMatching(null);
+              setError("");
+            }
+          }
         }}
       >
         <DialogContent className="max-h-[90dvh] overflow-y-auto bg-white">
           <DialogHeader>
-            <DialogTitle>Загрузить расписание</DialogTitle>
+            <DialogTitle>
+              {matching ? "Сопоставить дисциплины" : "Загрузить расписание"}
+            </DialogTitle>
             <DialogDescription>
-              PDF будет сохранён и разобран в черновик. Проверьте результат
-              перед публикацией.
+              Сначала распознайте PDF, затем подтвердите дисциплины. Черновик
+              создаётся после подтверждения.
             </DialogDescription>
           </DialogHeader>
+          {matching && (
+            <ScheduleSubjectMatching
+              preview={matching.preview}
+              busy={busy}
+              error={error}
+              onBack={() => {
+                setMatching(null);
+                setError("");
+              }}
+              onConfirm={async (choices) => {
+                setBusy(true);
+                setError("");
+                const form = matching.form;
+                form.set("stage", "confirm");
+                form.set("subjectChoices", JSON.stringify(choices));
+                try {
+                  const r = await fetch("/api/admin/schedule", {
+                    method: "POST",
+                    body: form,
+                  });
+                  const body = await r.json();
+                  if (!r.ok) throw new Error(body.message);
+                  accept(body);
+                  if (form.has("createOther")) void load();
+                  setUpload(false);
+                  setMatching(null);
+                  setNotice(
+                    form.has("createOther")
+                      ? "Созданы два черновика. Сопоставления дисциплин и исходные названия сохранены."
+                      : "Черновик создан. Сопоставления дисциплин и исходные названия сохранены.",
+                  );
+                } catch (e) {
+                  setError(e instanceof Error ? e.message : "Ошибка импорта");
+                } finally {
+                  setBusy(false);
+                }
+              }}
+            />
+          )}
           <form
+            hidden={!!matching}
             className="space-y-4"
             onSubmit={async (event) => {
               event.preventDefault();
@@ -614,6 +668,7 @@ export default function ScheduleManager() {
               form.set("from", from);
               form.set("to", to);
               form.set("first", first);
+              form.set("stage", "preview");
               setBusy(true);
               setError("");
               try {
@@ -623,14 +678,7 @@ export default function ScheduleManager() {
                 });
                 const body = await r.json();
                 if (!r.ok) throw new Error(body.message);
-                accept(body);
-                if (form.has("createOther")) void load();
-                setUpload(false);
-                setNotice(
-                  form.has("createOther")
-                    ? "PDF обработан. Созданы два черновика из одного файла. Замечания к занятиям сохранены."
-                    : "PDF обработан. Замечания к занятиям сохранены.",
-                );
+                setMatching({ preview: body, form });
               } catch (e) {
                 setError(e instanceof Error ? e.message : "Ошибка импорта");
               } finally {

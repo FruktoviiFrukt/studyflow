@@ -140,12 +140,23 @@ model Subgroup {
   @@unique([id, groupId])
 }
 
+enum SubjectStatus {
+  ACTIVE
+  ARCHIVED
+}
+
 model Subject {
-  id       String   @id @default(cuid())
-  name     String   @unique
+  id          String        @id @default(cuid())
+  name        String        @unique
+  // Imported schedules may not specify an official code or faculty.
+  code        String?       @unique
+  faculty     String?
+  // Manually maintained catalog value, never inferred from schedule lessons.
+  ectsCredits Decimal?      @db.Decimal(4, 1)
+  status      SubjectStatus @default(ACTIVE)
   // Palette key; CSS classes belong to the frontend.
-  colorKey String   @default("blue")
-  lessons  Lesson[]
+  colorKey    String        @default("blue")
+  lessons     Lesson[]
 }
 
 model ScheduleImport {
@@ -172,29 +183,30 @@ model ScheduleImport {
 }
 
 model Lesson {
-  id           String           @id @default(cuid())
-  scheduleId   String
-  subjectId    String
+  id                String           @id @default(cuid())
+  scheduleId        String
+  subjectId         String
   // Monday = 0, Sunday = 6. For ScheduleImport.kind == ASSESSMENT this is
   // derived from `date` for indexing/query consistency, not a real weekly
   // recurrence — see `date` below.
-  weekday      Int
-  startMinutes Int
-  endMinutes   Int
-  weekPattern  WeekPattern      @default(EVERY)
+  weekday           Int
+  startMinutes      Int
+  endMinutes        Int
+  weekPattern       WeekPattern      @default(EVERY)
   // Only set for ScheduleImport.kind == ASSESSMENT: a one-off exam date.
   // weekday/weekPattern above are not meaningful for those rows (weekday
   // is filled in for index/query consistency, weekPattern stays EVERY).
-  date         DateTime?        @db.Date
-  type         LessonType       @default(UNSPECIFIED)
-  teacher      String?
-  classroom    String?
-  topic        String?
-  sourceText   String?
-  reviewed     Boolean          @default(false)
-  schedule     ScheduleImport   @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
-  subject      Subject          @relation(fields: [subjectId], references: [id], onDelete: Restrict)
-  audiences    LessonAudience[]
+  date              DateTime?        @db.Date
+  type              LessonType       @default(UNSPECIFIED)
+  teacher           String?
+  classroom         String?
+  topic             String?
+  sourceText        String?
+  sourceSubjectName String?
+  reviewed          Boolean          @default(false)
+  schedule          ScheduleImport   @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+  subject           Subject          @relation(fields: [subjectId], references: [id], onDelete: Restrict)
+  audiences         LessonAudience[]
 
   @@index([scheduleId, weekday, startMinutes])
   @@index([subjectId])

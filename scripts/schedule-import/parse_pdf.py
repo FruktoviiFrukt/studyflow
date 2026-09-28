@@ -7,10 +7,70 @@ import pdfplumber
 GROUP = re.compile(r"\b[A-Z]{1,5}-\d{3}\b")
 TIME = re.compile(r"^(\d{1,2})[.:](\d{2})\s*[-–]\s*(\d{1,2})[.:](\d{2})$")
 DAYS = {"Luni": 0, "Marţi": 1, "Marți": 1, "Miercuri": 2, "Joi": 3, "Vineri": 4, "Sâmbătă": 5, "Duminică": 6}
-ROOM = re.compile(r"(?:[A-Za-zА-Яа-я]-?\d|\d|Aula\s+\d)[\w\s/.,-]*", re.IGNORECASE)
+ROOM = re.compile(r"(?:(?:[A-Za-zА-Яа-я]-?\d|\d|Aula\s+\d)[\w\s/.,-]*|Sala\s+sportiv[ăa])", re.IGNORECASE)
 NUMBERED = re.compile(r"^[12]\)\s*")
 HALF_GROUP = re.compile(r"(?:0[.,]?5|½)\s*gr\.?", re.IGNORECASE)
-TEACHER = re.compile(r"^[^\d()]+?\s+[A-ZĂÂÎȘȚ][a-zăâîșț]{0,2}\.?$")
+# Only a surname + initials, not arbitrary trailing words. Bare Roman numerals
+# are left in course titles (e.g. "Matematica I").
+TEACHER_NAME = r"[A-ZĂÂÎȘȚŞŢ][A-ZĂÂÎȘȚŞŢ]?[a-zăâîșțşţ]+(?:[-’'][A-Za-zăâîșțşţĂÂÎȘȚŞŢ]+)*\s+(?:[A-ZĂÂÎȘȚŞŢ][a-zăâîșțşţ]{0,2}\.|[A-ZĂÂÎȘȚŞŢ][a-zăâîșțşţ]{1,2}|[A-HJ-UW-ZĂÂÎȘȚŞŢ])"
+INLINE_TEACHER = re.compile(r"(.+?)\s+(" + TEACHER_NAME + r")(?:\s+(.+))?")
+PREFIX = re.compile(r"^(lab|c|sem)\.\s*", re.IGNORECASE)
+SURNAME = r"[A-ZĂÂÎȘȚŞŢ][a-zăâîșțşţ]+(?:[-’'][A-Za-zăâîșțşţĂÂÎȘȚŞŢ]+)*"
+INITIAL_FIRST = re.compile(r"[A-ZĂÂÎȘȚŞŢ]\.\s*" + SURNAME)
+LANGUAGE_SUBJECT = re.compile(r"^L\.\s*(?:Englez[ăa]|Rom[âa]n[ăa]|Francez[ăa]|German[ăa]|Rus[ăa])\b", re.IGNORECASE)
+
+
+def teacher_names(text, allow_bare_initial=False):
+    """Recognize complete teacher fields, including lists and initial-first names."""
+    text = re.sub(r"([a-zăâîșțşţ])([A-ZĂÂÎȘȚŞŢ]\.)", r"\1 \2", text.strip())
+    if LANGUAGE_SUBJECT.match(text):
+        return []
+    parts = [p.strip() for p in re.split(r"[,;/]", text) if p.strip()]
+    if parts and all(re.fullmatch(TEACHER_NAME, p) or INITIAL_FIRST.fullmatch(p) or
+                     (allow_bare_initial and re.fullmatch(SURNAME + r"\s+[A-ZĂÂÎȘȚŞŢ]",p)) for p in parts):
+        return parts
+    return []
+
+
+def separate_inline_details(lines):
+    """Split only recognizable teacher/room suffixes; retain uncertain text."""
+    expanded = []
+    for line in lines:
+        # A complete teacher list may precede a room on the same line.
+        # Split the room first, then apply the same teacher-list rules below.
+        room_suffix = next(((line[:m.start()].strip(), line[m.start():].strip())
+                            for m in re.finditer(r"\S+", line)
+                            if m.start() > 0 and ROOM.fullmatch(line[m.start():])
+                            and any(teacher_names(line[n.start():m.start()].strip())
+                                    for n in re.finditer(r"\S+", line[:m.start()]))), None)
+        if room_suffix:
+            expanded.extend(separate_inline_details([room_suffix[0]]))
+            expanded.append(room_suffix[1])
+            continue
+        venue = re.fullmatch(r"(.+?)\s+(Sala\s+sportiv[ăa])", line, re.IGNORECASE)
+        if venue:
+            expanded.extend(venue.groups())
+            continue
+        if teacher_names(line):
+            expanded.extend(teacher_names(line))
+            continue
+        # Search from the left so a list of teachers is not appended to a title.
+        split = next(((line[:m.start()].strip(), line[m.start():].strip())
+                      for m in re.finditer(r"(?<!\w)(?:" + TEACHER_NAME + r"|[A-ZĂÂÎȘȚŞŢ]\.\s*" + SURNAME + r")", line)
+                      if m.start() > 0 and teacher_names(line[m.start():])), None)
+        if split:
+            # A room can precede a teacher ("CI 2 A03 Magariu N."). A lone
+            # small number is kept as a course number, never guessed as a room.
+            room_first = re.fullmatch(r"(.+?)\s+((?:[A-Z]-?\d[\w/-]*|\d{3}(?:/\d{3})*|\d-\d+))",split[0])
+            expanded.extend(room_first.groups() if room_first else [split[0]])
+            expanded.extend(teacher_names(split[1]))
+            continue
+        inline = INLINE_TEACHER.fullmatch(line)
+        if inline and (not inline[3] or ROOM.fullmatch(inline[3])):
+            expanded.extend(part for part in inline.groups() if part)
+        else:
+            expanded.append(line)
+    return expanded
 
 
 def shaded_cell(rects, box):
@@ -69,22 +129,31 @@ def merge_fragments(cells, edges):
     return merged
 
 
-def parse_cell(text, day, start, end, parity, groups, page_index, shaded=False):
+def parse_cell(text, day, start, end, parity, groups, page_index, shaded=False, known_surnames=()):
     """Turn one PDF cell into group-visible lessons, preserving parallel options."""
-    lines = [line.strip() for line in text.splitlines() if line.strip()]
+    laboratory = bool(re.match(r"lab\.", text.strip(), re.IGNORECASE))
+    half_group = bool(HALF_GROUP.search(text))
+    normalized = text
+    if half_group:
+        # Some PDFs flatten subgroup labels and both options onto one line.
+        # The marker describes the audience, never part of a subject name.
+        normalized = HALF_GROUP.sub("", normalized)
+        normalized = re.sub(r"(?<!\w)([12]\))\s*", r"\n\1 ", normalized)
+    lines = [line.strip() for line in normalized.splitlines() if line.strip()]
+    lines = [PREFIX.sub("", line).strip() for line in lines]
+    lines = [line for line in lines if line]
+    lines = separate_inline_details(lines)
     while lines and ROOM.fullmatch(lines[0]):
         lines.pop(0)
     if not lines:
         return [], [f"Страница {page_index + 1}: отдельная ячейка аудитории ({text}) требует сверки с соседним занятием."]
+    if all(teacher_names(line) or ROOM.fullmatch(line) for line in lines):
+        return [], [f"Страница {page_index + 1}: найден преподаватель или аудитория без названия предмета ({text}); добавьте занятие вручную после сверки с PDF."]
 
-    laboratory = lines[0].startswith("lab.")
-    half_group = bool(HALF_GROUP.search(lines[0]))
     lesson_type = "Лабораторная" if laboratory else "Лекция" if shaded else "Семинар"
     numbered = [i for i, line in enumerate(lines) if NUMBERED.match(line)]
     if numbered:
         chunks = [lines[a:b] for a, b in zip(numbered, numbered[1:] + [len(lines)])]
-    elif half_group and lines[0].startswith(("lab.", "c.")) and len(lines) > 1:
-        chunks = [lines[1:]]
     else:
         chunks = [lines]
     warnings = []
@@ -94,14 +163,11 @@ def parse_cell(text, day, start, end, parity, groups, page_index, shaded=False):
     entries = []
     for chunk in chunks:
         subject = NUMBERED.sub("", chunk[0]).strip()
-        if subject.startswith("lab."):
-            subject = subject[4:].strip()
-        elif subject.startswith("c."):
-            subject = subject[2:].strip()
+        subject = PREFIX.sub("", subject).strip()
         details = chunk[1:]
         room_lines = [line for line in details if ROOM.fullmatch(line)]
-        teachers = [line for line in details if TEACHER.fullmatch(line)]
-        subject = " ".join([subject] + [line for line in details if not TEACHER.fullmatch(line) and not ROOM.fullmatch(line)])
+        teachers = [name for line in details for name in (teacher_names(line, True) or ([line] if line in known_surnames else []))]
+        subject = " ".join([subject] + [line for line in details if not teacher_names(line, True) and line not in known_surnames and not ROOM.fullmatch(line)])
         room = " / ".join(room_lines)
         rooms = [part.strip() for part in re.split(r"\s+/\s+", room)] if room else []
         if not numbered and len(teachers) == len(rooms) == 2:
@@ -154,10 +220,23 @@ def extract(path):
                 if day is not None:
                     h1, m1, h2, m2 = match.groups()
                     slots.append((c, day, f"{int(h1):02}:{m1}", f"{int(h2):02}:{m2}"))
-            content = merge_fragments(
-                [(c, text) for c, text in cells if text and c[0] >= left and c[1] > table.bbox[1] + 2],
+            # Merge geometry BEFORE extracting content. Artificial fragment
+            # boundaries may cut through a title: within_bbox then drops it
+            # from both fragments, even though it is visible in the PDF.
+            content_boxes = merge_fragments(
+                [(c, "") for c in table.cells if c[0] >= left and c[1] > table.bbox[1] + 2],
                 page.edges,
             )
+            content = [(c, (page.within_bbox(c).extract_text(x_tolerance=0.4, y_tolerance=0.4) or '').strip()) for c, _ in content_boxes]
+            # A surname without initials is a teacher only when corroborated
+            # by a complete teacher name elsewhere on the same page.
+            known_surnames = {
+                name.split()[0]
+                for _, text in content
+                for line in separate_inline_details(text.splitlines())
+                for name in teacher_names(line)
+                if re.fullmatch(TEACHER_NAME, name)
+            }
             for cell, text in content:
                 if not text or text == "#" or cell[0] < left or cell[1] <= table.bbox[1] + 2:
                     continue
@@ -181,6 +260,7 @@ def extract(path):
                     found, notes = parse_cell(
                         text, day, start, end, parity, groups, page_index,
                         shaded=shaded_cell(page.rects, cell),
+                        known_surnames=known_surnames,
                     )
                     lessons.extend(found)
                     warnings.extend(notes)

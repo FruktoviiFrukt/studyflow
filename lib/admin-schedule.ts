@@ -1,4 +1,4 @@
-// Frontend-only contracts. These records are never written to a server.
+// Shared contracts for the schedule editor and admin API.
 export type Parity = "every" | "odd" | "even" | "once";
 export type Audience = { group: string; subgroup: "all" | "1" | "2" };
 export type ScheduleKind = "STUDENT" | "GLOBAL" | "ASSESSMENT";
@@ -10,6 +10,8 @@ export const SCHEDULE_KIND_LABELS: Record<ScheduleKind, string> = {
 export type AdminLesson = {
   id: string;
   subject: string;
+  subjectId?: string;
+  sourceSubjectName?: string;
   type: string;
   day: number;
   start: string;
